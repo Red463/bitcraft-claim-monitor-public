@@ -3415,47 +3415,88 @@ function SettlementSetupDialog({
   if (!open) return null;
   const syncUrlInvalid = !validOptionalSyncUrl(syncUrlDraft);
   const canSaveManual = /^\d{8,}$/.test(manualClaimId.trim()) && !syncUrlInvalid;
+  const hasSearch = query.trim().length >= 2;
   const chooseSettlement = (settlement: SettlementSearchResult) => {
     const id = String(settlement.entityId ?? "").trim();
     if (!id) return;
     onSave(id, syncUrlDraft.trim());
   };
   const content = (
-    <section className="help-dialog settlement-setup-dialog" role={mode === "dialog" ? "dialog" : "region"} aria-modal={mode === "dialog" ? "true" : undefined} aria-labelledby="settlement-setup-title" onClick={(event) => event.stopPropagation()}>
-      <header>
+    <section className="help-dialog settlement-setup-dialog onboarding-dialog" role={mode === "dialog" ? "dialog" : "region"} aria-modal={mode === "dialog" ? "true" : undefined} aria-labelledby="settlement-setup-title" onClick={(event) => event.stopPropagation()}>
+      <div className="onboarding-hero">
+        <span className="onboarding-mark"><Shield size={23} /></span>
         <div>
-          <Search size={19} />
-          <h2 id="settlement-setup-title">Choose Settlement</h2>
+          <p>Public Settlement Monitor</p>
+          <h2 id="settlement-setup-title">Track any BitCraft settlement</h2>
+          <span>Choose a settlement once and this browser will open straight into its live operations view.</span>
         </div>
-      </header>
-      <div className="settlement-setup-body">
-        <label className="field">
-          <span>Search settlements</span>
-          <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Type a settlement name" />
-        </label>
-        <div className="settlement-search-results">
-          {loading ? <p className="legend">Searching settlements...</p> : null}
-          {error ? <p className="error">{error}</p> : null}
-          {!loading && query.trim().length >= 2 && !results.length && !error ? <p className="legend">No settlements found.</p> : null}
-          {results.map((settlement) => (
-            <button type="button" key={settlement.entityId} onClick={() => chooseSettlement(settlement)}>
-              <strong>{settlement.name || `Settlement ${settlement.entityId}`}</strong>
-              <span>{[settlement.owner ? `Owner ${settlement.owner}` : "", settlement.regionName || (settlement.regionId ? `Region ${settlement.regionId}` : ""), settlement.tier ? `T${settlement.tier}` : ""].filter(Boolean).join(" | ")}</span>
-            </button>
-          ))}
-        </div>
-        <label className="field">
-          <span>Settlement ID</span>
-          <input value={manualClaimId} onChange={(event) => setManualClaimId(event.target.value)} placeholder="Paste a claim/settlement ID" />
-        </label>
-        <label className="field">
-          <span>BitCraft Sync URL (optional)</span>
-          <input value={syncUrlDraft} onChange={(event) => setSyncUrlDraft(event.target.value)} placeholder="https://bitcraftsync.app/s/..." />
-        </label>
-        {syncUrlInvalid ? <p className="error">BitCraft Sync URL must be a bitcraftsync.app HTTPS link, or left blank.</p> : null}
       </div>
-      <div className="help-actions">
-        <button className="toolbar-button primary" disabled={!canSaveManual} onClick={() => onSave(manualClaimId.trim(), syncUrlDraft.trim())}><Save size={14} /> Save Settlement</button>
+      <div className="settlement-setup-body">
+        <div className="onboarding-intro">
+          <article>
+            <Database size={17} />
+            <strong>Shared public history</strong>
+            <span>Market, activity and production snapshots are collected server-side for selected settlements, so people watching the same settlement share the same records.</span>
+          </article>
+          <article>
+            <HardDrive size={17} />
+            <strong>Browser-local setup</strong>
+            <span>Your chosen settlement and optional BitCraft Sync link are saved only in this browser. No login or admin account is needed.</span>
+          </article>
+          <article>
+            <Search size={17} />
+            <strong>Start with a settlement</strong>
+            <span>Search by name, pick the right result, or paste a settlement ID if the search API cannot find it.</span>
+          </article>
+        </div>
+        <div className="onboarding-setup-grid">
+          <div className="onboarding-card onboarding-card-primary">
+            <div className="onboarding-card-heading">
+              <span>Step 1</span>
+              <h3>Find your settlement</h3>
+            </div>
+            <label className="field">
+              <span>Search settlements</span>
+              <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Type at least 2 characters" />
+            </label>
+            <div className={`settlement-search-results ${!hasSearch ? "is-empty" : ""}`}>
+              {!hasSearch ? <p className="legend">Results from BitJita will appear here.</p> : null}
+              {loading ? <p className="legend">Searching settlements...</p> : null}
+              {error ? <p className="error">{error}</p> : null}
+              {!loading && hasSearch && !results.length && !error ? <p className="legend">No settlements found. Paste a settlement ID below if you know it.</p> : null}
+              {results.map((settlement) => (
+                <button type="button" key={settlement.entityId} onClick={() => chooseSettlement(settlement)}>
+                  <strong>{settlement.name || `Settlement ${settlement.entityId}`}</strong>
+                  <span>{[settlement.owner ? `Owner ${settlement.owner}` : "", settlement.regionName || (settlement.regionId ? `Region ${settlement.regionId}` : ""), settlement.tier ? `T${settlement.tier}` : ""].filter(Boolean).join(" | ")}</span>
+                </button>
+              ))}
+            </div>
+            <label className="field">
+              <span>Settlement ID fallback</span>
+              <input value={manualClaimId} onChange={(event) => setManualClaimId(event.target.value)} placeholder="Paste a claim or settlement ID" />
+            </label>
+          </div>
+          <div className="onboarding-card">
+            <div className="onboarding-card-heading">
+              <span>Step 2</span>
+              <h3>Add Sync link</h3>
+            </div>
+            <p className="legend">Optional. Add a BitCraft Sync URL if you want the embedded materials board available from the Sync page.</p>
+            <label className="field">
+              <span>BitCraft Sync URL</span>
+              <input value={syncUrlDraft} onChange={(event) => setSyncUrlDraft(event.target.value)} placeholder="https://bitcraftsync.app/s/..." />
+            </label>
+            {syncUrlInvalid ? <p className="error">BitCraft Sync URL must be a bitcraftsync.app HTTPS link, or left blank.</p> : null}
+            <div className="onboarding-note">
+              <CheckCircle2 size={15} />
+              <span>You can skip this now and add it later from the Sync page.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="help-actions onboarding-actions">
+        <span>{canSaveManual ? "Ready to open the dashboard." : "Choose a search result or enter a valid settlement ID to continue."}</span>
+        <button className="toolbar-button primary" disabled={!canSaveManual} onClick={() => onSave(manualClaimId.trim(), syncUrlDraft.trim())}><Save size={14} /> Start Monitoring</button>
       </div>
     </section>
   );

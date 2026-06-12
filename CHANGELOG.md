@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.4-beta.1] - 2026-06-12
+
+### Changed
+
+- Reworked first-visit onboarding into a guided introduction with settlement search, manual fallback and optional Sync setup.
+
 ## [1.0.3-beta.1] - 2026-06-12
 
 ### Fixed

@@ -137,8 +137,104 @@ nav a.active svg, nav button.active svg { color: var(--active-color); }
 .onboarding-page .settlement-setup-dialog { box-shadow: 0 22px 64px rgba(0,0,0,.42); }
 .settlement-setup-overlay { align-items: center; }
 .settlement-setup-dialog { width: min(680px, calc(100vw - 24px)); }
+.settlement-setup-dialog.onboarding-dialog {
+  width: min(1040px, calc(100vw - 28px));
+  border-color: rgba(108,123,145,.28);
+  background:
+    radial-gradient(circle at 96% 0, rgba(240,198,79,.1), transparent 30%),
+    radial-gradient(circle at 0 18%, rgba(86,213,255,.08), transparent 34%),
+    linear-gradient(180deg, rgba(11,16,22,.98), rgba(4,7,12,.99));
+  overflow: hidden;
+}
+.onboarding-hero {
+  border-bottom: 1px solid rgba(108,123,145,.2);
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 15px;
+  align-items: center;
+}
+.onboarding-mark {
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(240,198,79,.36);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--active-bg) 42%, transparent);
+  color: var(--active-color);
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 12px 28px rgba(0,0,0,.22);
+}
+.onboarding-hero p,
+.onboarding-card-heading span {
+  margin: 0;
+  color: var(--active-color);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.onboarding-hero h2 {
+  margin: 2px 0 4px;
+  color: var(--text);
+  font-size: 30px;
+  line-height: 1.04;
+  letter-spacing: 0;
+}
+.onboarding-hero span:not(.onboarding-mark) { color: var(--muted); font-size: 14px; line-height: 1.45; }
 .settlement-setup-body { display: grid; gap: 14px; }
+.onboarding-dialog .settlement-setup-body { padding: 18px 24px 0; }
+.onboarding-intro {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.onboarding-intro article,
+.onboarding-card {
+  border: 1px solid rgba(108,123,145,.24);
+  border-radius: 8px;
+  background: radial-gradient(circle at 100% 0, rgba(22,32,43,.1), transparent 38%), linear-gradient(180deg, rgba(11,16,22,.96), rgba(6,9,14,.99));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 12px 28px rgba(0,0,0,.18);
+}
+.onboarding-intro article {
+  min-height: 116px;
+  padding: 13px;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+.onboarding-intro svg { color: var(--active-color); }
+.onboarding-intro strong { color: var(--text); font-size: 14px; }
+.onboarding-intro span { color: var(--muted); font-size: 12.5px; line-height: 1.42; }
+.onboarding-setup-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(290px, .82fr);
+  gap: 12px;
+  align-items: start;
+}
+.onboarding-card {
+  min-width: 0;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+.onboarding-card-primary { min-height: 360px; }
+.onboarding-card-heading { display: grid; gap: 3px; }
+.onboarding-card-heading h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.12;
+}
 .settlement-search-results { display: grid; gap: 8px; max-height: 280px; overflow: auto; }
+.onboarding-card .settlement-search-results { min-height: 92px; max-height: 230px; padding-right: 2px; }
+.settlement-search-results.is-empty {
+  min-height: 92px;
+  border: 1px dashed rgba(108,123,145,.24);
+  border-radius: 8px;
+  place-items: center;
+  padding: 12px;
+}
 .settlement-search-results button {
   width: 100%;
   min-height: 56px;
@@ -154,6 +250,30 @@ nav a.active svg, nav button.active svg { color: var(--active-color); }
 }
 .settlement-search-results button:hover { border-color: var(--active-border); background: color-mix(in srgb, var(--active-bg) 36%, var(--card-bottom)); }
 .settlement-search-results button span { color: var(--muted); font-size: 12px; }
+.onboarding-note {
+  border: 1px solid rgba(99,235,165,.2);
+  border-radius: 8px;
+  background: rgba(99,235,165,.055);
+  color: #bfe9d1;
+  min-height: 42px;
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.onboarding-note svg { color: var(--good); flex: 0 0 auto; }
+.onboarding-actions {
+  border-top: 1px solid rgba(108,123,145,.2);
+  padding: 14px 24px 18px;
+  align-items: center;
+}
+.onboarding-actions span {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 12.5px;
+}
 .sync-empty-card {
   width: min(680px, 100%);
   border: 1px solid rgba(108,123,145,.28);
@@ -5445,6 +5565,28 @@ body .market-page tbody tr:hover td {
 }
 
 @media (max-width: 900px) {
+  .onboarding-page { padding: 12px; place-items: start center; }
+  .settlement-setup-dialog.onboarding-dialog { width: min(100%, calc(100vw - 18px)); }
+  .onboarding-hero {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 11px;
+    padding: 16px;
+  }
+  .onboarding-mark { width: 42px; height: 42px; border-radius: 9px; }
+  .onboarding-hero h2 { font-size: 24px; }
+  .onboarding-dialog .settlement-setup-body { padding: 14px 16px 0; }
+  .onboarding-intro,
+  .onboarding-setup-grid { grid-template-columns: 1fr; }
+  .onboarding-intro article { min-height: 0; }
+  .onboarding-card-primary { min-height: 0; }
+  .onboarding-card .settlement-search-results { max-height: 210px; }
+  .onboarding-actions {
+    padding: 13px 16px 16px;
+    display: grid;
+    justify-items: stretch;
+  }
+  .onboarding-actions span { margin: 0; }
+  .onboarding-actions .toolbar-button { justify-content: center; }
   .sync-url-row { grid-template-columns: 1fr; }
   .sync-url-row .toolbar-button { width: 100%; justify-content: center; }
   .dashboard-page { padding: 16px; }
