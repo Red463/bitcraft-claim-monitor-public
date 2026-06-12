@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.5-beta.1] - 2026-06-12
+
+### Changed
+
+- Added Timbersteel Trade attribution and a Discord help callout to first-visit onboarding.
+- Added a beta disclaimer to onboarding that encourages reporting issues through the footer GitHub link.
+
 ## [1.0.4-beta.1] - 2026-06-12
 
 ### Changed

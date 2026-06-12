@@ -3428,7 +3428,7 @@ function SettlementSetupDialog({
         <div>
           <p>Public Settlement Monitor</p>
           <h2 id="settlement-setup-title">Track any BitCraft settlement</h2>
-          <span>Choose a settlement once and this browser will open straight into its live operations view.</span>
+          <span>Created by Timbersteel Trade. Choose a settlement once and this browser will open straight into its live operations view.</span>
         </div>
       </div>
       <div className="settlement-setup-body">
@@ -3448,6 +3448,22 @@ function SettlementSetupDialog({
             <strong>Start with a settlement</strong>
             <span>Search by name, pick the right result, or paste a settlement ID if the search API cannot find it.</span>
           </article>
+        </div>
+        <div className="onboarding-discord">
+          <span className="onboarding-discord-icon"><MessageCircle size={19} /></span>
+          <div>
+            <strong>Need help getting set up?</strong>
+            <span>Join the Timbersteel Trade Discord to ask questions, report issues, or find people using the monitor.</span>
+          </div>
+          <a href="https://discord.gg/ET4bteqbG5" target="_blank" rel="noreferrer">
+            <MessageCircle size={15} />
+            Join Discord
+            <ExternalLink size={12} />
+          </a>
+        </div>
+        <div className="onboarding-beta-note">
+          <AlertTriangle size={16} />
+          <span>This public monitor is in beta and may contain mistakes, missing data or temporary errors. Please report problems through the GitHub link in the footer.</span>
         </div>
         <div className="onboarding-setup-grid">
           <div className="onboarding-card onboarding-card-primary">
