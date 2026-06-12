@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.2-beta.1] - 2026-06-12
+
+### Added
+
+- Added a public Discord invite button in the sidebar so visitors can join the settlement community.
+
+### Changed
+
+- Updated public domain references and footer copyright text for `claim-monitor.com`.
+
+### Fixed
+
+- Fixed Production refreshes for very large settlements by moving roster lookup to the server instead of posting the full member list from the browser.
+- Clarified refresh warning copy so partial Production failures are not presented as a generic BitJita outage.
+
 ## [1.0.1-beta.1] - 2026-06-12
 
 ### Changed

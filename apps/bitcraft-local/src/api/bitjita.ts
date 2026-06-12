@@ -139,7 +139,7 @@ export function useBitjitaData(refreshToken: number, claimId: string, activePane
               method: "POST",
               headers: { "content-type": "application/json" },
               signal: controller.signal,
-              body: JSON.stringify({ claimId, members }),
+              body: JSON.stringify({ claimId }),
             });
             if (response.ok) {
               raw.crafts = await response.json();

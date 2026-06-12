@@ -331,7 +331,7 @@ The intended production setup is:
 - Application installed at `/opt/bitcraft-claim-monitor`.
 - Persistent data at `/var/lib/bitcraft-claim-monitor`.
 - systemd running the Node application on `127.0.0.1:18430`.
-- Caddy serving `https://app.timbersteeltrade.com` as the public HTTPS domain, with `https://claim.timbersteeltrade.com` and `https://claim.hostred.co.uk` redirected to it.
+- Caddy serving `https://claim-monitor.com` as the public HTTPS domain, with `https://www.claim-monitor.com` redirected to it.
 
 Full first-time instructions are in [`DEPLOYMENT.md`](./DEPLOYMENT.md).
 
@@ -391,8 +391,8 @@ Original project by Tom Bush:
 
 ## Links
 
-- Application repository: [github.com/Red463/bitcraft-claim-monitor](https://github.com/Red463/bitcraft-claim-monitor)
-- Feature requests and bug reports: [GitHub Issues](https://github.com/Red463/bitcraft-claim-monitor/issues)
+- Application repository: [github.com/Red463/bitcraft-claim-monitor-public](https://github.com/Red463/bitcraft-claim-monitor-public)
+- Feature requests and bug reports: [GitHub Issues](https://github.com/Red463/bitcraft-claim-monitor-public/issues)
 - BitJita API documentation: [bitjita.com/docs/api](https://bitjita.com/docs/api)
 - BitCraft Map: [bitcraftmap.com](https://bitcraftmap.com/)
 - BitCraft Sync: [bitcraftsync.app](https://bitcraftsync.app/)

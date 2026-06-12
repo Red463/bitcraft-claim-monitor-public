@@ -14,7 +14,7 @@ The app server serves the compiled frontend, shared local history API, and restr
 You need:
 
 - An Ubuntu 22.04 VPS with its public IP address
-- A domain or subdomain, for example `app.timbersteeltrade.com`, with an `A` DNS record pointing at that IP
+- A domain or subdomain, for example `claim-monitor.com`, with an `A` DNS record pointing at that IP
 - Your GitHub repository URL: `https://github.com/Red463/bitcraft-claim-monitor-public.git`
 
 The server must run Node.js 24 or newer because the database uses Node's built-in SQLite support.
@@ -102,7 +102,7 @@ The final command should return JSON containing `"ok":true` and polling status. 
 
 ## 6. Publish the Website With HTTPS
 
-The checked-in Caddy example uses `app.timbersteeltrade.com` as the canonical domain and redirects `claim.timbersteeltrade.com` and the previous `claim.hostred.co.uk` host to it. If you use different hostnames, edit them before reloading Caddy:
+The checked-in Caddy example uses `claim-monitor.com` as the canonical domain and redirects `www.claim-monitor.com` to it. If you use different hostnames, edit them before reloading Caddy:
 
 ```bash
 cp /opt/bitcraft-claim-monitor/deploy/Caddyfile.example /etc/caddy/Caddyfile
@@ -111,7 +111,7 @@ caddy validate --config /etc/caddy/Caddyfile
 systemctl reload caddy
 ```
 
-Open `https://app.timbersteeltrade.com/` in your browser. Caddy automatically obtains and renews the HTTPS certificate when DNS is pointing at the VPS and ports 80 and 443 are open.
+Open `https://claim-monitor.com/` in your browser. Caddy automatically obtains and renews the HTTPS certificate when DNS is pointing at the VPS and ports 80 and 443 are open.
 
 On first visit, the app prompts each visitor to choose a settlement and optionally add a BitCraft Sync URL. Shared market/activity history is collected by the server for selected settlements; visitors do not submit raw browser snapshots.
 
@@ -131,6 +131,97 @@ systemctl status bitcraft-claim-monitor
 Persistent application data is stored at `/var/lib/bitcraft-claim-monitor`, so updating application code does not replace shared settlement history.
 
 A new VPS begins with a new database. Activity history begins when it starts collecting snapshots, but Market Analytics now backfills available completed sell orders identified by BitJita as belonging to the monitored settlement market during the first successful collection.
+
+## Running Alongside a Private Instance
+
+If the original private app is already installed on the same VPS at `/opt/bitcraft-claim-monitor`, keep this public version separate:
+
+- install path: `/opt/bitcraft-claim-monitor-public`
+- service account: `bitcraft-public`
+- data directory: `/var/lib/bitcraft-claim-monitor-public`
+- systemd service: `bitcraft-claim-monitor-public.service`
+- local app port: `18431`
+- public domain: `claim-monitor.com`
+
+Clone and build the public app:
+
+```bash
+useradd --system --home /opt/bitcraft-claim-monitor-public --shell /usr/sbin/nologin bitcraft-public
+git clone https://github.com/Red463/bitcraft-claim-monitor-public.git /opt/bitcraft-claim-monitor-public
+chown -R bitcraft-public:bitcraft-public /opt/bitcraft-claim-monitor-public
+install -d -o bitcraft-public -g bitcraft-public -m 700 /var/lib/bitcraft-claim-monitor-public
+cd /opt/bitcraft-claim-monitor-public
+sudo -u bitcraft-public corepack pnpm install --frozen-lockfile
+sudo -u bitcraft-public corepack pnpm --filter @workspace/bitcraft-local run build
+```
+
+Create `/etc/systemd/system/bitcraft-claim-monitor-public.service`:
+
+```ini
+[Unit]
+Description=BitCraft Claim Monitor Public
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bitcraft-public
+Group=bitcraft-public
+WorkingDirectory=/opt/bitcraft-claim-monitor-public/apps/bitcraft-local
+Environment=NODE_ENV=production
+Environment=APP_HOST=127.0.0.1
+Environment=APP_PORT=18431
+Environment=PUBLIC_APP_URL=https://claim-monitor.com
+Environment=BITCRAFT_LOCAL_DATA_DIR=/var/lib/bitcraft-claim-monitor-public
+EnvironmentFile=-/etc/bitcraft-claim-monitor-public.env
+ExecStart=/usr/bin/node /opt/bitcraft-claim-monitor-public/apps/bitcraft-local/server.mjs
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/bitcraft-claim-monitor-public
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Start it and verify the private app still owns its original port while the public app owns `18431`:
+
+```bash
+systemctl daemon-reload
+systemctl enable --now bitcraft-claim-monitor-public
+systemctl status bitcraft-claim-monitor-public --no-pager -l
+curl http://127.0.0.1:18431/api/local/health
+```
+
+Add this site block to the existing `/etc/caddy/Caddyfile` without removing the private app's site block:
+
+```caddy
+claim-monitor.com {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		X-Frame-Options SAMEORIGIN
+	}
+	reverse_proxy 127.0.0.1:18431
+}
+
+www.claim-monitor.com {
+	redir https://claim-monitor.com{uri} permanent
+}
+```
+
+Then reload Caddy:
+
+```bash
+caddy validate --config /etc/caddy/Caddyfile
+systemctl reload caddy
+```
 
 ## Database Backups
 

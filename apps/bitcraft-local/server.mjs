@@ -21,6 +21,7 @@ const packageJson = JSON.parse(readFileSync(path.join(root, "package.json"), "ut
 const appVersion = String(packageJson.version ?? "0.0.0-dev");
 const appIdentifier = process.env.BITJITA_APP_IDENTIFIER ?? "BitCraft Claim Monitor Public (github.com/Red463/bitcraft-claim-monitor-public)";
 const changelogUrl = "https://github.com/Red463/bitcraft-claim-monitor-public/blob/main/CHANGELOG.md";
+const publicAppUrl = process.env.PUBLIC_APP_URL ?? "https://claim-monitor.com";
 const changelogPath = path.resolve(root, "..", "..", "CHANGELOG.md");
 const repoRoot = path.resolve(root, "..", "..");
 const brandingDir = path.join(dataDir, "branding");
@@ -962,7 +963,7 @@ const defaultDiscordPresence = {
   enabled: true,
   status: "online",
   activityType: "watching",
-  activityText: "app.timbersteeltrade.com",
+  activityText: "claim-monitor.com",
 };
 
 const defaultDiscordSettings = {
@@ -1279,6 +1280,7 @@ const BODY_LIMITS = {
   auth: 8 * 1024,
   analytics: 8 * 1024,
   json: 64 * 1024,
+  productionCrafts: 2 * 1024 * 1024,
   settings: 256 * 1024,
   branding: 2 * 1024 * 1024,
   snapshot: 1024 * 1024,
@@ -4106,10 +4108,10 @@ function productionCraftCacheKey(claimId, members) {
 async function settlementProductionCrafts(body) {
   const claimId = String(body?.claimId ?? "").trim();
   if (!claimId) return { craftResults: [], items: [], cargos: [], claims: [], count: 0, publicCount: 0, privateCount: 0, failedMemberRequests: 0 };
-  const members = Array.isArray(body?.members) ? body.members : [];
+  const membersPayload = await fetchBitjita(`/claims/${encodeURIComponent(claimId)}/members`).catch(() => ({ members: [] }));
+  const members = unwrap(membersPayload, "members", []);
   const uniqueMembers = [...new Map(members
     .filter((member) => member && (member.playerEntityId ?? member.entityId))
-    .slice(0, 50)
     .map((member) => [String(member.playerEntityId ?? member.entityId), member])).values()];
   const cacheKey = productionCraftCacheKey(claimId, uniqueMembers);
   const cached = productionCraftsCache.get(cacheKey);
@@ -4157,6 +4159,8 @@ async function settlementProductionCrafts(body) {
     count: craftResults.length,
     publicCount: craftResults.filter((craft) => craft.isPublic !== false).length,
     privateCount: craftResults.filter((craft) => craft.isPublic === false).length,
+    memberCount: uniqueMembers.length,
+    scannedMemberCount: uniqueMembers.length,
     failedMemberRequests: memberResults.filter((result) => !result.ok).length,
   };
   productionCraftsCache.set(cacheKey, { value, expiresAt: Date.now() + 30 * 1000 });
@@ -4908,14 +4912,14 @@ async function discordAutocomplete(interaction) {
 }
 
 function discordHelpCommand() {
-  const appUrl = "https://app.timbersteeltrade.com";
+  const appUrl = publicAppUrl;
   return discordCommandEmbed("Timbersteel Trade Help", `[Open the dashboard](${appUrl}) for settlement monitoring, market analytics, public craft finding and bot settings.`, [
     { name: "/supplies", value: "Current settlement supplies, upkeep and runway.", inline: false },
     { name: "/online", value: "Shows which settlement members are currently online.", inline: false },
     { name: "/crafts", value: "Lists current settlement crafts. Optional skill filter supported.", inline: false },
     { name: "/price", value: "Looks up recent BitJita sale prices for an item.", inline: false },
     { name: "/craftwatch", value: "Shows and clears your profession notification roles.", inline: false },
-    { name: "Links", value: `[App](${appUrl}) | [Feature requests](https://github.com/Red463/bitcraft-claim-monitor/issues)`, inline: false },
+    { name: "Links", value: `[App](${appUrl}) | [Feature requests](https://github.com/Red463/bitcraft-claim-monitor-public/issues)`, inline: false },
   ], 0x5865f2);
 }
 
@@ -5963,7 +5967,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === "POST" && url.pathname === "/api/local/production/crafts") {
       if (!rateLimit(req, res, "production-crafts", RATE_LIMITS.expensiveLocal)) return;
-      return send(res, 200, await settlementProductionCrafts(await readJson(req, BODY_LIMITS.json)));
+      return send(res, 200, await settlementProductionCrafts(await readJson(req, BODY_LIMITS.productionCrafts)));
     }
     if (req.method === "GET" && url.pathname === "/api/local/dashboard-data") {
       if (!rateLimit(req, res, "dashboard-data", RATE_LIMITS.expensiveLocal)) return;

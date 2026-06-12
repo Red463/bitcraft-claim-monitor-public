@@ -287,7 +287,7 @@ test("server collection paginates listings and protects production mutations", a
   assert.equal(passiveOne.rows[0].memberName, "Tester");
   assert.equal(passiveTwo.rows[0].recipe, "Collect Fine Timber");
   assert.equal(passiveCraftRequests, 1);
-  const productionCraftPayload = { claimId, members: [{ playerEntityId: "player-1", userName: "Tester" }] };
+  const productionCraftPayload = { claimId };
   const productionOne = await fetch(`${origin}/api/local/production/crafts`, {
     method: "POST",
     headers: { "content-type": "application/json", origin },
@@ -304,6 +304,20 @@ test("server collection paginates listings and protects production mutations", a
   assert.equal(productionOne.craftResults.find((craft) => craft.entityId === "private-craft").isPublic, false);
   assert.equal(productionTwo.privateCount, 1);
   assert.equal(playerCraftRequests, 1);
+  const largeLegacyProductionPayload = {
+    claimId,
+    members: Array.from({ length: 700 }, (_, index) => ({
+      playerEntityId: `legacy-player-${index}`,
+      userName: `Legacy Player ${index}`,
+      note: "Legacy clients used to send the full roster; the server now ignores this bulky field.",
+    })),
+  };
+  const largeLegacyProduction = await fetch(`${origin}/api/local/production/crafts`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin },
+    body: JSON.stringify(largeLegacyProductionPayload),
+  });
+  assert.equal(largeLegacyProduction.status, 200);
 
   const setup = await fetch(`${origin}/api/local/admin/setup`, {
     method: "POST",

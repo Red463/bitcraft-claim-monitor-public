@@ -3474,8 +3474,8 @@ function ApiStatusBanner({ warnings, lastUpdated }: { warnings: string[]; lastUp
     <section className="api-status-banner" role="status" aria-live="polite">
       <span className="api-status-icon"><AlertTriangle size={18} /></span>
       <div className="api-status-copy">
-        <strong>BitJita data refresh issue</strong>
-        <span>Showing the latest successful data. Some production details may be stale until the API recovers.</span>
+        <strong>Data refresh issue</strong>
+        <span>Showing the latest successful data. Some details may be stale until the next successful refresh.</span>
         <small>{lastUpdated ? `Last successful refresh ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "Waiting for a successful refresh."}</small>
       </div>
       <details className="api-status-details">
@@ -3555,9 +3555,11 @@ function DashboardApp() {
     setClaimId(nextClaimId);
     setSyncUrl(nextSyncUrl);
     setSettlementSetupOpen(false);
+    setActive("dashboard");
+    updateQueryState({ page: "dashboard" });
     setRefreshToken((x) => x + 1);
     setHistoryRefreshToken((x) => x + 1);
-  }, []);
+  }, [setActive]);
   const saveSyncUrl = React.useCallback((nextSyncUrl: string) => {
     localStorage.setItem(LOCAL_SYNC_URL_STORAGE_KEY, nextSyncUrl);
     setSyncUrl(nextSyncUrl);
@@ -3776,13 +3778,11 @@ function DashboardApp() {
     activity: <ActivityPanel activity={localHistory.activity} activityTotal={localHistory.activityTotal} claimId={claimId} error={localHistory.error} />,
   };
   const activePanel = panels[active] ?? panels.dashboard;
-  const apiWarnings = React.useMemo(() => {
-    const partialErrors = Array.isArray(data.raw?.partialErrors) ? data.raw.partialErrors.map((error) => String(error)) : [];
-    return [
-      ...(state.error ? [`Main BitJita refresh failed: ${state.error}`] : []),
-      ...partialErrors,
-    ];
-  }, [data.raw?.partialErrors, state.error]);
+  const partialErrors = Array.isArray(data.raw?.partialErrors) ? data.raw.partialErrors.map((error) => String(error)) : [];
+  const apiWarnings = [
+    ...(state.error ? [`Main BitJita refresh failed: ${state.error}`] : []),
+    ...partialErrors,
+  ];
 
   return (
     <div className={`app-shell density-${density} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
@@ -3794,6 +3794,11 @@ function DashboardApp() {
             {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
         </div>
+        <a className="discord-cta" href="https://discord.gg/ET4bteqbG5" target="_blank" rel="noreferrer" title="Join the community Discord">
+          <MessageCircle size={17} />
+          <span>Join Discord</span>
+          <ExternalLink size={13} />
+        </a>
         <nav aria-label="Main navigation">
           {NAV_GROUPS.map((group) => {
             const hasActivePage = group.items.some(([id]) => active === id);
@@ -3849,7 +3854,7 @@ function DashboardApp() {
       <footer className="app-footer">
           <div className="footer-links">
             <span className="footer-copy">
-              &copy; {new Date().getFullYear()} Timbersteel Claim Monitor — unofficial fan-made tool.
+              &copy; {new Date().getFullYear()} claim-monitor.com - unofficial fan-made tool.
             </span>
             <a href="https://bitjita.com/docs/api" target="_blank" rel="noreferrer">Data: BitJita API</a>
             <a href={GITHUB_REPOSITORY} target="_blank" rel="noreferrer"><ExternalLink size={13} /> GitHub</a>
