@@ -96,6 +96,10 @@ export function useBitjitaData(refreshToken: number, claimId: string, activePane
   });
 
   React.useEffect(() => {
+    if (!claimId.trim()) {
+      setState({ data: null, error: null, loading: false });
+      return;
+    }
     const controller = new AbortController();
     async function load() {
       setState((prev) => ({ ...prev, loading: true, error: null }));

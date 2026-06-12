@@ -63,6 +63,8 @@ test("server collection paginates listings and protects production mutations", a
   let proxyCacheRequests = 0;
   let resourceCatalogRequests = 0;
   let creatureCatalogRequests = 0;
+  let regionStatusRequests = 0;
+  let regionDirectoryRequests = 0;
   let passiveCraftRequests = 0;
   let playerDetailRequests = 0;
   let craftContributionRequests = 0;
@@ -98,7 +100,22 @@ test("server collection paginates listings and protects production mutations", a
       playerDetailRequests += 1;
       return json(res, { player: { playerEntityId: "player-1", username: "Tester", signedIn: true } });
     }
-    if (url.pathname === "/api/regions/status") return json(res, { regions: [{ id: "19", name: "Zephra" }] });
+    if (url.pathname === "/api/regions/status") {
+      regionStatusRequests += 1;
+      return json(res, { regions: [
+        { regionId: "19", active: true, syncing: false },
+        { regionId: "20", active: false, syncing: false },
+        { regionId: "21", status: "syncing" },
+      ] });
+    }
+    if (url.pathname === "/api/regions") {
+      regionDirectoryRequests += 1;
+      return json(res, { regions: [
+        { id: "19", name: "Zephra" },
+        { id: "20", name: "Dormant" },
+        { id: "21", name: "Seasonal Frontier" },
+      ] });
+    }
     if (url.pathname === "/api/stats/trade-volume") return json(res, { buckets: [], items: [], regions: [] });
     if (url.pathname === "/api/logs/storage") return json(res, {
       items: [{ id: "item-1", name: "Bronze Ingot" }],
@@ -181,6 +198,7 @@ test("server collection paginates listings and protects production mutations", a
       APP_PORT: String(appPort),
       BITCRAFT_LOCAL_DATA_DIR: dataDir,
       BITJITA_API_ORIGIN: `http://127.0.0.1:${upstreamPort}`,
+      BITCRAFT_ACTIVE_REGIONS: "27:Festival Grounds",
       DISCORD_OAUTH_CLIENT_ID: "1511277824525471826",
       DISCORD_OAUTH_CLIENT_SECRET: "test-discord-oauth-secret",
     },
@@ -221,6 +239,15 @@ test("server collection paginates listings and protects production mutations", a
   assert.deepEqual(mapCatalogTwo.creatures, [{ enemyType: 42, name: "Sagi Bird", huntable: true }]);
   assert.equal(resourceCatalogRequests, 2);
   assert.equal(creatureCatalogRequests, 1);
+  const activeRegionsOne = await fetch(`${origin}/api/local/regions/active`).then((response) => response.json());
+  const activeRegionsTwo = await fetch(`${origin}/api/local/regions/active`).then((response) => response.json());
+  assert.deepEqual(activeRegionsOne.regions.map((region) => region.regionId), ["19", "21", "27"]);
+  assert.equal(activeRegionsOne.regions.find((region) => region.regionId === "19").name, "Zephra");
+  assert.equal(activeRegionsOne.regions.find((region) => region.regionId === "21").name, "Seasonal Frontier");
+  assert.equal(activeRegionsOne.regions.find((region) => region.regionId === "27").name, "Festival Grounds");
+  assert.deepEqual(activeRegionsTwo.regions, activeRegionsOne.regions);
+  assert.equal(regionStatusRequests, 1);
+  assert.equal(regionDirectoryRequests, 1);
   const playerDetailPayload = { members: [{ playerEntityId: "player-1", userName: "Tester" }] };
   const playerDetailsOne = await fetch(`${origin}/api/local/player-details`, {
     method: "POST",
@@ -283,56 +310,23 @@ test("server collection paginates listings and protects production mutations", a
     headers: { "content-type": "application/json", origin },
     body: JSON.stringify({ username: "admin", password: "correct horse battery", setupKey: "test-setup-key" }),
   });
-  assert.equal(setup.status, 200);
-  const auth = await setup.json();
-  const cookie = setup.headers.get("set-cookie").split(";")[0];
-  assert.ok(auth.csrfToken);
-  assert.equal(auth.user.role, "owner");
   const initialConfig = await fetch(`${origin}/api/local/config`).then((response) => response.json());
   assert.equal(initialConfig.analytics, undefined);
-  const productionNotificationSettings = await fetch(`${origin}/api/local/admin/settings`, {
-    method: "PUT",
-    headers: { cookie, origin, "content-type": "application/json", "x-csrf-token": auth.csrfToken },
-    body: JSON.stringify({
-      ...initialConfig,
-      discord: {
-        ...initialConfig.discord,
-        productionMinXp: 0,
-        productionMinAgeMinutes: 0,
-      },
-    }),
-  });
-  assert.equal(productionNotificationSettings.status, 200);
+  assert.equal(setup.status, 404);
+  assert.equal(initialConfig.discord, undefined);
   const authStatus = await fetch(`${origin}/api/local/auth/me`).then((response) => response.json());
-  assert.equal(authStatus.discordLoginEnabled, true);
+  assert.equal(authStatus.discordLoginEnabled, false);
   assert.equal(authStatus.user, null);
   const oauthStart = await fetch(`${origin}/api/local/auth/discord/start?returnTo=%2F%3Fpage%3Dmembers`, { redirect: "manual" });
-  assert.equal(oauthStart.status, 302);
-  const oauthLocation = oauthStart.headers.get("location");
-  const oauthCookie = oauthStart.headers.get("set-cookie");
-  assert.match(oauthLocation, /^https:\/\/discord\.com\/oauth2\/authorize/);
-  assert.match(oauthCookie, /bitcraft_discord_oauth_state=/);
-  const signedStateCookie = oauthCookie.match(/bitcraft_discord_oauth_state=([^;]+)/)?.[1] ?? "";
-  assert.match(decodeURIComponent(signedStateCookie), /^[^.]+\.[^.]+$/);
-  const oauthState = new URL(oauthLocation).searchParams.get("state");
-  const signedStateValue = decodeURIComponent(signedStateCookie);
-  const tamperedValue = `${signedStateValue.slice(0, -1)}${signedStateValue.endsWith("x") ? "y" : "x"}`;
-  const tamperedCallback = await fetch(`${origin}/api/local/auth/discord/callback?code=fake-code&state=${oauthState}`, {
-    headers: { cookie: `bitcraft_discord_oauth_state=${encodeURIComponent(tamperedValue)}` },
-    redirect: "manual",
-  });
-  assert.equal(tamperedCallback.status, 302);
-  assert.match(tamperedCallback.headers.get("location"), /auth=discord-error/);
+  assert.equal(oauthStart.status, 404);
   const anonymousCharacterLink = await fetch(`${origin}/api/local/auth/character`, {
     method: "PUT",
     headers: { "content-type": "application/json", origin },
     body: JSON.stringify({ characterPlayerId: "player-1", characterName: "Tester" }),
   });
-  assert.equal(anonymousCharacterLink.status, 401);
-  const linkedAccounts = await fetch(`${origin}/api/local/admin/user-accounts`, {
-    headers: { cookie, origin, "content-type": "application/json", "x-csrf-token": auth.csrfToken },
-  }).then((response) => response.json());
-  assert.deepEqual(linkedAccounts.accounts, []);
+  assert.equal(anonymousCharacterLink.status, 404);
+  const linkedAccounts = await fetch(`${origin}/api/local/admin/user-accounts`);
+  assert.equal(linkedAccounts.status, 404);
   const refusedAnalytics = await fetch(`${origin}/api/local/analytics/event`, {
     method: "POST",
     headers: { "content-type": "application/json", origin },
@@ -364,44 +358,13 @@ test("server collection paginates listings and protects production mutations", a
     body: JSON.stringify({ sessionId: "session-identifier-0001", eventName: "page_view", page: "production", filler: "x".repeat(9000) }),
   });
   assert.equal(oversizedAnalytics.status, 413);
-  const analyticsDashboard = await fetch(`${origin}/api/local/admin/analytics?days=30`, {
-    method: "GET",
-    headers: { cookie, origin, "content-type": "application/json", "x-csrf-token": auth.csrfToken },
-  }).then((response) => response.json());
-  assert.equal(analyticsDashboard.totals.visitors, 1);
-  assert.equal(analyticsDashboard.totals.pageViews, 1);
-  assert.equal(analyticsDashboard.totals.interactions, 1);
-  assert.equal(analyticsDashboard.totals.durationSeconds, 90);
-  const createViewer = await fetch(`${origin}/api/local/admin/users`, {
-    method: "POST",
-    headers: { cookie, origin, "content-type": "application/json", "x-csrf-token": auth.csrfToken },
-    body: JSON.stringify({ username: "viewer", password: "viewer password ok", role: "viewer" }),
-  });
-  assert.equal(createViewer.status, 201);
-  const viewerLogin = await fetch(`${origin}/api/local/admin/login`, {
-    method: "POST",
-    headers: { "content-type": "application/json", origin },
-    body: JSON.stringify({ username: "viewer", password: "viewer password ok" }),
-  });
-  assert.equal(viewerLogin.status, 200);
-  const viewerAuth = await viewerLogin.json();
-  const viewerCookie = viewerLogin.headers.get("set-cookie").split(";")[0];
-  assert.equal(viewerAuth.user.role, "viewer");
-  const viewerStatus = await fetch(`${origin}/api/local/admin/status`, { headers: { cookie: viewerCookie, origin } });
-  assert.equal(viewerStatus.status, 200);
-  const viewerSettingsMutation = await fetch(`${origin}/api/local/admin/settings`, {
-    method: "PUT",
-    headers: { cookie: viewerCookie, origin, "content-type": "application/json", "x-csrf-token": viewerAuth.csrfToken },
-    body: JSON.stringify({}),
-  });
-  assert.equal(viewerSettingsMutation.status, 403);
-  const viewerUserList = await fetch(`${origin}/api/local/admin/users`, { headers: { cookie: viewerCookie, origin } });
-  assert.equal(viewerUserList.status, 403);
+  const analyticsDashboard = await fetch(`${origin}/api/local/admin/analytics?days=30`);
+  assert.equal(analyticsDashboard.status, 404);
 
-  const poll = await fetch(`${origin}/api/local/admin/poll`, {
+  const poll = await fetch(`${origin}/api/local/refresh`, {
     method: "POST",
-    headers: { cookie, origin, "content-type": "application/json", "x-csrf-token": auth.csrfToken },
-    body: "{}",
+    headers: { origin, "content-type": "application/json" },
+    body: JSON.stringify({ claimId }),
   });
   assert.equal(poll.status, 200);
   const baselineHistory = await fetch(`${origin}/api/local/market/history?claimId=${claimId}&owner=Tester`).then((response) => response.json());
@@ -447,10 +410,10 @@ test("server collection paginates listings and protects production mutations", a
     { id: "fill-1", orderEntityId: "listing-1", itemId: 10, itemType: "item", sellerEntityId: "player-1", quantity: 1, price: 4, totalPrice: 4 },
     { id: "fill-2", orderEntityId: "listing-1", itemId: 10, itemType: "item", sellerEntityId: "player-1", quantity: 2, price: 4, totalPrice: 8 },
   ];
-  const secondPoll = await fetch(`${origin}/api/local/admin/poll`, {
+  const secondPoll = await fetch(`${origin}/api/local/refresh`, {
     method: "POST",
-    headers: { cookie, origin, "content-type": "application/json", "x-csrf-token": auth.csrfToken },
-    body: "{}",
+    headers: { origin, "content-type": "application/json" },
+    body: JSON.stringify({ claimId }),
   });
   assert.equal(secondPoll.status, 200);
 
@@ -466,15 +429,15 @@ test("server collection paginates listings and protects production mutations", a
   assert.equal(history.events.some((event) => event.event_type === "partial_sale"), true);
   const secondActivity = await fetch(`${origin}/api/local/activity?claimId=${claimId}&limit=20`).then((response) => response.json());
   assert.equal(secondActivity.events.filter((event) => event.event_type === "storage").length, 1);
-  assert.equal(secondActivity.events.filter((event) => event.event_type === "production_started").length, 1);
+  assert.equal(secondActivity.events.filter((event) => event.event_type === "production_started").length, 0);
 
   currentListings = [{ ...listings[0], quantity: 8 }, listings[1]];
   craftEntityRevision = 2;
   craftOwnerUsername = "OtherTester";
-  const thirdPoll = await fetch(`${origin}/api/local/admin/poll`, {
+  const thirdPoll = await fetch(`${origin}/api/local/refresh`, {
     method: "POST",
-    headers: { cookie, origin, "content-type": "application/json", "x-csrf-token": auth.csrfToken },
-    body: "{}",
+    headers: { origin, "content-type": "application/json" },
+    body: JSON.stringify({ claimId }),
   });
   assert.equal(thirdPoll.status, 200);
   const afterOldFills = await fetch(`${origin}/api/local/market/history?claimId=${claimId}&owner=Tester`).then((response) => response.json());
@@ -482,8 +445,7 @@ test("server collection paginates listings and protects production mutations", a
   assert.equal(afterOldFills.totals.confirmedUnits, 8);
   assert.equal(afterOldFills.events.some((event) => event.event_type === "partial_quantity_drop"), true);
   const thirdActivity = await fetch(`${origin}/api/local/activity?claimId=${claimId}&limit=20`).then((response) => response.json());
-  assert.equal(thirdActivity.events.filter((event) => event.event_type === "production_started").length, 1);
-  assert.equal(thirdActivity.events.filter((event) => event.event_type === "production_started" && event.summary.includes("Public Output")).length, 1);
+  assert.equal(thirdActivity.events.filter((event) => event.event_type === "production_started").length, 0);
   const contributionLeaderboard = await fetch(`${origin}/api/local/leaderboard?claimId=${claimId}`).then((response) => response.json());
   assert.equal(contributionLeaderboard.summary.contributorCount, 1);
   assert.equal(contributionLeaderboard.summary.recordedCrafts, 3);
@@ -500,19 +462,11 @@ test("server collection paginates listings and protects production mutations", a
 
   const forgedSettings = await fetch(`${origin}/api/local/admin/settings`, {
     method: "PUT",
-    headers: { cookie, origin: "https://attacker.example", "content-type": "application/json", "x-csrf-token": auth.csrfToken },
+    headers: { origin: "https://attacker.example", "content-type": "application/json" },
     body: JSON.stringify({}),
   });
-  assert.equal(forgedSettings.status, 403);
+  assert.equal(forgedSettings.status, 404);
 
-  let rateLimited = null;
-  for (let index = 0; index < 35; index += 1) {
-    const response = await fetch(`${origin}/api/local/auth/discord/start?returnTo=%2F`, { redirect: "manual" });
-    if (response.status === 429) {
-      rateLimited = response;
-      break;
-    }
-  }
-  assert.equal(rateLimited?.status, 429);
-  assert.ok(Number(rateLimited.headers.get("retry-after")) > 0);
+  const disabledDiscord = await fetch(`${origin}/api/local/auth/discord/start?returnTo=%2F`, { redirect: "manual" });
+  assert.equal(disabledDiscord.status, 404);
 });

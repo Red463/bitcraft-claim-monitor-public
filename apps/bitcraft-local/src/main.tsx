@@ -67,7 +67,6 @@ import type { LucideIcon } from "lucide-react";
 import packageJson from "../package.json";
 import { useBitjitaData } from "./api/bitjita";
 import { useLocalHistory } from "./api/localHistory";
-import type { BotSection } from "./components/bot/BotSectionNav";
 import { RarityBadge, TierBadge, TrackedOwnerName } from "./components/main/Badges";
 import { DataTable } from "./components/main/DataTable";
 import { ItemIcon, ItemLabel, TierMaterialIcon } from "./components/main/ItemDisplay";
@@ -112,20 +111,6 @@ import { Skills } from "./pages/SkillsPage";
 import { SyncPanel } from "./pages/SyncPage";
 import "./styles.css";
 
-const BotSectionNav = React.lazy(() => import("./components/bot/BotSectionNav").then((module) => ({ default: module.BotSectionNav })));
-const DiscordChannelsSection = React.lazy(() => import("./components/bot/DiscordChannelsSection").then((module) => ({ default: module.DiscordChannelsSection })));
-const DiscordColourRolesSection = React.lazy(() => import("./components/bot/DiscordColourRolesSection").then((module) => ({ default: module.DiscordColourRolesSection })));
-const DiscordCraftWatchRolesSection = React.lazy(() => import("./components/bot/DiscordCraftWatchRolesSection").then((module) => ({ default: module.DiscordCraftWatchRolesSection })));
-const DiscordMemberRecordsSection = React.lazy(() => import("./components/bot/DiscordMemberRecordsSection").then((module) => ({ default: module.DiscordMemberRecordsSection })));
-const DiscordModerationSection = React.lazy(() => import("./components/bot/DiscordModerationSection").then((module) => ({ default: module.DiscordModerationSection })));
-const DiscordNotificationsSection = React.lazy(() => import("./components/bot/DiscordNotificationsSection").then((module) => ({ default: module.DiscordNotificationsSection })));
-const DiscordRoleManagerSection = React.lazy(() => import("./components/bot/DiscordRoleManagerSection").then((module) => ({ default: module.DiscordRoleManagerSection })));
-const DiscordRolePanelsSection = React.lazy(() => import("./components/bot/DiscordRolePanelsSection").then((module) => ({ default: module.DiscordRolePanelsSection })));
-const DiscordSafetySection = React.lazy(() => import("./components/bot/DiscordSafetySection").then((module) => ({ default: module.DiscordSafetySection })));
-const DiscordSetupSection = React.lazy(() => import("./components/bot/DiscordSetupSection").then((module) => ({ default: module.DiscordSetupSection })));
-const DiscordDiagnosticsPanel = React.lazy(() => import("./components/bot/DiscordDiagnosticsPanel").then((module) => ({ default: module.DiscordDiagnosticsPanel })));
-const DiscordTestsPanel = React.lazy(() => import("./components/bot/DiscordTestsPanel").then((module) => ({ default: module.DiscordTestsPanel })));
-
 function BuyMeCoffeeButton() {
   return (
     <a
@@ -142,13 +127,12 @@ function BuyMeCoffeeButton() {
   );
 }
 
-const DEFAULT_CLAIM_ID = "1369094286777412590";
-const DEFAULT_SYNC_URL = "https://bitcraftsync.app/s/MUFJw3#claims=1369094286777412590&players=1369094286756659093%2C576460752388321942%2C864691128512324120&shopping=i.2036617800%3A20&p.exc=1369094286756659093%3A1369094286764705296%2C1369094286756792917%3B864691128512324120%3A1369094286778153104%2C1369094286772328807%2C1369094286761962469%3B576460752388321942%3A1369094286783870822&crafts=1&crafts.pf=includedPlayers";
 const API = "/api/bitjita";
 const LOCAL_API = "/api/local";
-const GITHUB_REPOSITORY = "https://github.com/Red463/bitcraft-claim-monitor";
-const DISCORD_URL = "https://discord.gg/ET4bteqbG5";
+const GITHUB_REPOSITORY = "https://github.com/Red463/bitcraft-claim-monitor-public";
 const APP_VERSION = packageJson.version;
+const LOCAL_CLAIM_ID_STORAGE_KEY = "claim-monitor.public.claimId";
+const LOCAL_SYNC_URL_STORAGE_KEY = "claim-monitor.public.syncUrl";
 
 type MapFocus = { name: string; locationX: number; locationZ: number } | null;
 type ToastKind = "market" | "production";
@@ -170,40 +154,6 @@ type AppUser = {
   lastLoginAt?: string;
 };
 type UserAuthState = { user: AppUser | null; discordLoginEnabled: boolean };
-type ColourRoleDefinition = { key: string; label: string; roleName: string; roleId: string; color: number };
-type DiscordRoleOption = { key: string; label: string; roleId: string; emoji: string };
-type DiscordRolePanel = { key: string; label: string; channelId: string; messageId: string; title: string; description: string; mode: "single" | "multi"; showHelperText: boolean; options: DiscordRoleOption[] };
-type DiscordWelcomeFlow = { enabled: boolean; channelId: string; messageId: string; title: string; message: string; readyRoleId: string; showNextStep: boolean };
-type DiscordPresence = { enabled: boolean; status: "online" | "idle" | "dnd" | "invisible"; activityType: "playing" | "watching" | "listening" | "competing"; activityText: string };
-type DiscordSettings = {
-  enabled: boolean;
-  applicationId: string;
-  publicKey: string;
-  guildId: string;
-  channelId: string;
-  minSaleValue: number;
-  supplyRunwayDaysThreshold: number;
-  productionMinXp: number;
-  productionMinAgeMinutes: number;
-  productionUsers: string;
-  supplyReportIntervalDays: number;
-  channels: Record<string, string>;
-  notificationChannels: Record<string, string>;
-  craftChannels: Record<string, string>;
-  craftRoles: Record<string, string>;
-  colourRolesChannelId: string;
-  colourRolesMessageId: string;
-  colourRoles: ColourRoleDefinition[];
-  rolePanels: DiscordRolePanel[];
-  welcomeFlow: DiscordWelcomeFlow;
-  presence: DiscordPresence;
-  notify: { marketListings: boolean; marketSales: boolean; production: boolean; productionStarted: boolean; productionCompleted: boolean; lowSupplies: boolean; appUpdates: boolean; supplyReports: boolean };
-  botToken?: string;
-  clearBotToken?: boolean;
-  botTokenConfigured?: boolean;
-  botTokenSource?: string | null;
-  interactionUrl?: string;
-};
 type AppSettings = {
   claimId: string;
   syncUrl: string;
@@ -215,7 +165,6 @@ type AppSettings = {
   branding: { logo?: BrandingAsset; favicon?: BrandingAsset };
   snapshotRetentionDays: number;
   browserSnapshotsEnabled: boolean;
-  discord: DiscordSettings;
 };
 
 type NavItem = readonly [ActivePanel, string, LucideIcon];
@@ -247,11 +196,10 @@ const NAV_GROUPS = [
   ] },
 ] as const satisfies readonly NavGroup[];
 
-const ADMIN_NAV_ITEM = ["admin", "Admin", KeyRound] as const satisfies NavItem;
 const NAV: readonly NavItem[] = NAV_GROUPS.reduce<NavItem[]>((items, group) => {
   items.push(...group.items);
   return items;
-}, [ADMIN_NAV_ITEM]);
+}, []);
 const DEFAULT_SIDEBAR_GROUPS = Object.fromEntries(NAV_GROUPS.map((group) => [group.id, true])) as Record<string, boolean>;
 
 const DEFAULT_THEME = {
@@ -336,55 +284,6 @@ function loadSavedCustomTheme(): ThemeSettings {
   }
 }
 
-const DEFAULT_CRAFT_CHANNELS: Record<string, string> = {
-  forestry: "1509932116077711411",
-  carpentry: "1509932154442875201",
-  masonry: "1509932188446101585",
-  mining: "1509932207060291797",
-  smithing: "1509932228090658936",
-  scholar: "1509932259262595245",
-  hunting: "1510275986766434325",
-  leatherworking: "1509932280829710547",
-  tailoring: "1509932306486398976",
-  farming: "1509932539626786926",
-  fishing: "1509932564641747074",
-  cooking: "1509932588180181033",
-  foraging: "1509932609378058412",
-};
-
-const DEFAULT_DISCORD_CHANNELS: Record<string, string> = {
-  notifications: "",
-  modNotes: "1509972023927902218",
-  modLog: "",
-  ...DEFAULT_CRAFT_CHANNELS,
-};
-
-const DEFAULT_CRAFT_ROLES: Record<string, string> = {
-  forestry: "1511297282769944596",
-  carpentry: "1511297283386249358",
-  masonry: "1511297283931639808",
-  mining: "1511297284724494399",
-  smithing: "1511297285772804206",
-  scholar: "1511297286469324890",
-  leatherworking: "1511297288511815751",
-  tailoring: "1511297287157055632",
-  farming: "1511297288176144425",
-  fishing: "1511297635665969222",
-  cooking: "1511297639269011486",
-  foraging: "1511297639868665966",
-  hunting: "1511297640866906153",
-};
-
-const DEFAULT_NOTIFICATION_CHANNELS: Record<string, string> = {
-  marketListings: "notifications",
-  marketSales: "notifications",
-  lowSupplies: "notifications",
-  appUpdates: "notifications",
-  supplyReport: "modNotes",
-  productionStarted: "profession",
-  productionCompleted: "profession",
-};
-
 const MAP_CATEGORY_ORDER = [
   "Ancient Loot",
   "Baitfish",
@@ -425,155 +324,9 @@ const MAP_CATEGORY_ORDER = [
 ];
 const MAP_CATEGORY_SET = new Set(MAP_CATEGORY_ORDER);
 
-const DEFAULT_COLOUR_ROLES = [
-  { key: "green1", label: "Green 1", roleName: "Green 1", roleId: "", color: 0x2be56f },
-  { key: "green2", label: "Green 2", roleName: "Green 2", roleId: "", color: 0x1fb72e },
-  { key: "blue1", label: "Blue 1", roleName: "Blue 1", roleId: "", color: 0x5fa8ff },
-  { key: "blue2", label: "Blue 2", roleName: "Blue 2", roleId: "", color: 0x244cff },
-  { key: "purple", label: "Purple", roleName: "Purple", roleId: "", color: 0x9b4acb },
-  { key: "pink", label: "Pink", roleName: "Pink", roleId: "", color: 0xff4f88 },
-  { key: "red", label: "Red", roleName: "Red", roleId: "", color: 0xff2028 },
-  { key: "yellow", label: "Yellow", roleName: "Yellow", roleId: "", color: 0xf4c430 },
-  { key: "orange", label: "Orange", roleName: "Orange", roleId: "", color: 0xff9f1c },
-  { key: "black", label: "Black", roleName: "Black", roleId: "", color: 0x111111 },
-  { key: "white", label: "White", roleName: "White", roleId: "", color: 0xf4f4f4 },
-];
-
-const DEFAULT_ROLE_PANELS: DiscordRolePanel[] = [
-  {
-    key: "access",
-    label: "Access Roles",
-    channelId: "",
-    messageId: "",
-    title: "Welcome to Timbersteel Trade!",
-    description: "Choose your access role below.",
-    mode: "single",
-    showHelperText: true,
-    options: [
-      { key: "citizen", label: "Citizen", roleId: "", emoji: "1" },
-      { key: "visitor", label: "Visitor", roleId: "", emoji: "2" },
-    ],
-  },
-  {
-    key: "professions",
-    label: "Profession Roles",
-    channelId: "",
-    messageId: "",
-    title: "Choose Your Professions",
-    description: "Select as many profession interests as you like.",
-    mode: "multi",
-    showHelperText: true,
-    options: Object.keys(DEFAULT_CRAFT_ROLES).map((key) => ({
-      key,
-      label: key === "leatherworking" ? "Leatherworking" : key[0].toUpperCase() + key.slice(1),
-      roleId: DEFAULT_CRAFT_ROLES[key],
-      emoji: "",
-    })),
-  },
-  { key: "events", label: "Event Roles", channelId: "", messageId: "", title: "Event Roles", description: "Choose event pings you want.", mode: "multi", showHelperText: true, options: [] },
-  { key: "timezones", label: "Timezone Roles", channelId: "", messageId: "", title: "Timezone Roles", description: "Choose your timezone group.", mode: "single", showHelperText: true, options: [] },
-];
-
-const DEFAULT_WELCOME_FLOW: DiscordWelcomeFlow = {
-  enabled: false,
-  channelId: "",
-  messageId: "",
-  title: "Welcome to Timbersteel Trade",
-  message: "Read the welcome steps, choose your roles, then click Ready.",
-  readyRoleId: "",
-  showNextStep: true,
-};
-
-const DEFAULT_DISCORD_PRESENCE: DiscordPresence = {
-  enabled: true,
-  status: "online",
-  activityType: "watching",
-  activityText: "app.timbersteeltrade.com",
-};
-
-function uniqueKey(prefix = "colour"): string {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
-function discordColorToHex(value: number): string {
-  return `#${Math.max(0, Math.min(0xffffff, Math.round(toNumber(value)))).toString(16).padStart(6, "0")}`;
-}
-
-function hexToDiscordColor(value: string): number {
-  const cleaned = String(value ?? "").replace(/[^0-9a-f]/gi, "").slice(0, 6);
-  return cleaned ? parseInt(cleaned.padEnd(6, "0"), 16) : 0xf4c430;
-}
-
-function normalizeColourRoleDefinition(value: AnyRecord, fallback?: ColourRoleDefinition): ColourRoleDefinition {
-  const label = String(value?.label ?? fallback?.label ?? "New Colour").trim() || "New Colour";
-  const savedRoleName = String(value?.roleName ?? "").trim();
-  return {
-    key: String(value?.key ?? fallback?.key ?? uniqueKey()).trim() || uniqueKey(),
-    label,
-    roleName: savedRoleName || fallback?.roleName || label,
-    roleId: String(value?.roleId ?? fallback?.roleId ?? "").trim(),
-    color: Math.max(toNumber(value?.color ?? fallback?.color ?? 0xf4c430), 0),
-  };
-}
-
-function normalizeDiscordRoleOption(value: AnyRecord, fallback?: DiscordRoleOption): DiscordRoleOption {
-  const label = String(value?.label ?? fallback?.label ?? "Role").trim() || "Role";
-  return {
-    key: String(value?.key ?? fallback?.key ?? uniqueKey("role")).trim() || uniqueKey("role"),
-    label,
-    roleId: String(value?.roleId ?? fallback?.roleId ?? "").trim(),
-    emoji: String(value?.emoji ?? fallback?.emoji ?? "").trim(),
-  };
-}
-
-function normalizeDiscordRolePanel(value: AnyRecord, fallback?: DiscordRolePanel): DiscordRolePanel {
-  const label = String(value?.label ?? fallback?.label ?? "Role Panel").trim() || "Role Panel";
-  const options = Array.isArray(value?.options) ? value.options : fallback?.options ?? [];
-  return {
-    key: String(value?.key ?? fallback?.key ?? uniqueKey("panel")).trim() || uniqueKey("panel"),
-    label,
-    channelId: String(value?.channelId ?? fallback?.channelId ?? "").trim(),
-    messageId: String(value?.messageId ?? fallback?.messageId ?? "").trim(),
-    title: String(value?.title ?? fallback?.title ?? label).trim() || label,
-    description: String(value?.description ?? fallback?.description ?? "").trim(),
-    mode: String(value?.mode ?? fallback?.mode ?? "multi") === "single" ? "single" : "multi",
-    showHelperText: value?.showHelperText ?? fallback?.showHelperText ?? true,
-    options: options.map((option: AnyRecord, index: number) => normalizeDiscordRoleOption(option, fallback?.options?.[index])),
-  };
-}
-
-function normalizeDiscordWelcomeFlow(value: AnyRecord): DiscordWelcomeFlow {
-  return {
-    ...DEFAULT_WELCOME_FLOW,
-    ...(value ?? {}),
-    enabled: value?.enabled === true,
-    channelId: String(value?.channelId ?? "").trim(),
-    messageId: String(value?.messageId ?? "").trim(),
-    title: String(value?.title ?? DEFAULT_WELCOME_FLOW.title).trim() || DEFAULT_WELCOME_FLOW.title,
-    message: String(value?.message ?? DEFAULT_WELCOME_FLOW.message).trim() || DEFAULT_WELCOME_FLOW.message,
-    readyRoleId: String(value?.readyRoleId ?? "").trim(),
-    showNextStep: value?.showNextStep !== false,
-  };
-}
-
-function normalizeDiscordPresence(value: AnyRecord = {}): DiscordPresence {
-  const status = ["online", "idle", "dnd", "invisible"].includes(String(value?.status)) ? String(value.status) as DiscordPresence["status"] : DEFAULT_DISCORD_PRESENCE.status;
-  const activityType = ["playing", "watching", "listening", "competing"].includes(String(value?.activityType)) ? String(value.activityType) as DiscordPresence["activityType"] : DEFAULT_DISCORD_PRESENCE.activityType;
-  return {
-    ...DEFAULT_DISCORD_PRESENCE,
-    ...(value ?? {}),
-    enabled: value?.enabled !== false,
-    status,
-    activityType,
-    activityText: String(value?.activityText ?? DEFAULT_DISCORD_PRESENCE.activityText).trim() || DEFAULT_DISCORD_PRESENCE.activityText,
-  };
-}
-
-const DISCORD_CHANNEL_FIELDS = Object.keys(DEFAULT_DISCORD_CHANNELS);
-
 const DEFAULT_SETTINGS: AppSettings = {
-  claimId: DEFAULT_CLAIM_ID,
-  syncUrl: DEFAULT_SYNC_URL,
+  claimId: "",
+  syncUrl: "",
   theme: DEFAULT_THEME,
   refreshSeconds: 30,
   defaultPage: "dashboard",
@@ -581,43 +334,14 @@ const DEFAULT_SETTINGS: AppSettings = {
   toastSettings: { marketListings: true, marketSales: true, production: true },
   branding: {},
   snapshotRetentionDays: 365,
-  browserSnapshotsEnabled: true,
-  discord: {
-    enabled: false,
-    applicationId: "",
-    publicKey: "",
-    guildId: "",
-    channelId: "",
-    minSaleValue: 0,
-    supplyRunwayDaysThreshold: 7,
-    productionMinXp: 40000,
-    productionMinAgeMinutes: 5,
-    productionUsers: "",
-    supplyReportIntervalDays: 3,
-    channels: DEFAULT_DISCORD_CHANNELS,
-    notificationChannels: DEFAULT_NOTIFICATION_CHANNELS,
-    craftChannels: DEFAULT_CRAFT_CHANNELS,
-    craftRoles: DEFAULT_CRAFT_ROLES,
-    colourRolesChannelId: "",
-    colourRolesMessageId: "",
-    colourRoles: DEFAULT_COLOUR_ROLES,
-    rolePanels: DEFAULT_ROLE_PANELS,
-    welcomeFlow: DEFAULT_WELCOME_FLOW,
-    presence: DEFAULT_DISCORD_PRESENCE,
-    notify: { marketListings: true, marketSales: true, production: true, productionStarted: true, productionCompleted: true, lowSupplies: false, appUpdates: true, supplyReports: true },
-    botTokenConfigured: false,
-    botTokenSource: null,
-    interactionUrl: "/api/discord/interactions",
-  },
+  browserSnapshotsEnabled: false,
 };
 
 const DEFAULT_USER_TOAST_SETTINGS: UserToastSettings = { marketListings: true, marketSales: true, production: true };
 
 function normalizeAppSettings(config: Partial<AppSettings> | AnyRecord | null | undefined): AppSettings {
-  const savedColourRoles = Array.isArray((config as AnyRecord)?.discord?.colourRoles) ? (config as AnyRecord).discord.colourRoles : null;
-  const savedRolePanels = Array.isArray((config as AnyRecord)?.discord?.rolePanels) ? (config as AnyRecord).discord.rolePanels : null;
   const configuredDefaultPage = String((config as AnyRecord)?.defaultPage ?? DEFAULT_SETTINGS.defaultPage);
-  const defaultPage = configuredDefaultPage === "buildings" || !NAV.some(([id]) => id === configuredDefaultPage && id !== "admin")
+  const defaultPage = configuredDefaultPage === "buildings" || !NAV.some(([id]) => id === configuredDefaultPage)
     ? DEFAULT_SETTINGS.defaultPage
     : configuredDefaultPage as ActivePanel;
   return {
@@ -627,22 +351,6 @@ function normalizeAppSettings(config: Partial<AppSettings> | AnyRecord | null | 
     theme: { ...DEFAULT_THEME, ...((config as AnyRecord)?.theme ?? {}) },
     toastSettings: { ...DEFAULT_SETTINGS.toastSettings, ...((config as AnyRecord)?.toastSettings ?? {}) },
     branding: (config as AnyRecord)?.branding ?? {},
-    discord: {
-      ...DEFAULT_SETTINGS.discord,
-      ...((config as AnyRecord)?.discord ?? {}),
-      channels: { ...DEFAULT_DISCORD_CHANNELS, ...((config as AnyRecord)?.discord?.channels ?? {}), notifications: (config as AnyRecord)?.discord?.channelId ?? (config as AnyRecord)?.discord?.channels?.notifications ?? "" },
-      notificationChannels: { ...DEFAULT_NOTIFICATION_CHANNELS, ...((config as AnyRecord)?.discord?.notificationChannels ?? {}) },
-      craftChannels: { ...DEFAULT_CRAFT_CHANNELS, ...((config as AnyRecord)?.discord?.channels ?? {}), ...((config as AnyRecord)?.discord?.craftChannels ?? {}) },
-      craftRoles: { ...DEFAULT_CRAFT_ROLES, ...((config as AnyRecord)?.discord?.craftRoles ?? {}) },
-      colourRolesChannelId: String((config as AnyRecord)?.discord?.colourRolesChannelId ?? ""),
-      colourRolesMessageId: String((config as AnyRecord)?.discord?.colourRolesMessageId ?? ""),
-      colourRoles: (savedColourRoles ?? DEFAULT_COLOUR_ROLES).map((entry: AnyRecord, index: number) => normalizeColourRoleDefinition(entry, DEFAULT_COLOUR_ROLES[index])),
-      rolePanels: (savedRolePanels ?? DEFAULT_ROLE_PANELS).map((entry: AnyRecord, index: number) => normalizeDiscordRolePanel(entry, DEFAULT_ROLE_PANELS[index])),
-      welcomeFlow: normalizeDiscordWelcomeFlow((config as AnyRecord)?.discord?.welcomeFlow ?? {}),
-      presence: normalizeDiscordPresence((config as AnyRecord)?.discord?.presence ?? {}),
-      notify: { ...DEFAULT_SETTINGS.discord.notify, ...((config as AnyRecord)?.discord?.notify ?? {}) },
-      productionMinAgeMinutes: toNumber((config as AnyRecord)?.discord?.productionMinAgeMinutes ?? (config as AnyRecord)?.discord?.productionMinAgeMins ?? DEFAULT_SETTINGS.discord.productionMinAgeMinutes),
-    },
   } as AppSettings;
 }
 
@@ -694,7 +402,58 @@ const THEME_FIELD_GROUPS: Array<{ title: string; keys: ThemeColorKey[] }> = [
 ];
 
 const MAP_DEFAULT_LAYERS = ["roadsLayer", ...Array.from({ length: 11 }, (_, tier) => `claimT${tier}Layer`)];
-const ACTIVE_MAP_REGIONS = ["7", "8", "9", "12", "13", "14", "17", "18", "19"];
+
+type ActiveRegion = { regionId: string; name: string; source?: string };
+
+function activeRegionId(region: AnyRecord | ActiveRegion): string {
+  const row = region as AnyRecord;
+  return String(row.regionId ?? row.id ?? "").trim();
+}
+
+function activeRegionName(region: AnyRecord | ActiveRegion): string {
+  const row = region as AnyRecord;
+  return String(row.name ?? row.regionName ?? "").trim();
+}
+
+function regionOptionLabel(regionId: string, regions: ActiveRegion[], settlementRegionId = "") {
+  const region = regions.find((entry) => entry.regionId === regionId);
+  const name = region?.name?.trim();
+  const base = name ? `${name} (R${regionId})` : `R${regionId}`;
+  return String(regionId) === String(settlementRegionId) ? `${base} - Settlement Region` : base;
+}
+
+function activeRegionOptions(activeRegions: ActiveRegion[], settlementRegionId = "", selectedRegionId = "") {
+  const byId = new Map<string, ActiveRegion>();
+  for (const region of activeRegions) {
+    if (/^\d+$/.test(region.regionId)) byId.set(region.regionId, region);
+  }
+  for (const regionId of [settlementRegionId, selectedRegionId]) {
+    const id = String(regionId ?? "").trim();
+    if (/^\d+$/.test(id) && !byId.has(id)) byId.set(id, { regionId: id, name: "" });
+  }
+  return [...byId.values()].sort((a, b) => toNumber(a.regionId) - toNumber(b.regionId));
+}
+
+function useActiveRegions(settlementRegionId = "") {
+  const [regions, setRegions] = React.useState<ActiveRegion[]>(() => activeRegionOptions([], settlementRegionId));
+  React.useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${LOCAL_API}/regions/active`, { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`active regions HTTP ${response.status}`)))
+      .then((payload) => {
+        const rows = Array.isArray(payload.regions) ? payload.regions : [];
+        const next = rows
+          .map((region: AnyRecord) => ({ regionId: activeRegionId(region), name: activeRegionName(region), source: String(region.source ?? "") }))
+          .filter((region: ActiveRegion) => /^\d+$/.test(region.regionId));
+        setRegions(activeRegionOptions(next, settlementRegionId));
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setRegions(activeRegionOptions([], settlementRegionId));
+      });
+    return () => controller.abort();
+  }, [settlementRegionId]);
+  return regions;
+}
 
 function urlPanel(): ActivePanel | null {
   const panel = new URLSearchParams(window.location.search).get("page");
@@ -776,7 +535,6 @@ function trackAnalyticsEvent(eventName: string, properties?: Record<string, stri
   const sessionId = analyticsSessionId();
   if (!sessionId) return;
   const page = pageOverride ?? urlPanel() ?? "dashboard";
-  if (page === "admin") return;
   void fetch(`${LOCAL_API}/analytics/event`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -849,15 +607,6 @@ function Header({ title, children }: { title: string; children?: React.ReactNode
 
 function ToolbarButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return <button className="toolbar-button" onClick={onClick}>{children}</button>;
-}
-
-function DiscordIcon({ size = 17 }: { size?: number }) {
-  return (
-    <svg className="discord-logo-icon" width={size} height={size} viewBox="0 0 245 240" aria-hidden="true" focusable="false">
-      <path fill="currentColor" d="M104.4 103.9c-5.7 0-10.2 5-10.2 11.1s4.6 11.1 10.2 11.1c5.7 0 10.3-5 10.2-11.1 0-6.1-4.6-11.1-10.2-11.1Zm36.8 0c-5.7 0-10.2 5-10.2 11.1s4.6 11.1 10.2 11.1c5.7 0 10.3-5 10.2-11.1 0-6.1-4.5-11.1-10.2-11.1Z" />
-      <path fill="currentColor" d="M189.5 20h-134C44.2 20 35 29.2 35 40.7v134.9c0 11.4 9.2 20.7 20.5 20.7h113.4l-5.3-18.5 12.8 11.9 12.1 11.2 21.5 19.1V40.7C210 29.2 200.8 20 189.5 20Zm-38.6 130s-3.6-4.3-6.6-8.1c13.1-3.7 18.1-11.9 18.1-11.9-4.1 2.7-8 4.6-11.5 5.9-5 2.1-9.8 3.5-14.5 4.3-9.6 1.8-18.4 1.3-25.9-.1-5.7-1.1-10.6-2.7-14.7-4.3-2.3-.9-4.8-2-7.3-3.4-.3-.2-.6-.3-.9-.5-.2-.1-.3-.2-.4-.3-1.8-1-2.8-1.7-2.8-1.7s4.8 8 17.5 11.8c-3 3.8-6.7 8.3-6.7 8.3-22.1-.7-30.5-15.2-30.5-15.2 0-32.2 14.4-58.3 14.4-58.3 14.4-10.8 28.1-10.5 28.1-10.5l1 1.2c-18 5.2-26.3 13.1-26.3 13.1s2.2-1.2 5.9-2.9c10.7-4.7 19.2-6 22.7-6.3.6-.1 1.1-.2 1.7-.2 6.1-.8 13-.9 20.2-.2 9.5 1.1 19.7 3.9 30.1 9.6 0 0-7.9-7.5-24.9-12.7l1.4-1.6s13.7-.3 28.1 10.5c0 0 14.4 26.1 14.4 58.3 0 0-8.5 14.5-30.6 15.2Z" />
-    </svg>
-  );
 }
 
 function Dashboard({ data, activity, snapshots, dashboardSummary, lastUpdated, onNavigate }: { data: ReturnType<typeof normalizeData>; activity: AnyRecord[]; snapshots: AnyRecord[]; dashboardSummary: AnyRecord | null; lastUpdated: Date | null; onNavigate: (panel: ActivePanel, marketTab?: string) => void }) {
@@ -1650,14 +1399,13 @@ function Market({ data, history, claimId }: { data: ReturnType<typeof normalizeD
 }
 
 function PriceFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
-  const defaultRegion = monitoredRegionId || "19";
+  const defaultRegion = monitoredRegionId || "All";
   const [query, setQuery] = React.useState("");
   const [suggestions, setSuggestions] = React.useState<AnyRecord[]>([]);
   const [selectedItem, setSelectedItem] = React.useState<AnyRecord | null>(null);
   const [searchState, setSearchState] = React.useState<"idle" | "loading" | "error">("idle");
   const [regionChoice, setRegionChoice] = usePersistedState("market.price.region", defaultRegion);
-  const [customRegion] = usePersistedState("market.price.customRegion", defaultRegion);
-  const [availableRegions, setAvailableRegions] = React.useState<AnyRecord[]>([]);
+  const activeRegions = useActiveRegions(monitoredRegionId);
   const [priceState, setPriceState] = React.useState<LoadState<AnyRecord>>({ data: null, error: null, loading: false });
   const activeRegion = regionChoice === "All" ? "" : regionChoice;
 
@@ -1673,22 +1421,6 @@ function PriceFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
     }
     if (region) setRegionChoice(region === "all" ? "All" : region);
   }, [setRegionChoice]);
-
-  React.useEffect(() => {
-    if (regionChoice !== "Custom") return;
-    setRegionChoice(/^\d+$/.test(customRegion.trim()) ? customRegion.trim() : defaultRegion);
-  }, [customRegion, defaultRegion, regionChoice, setRegionChoice]);
-
-  React.useEffect(() => {
-    const controller = new AbortController();
-    fetch(`${API}/regions/status`, { signal: controller.signal })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`regions HTTP ${response.status}`)))
-      .then((payload) => setAvailableRegions(payload.regions ?? []))
-      .catch(() => {
-        if (!controller.signal.aborted) setAvailableRegions([]);
-      });
-    return () => controller.abort();
-  }, []);
 
   React.useEffect(() => {
     if (query.trim().length < 2 || selectedItem?.name === query.trim()) {
@@ -1719,7 +1451,7 @@ function PriceFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
   }, [query, selectedItem?.name]);
 
   React.useEffect(() => {
-    if (!selectedItem || regionChoice === "Custom") {
+    if (!selectedItem) {
       setPriceState({ data: null, error: null, loading: false });
       return;
     }
@@ -1751,12 +1483,9 @@ function PriceFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
   const tradeCount = toNumber(stats.totalTrades);
   const confidence = tradeCount >= 20 ? "High confidence" : tradeCount >= 5 ? "Medium confidence" : tradeCount > 0 ? "Low confidence" : "No sales data";
   const recentTrades: AnyRecord[] = priceState.data?.recentTrades ?? [];
-  const regionLabel = activeRegion ? `R${activeRegion}` : "All Regions";
-  const regionIds = unique([
-    defaultRegion,
-    regionChoice !== "All" && regionChoice !== "Custom" ? regionChoice : "",
-    ...availableRegions.map((region) => String(region.regionId ?? "")).filter(Boolean),
-  ].filter(Boolean)).sort((a, b) => toNumber(a) - toNumber(b));
+  const regionOptions = activeRegionOptions(activeRegions, monitoredRegionId, activeRegion);
+  const selectedRegion = activeRegion ? regionOptions.find((region) => region.regionId === activeRegion) : null;
+  const regionLabel = activeRegion ? (selectedRegion?.name ? `${selectedRegion.name} (R${activeRegion})` : `R${activeRegion}`) : "All Regions";
   return (
     <section className="price-finder">
       <div className="market-command-header price-finder-header">
@@ -1783,7 +1512,7 @@ function PriceFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
         <label className="research-filter-field price-region-field">
           <span>Region</span>
           <select value={regionChoice} onChange={(event) => { setRegionChoice(event.target.value); updateQueryState({ region: event.target.value === "All" ? "all" : event.target.value }); trackAnalyticsEvent("price_finder_region_changed", { scope: event.target.value === "All" ? "all_regions" : "specific_region" }); }}>
-            {regionIds.map((regionId) => <option value={regionId} key={regionId}>R{regionId}{regionId === defaultRegion ? " - Settlement Region" : ""}</option>)}
+            {regionOptions.map((region) => <option value={region.regionId} key={region.regionId}>{regionOptionLabel(region.regionId, regionOptions, monitoredRegionId)}</option>)}
             <option value="All">All Regions</option>
           </select>
         </label>
@@ -1827,13 +1556,13 @@ function PriceFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
 }
 
 function BuyOrderFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
-  const defaultRegion = monitoredRegionId || "19";
+  const defaultRegion = monitoredRegionId || "All";
   const [query, setQuery] = React.useState("");
   const [suggestions, setSuggestions] = React.useState<AnyRecord[]>([]);
   const [selectedItem, setSelectedItem] = React.useState<AnyRecord | null>(null);
   const [searchState, setSearchState] = React.useState<"idle" | "loading" | "error">("idle");
   const [regionChoice, setRegionChoice] = usePersistedState("market.buyOrders.region", defaultRegion);
-  const [availableRegions, setAvailableRegions] = React.useState<AnyRecord[]>([]);
+  const activeRegions = useActiveRegions(monitoredRegionId);
   const [orderState, setOrderState] = React.useState<LoadState<AnyRecord>>({ data: null, error: null, loading: false });
   const activeRegion = regionChoice === "All" ? "" : regionChoice;
 
@@ -1849,17 +1578,6 @@ function BuyOrderFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
     }
     if (region) setRegionChoice(region === "all" ? "All" : region);
   }, [setRegionChoice]);
-
-  React.useEffect(() => {
-    const controller = new AbortController();
-    fetch(`${API}/regions/status`, { signal: controller.signal })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`regions HTTP ${response.status}`)))
-      .then((payload) => setAvailableRegions(payload.regions ?? []))
-      .catch(() => {
-        if (!controller.signal.aborted) setAvailableRegions([]);
-      });
-    return () => controller.abort();
-  }, []);
 
   React.useEffect(() => {
     if (query.trim().length < 2 || selectedItem?.name === query.trim()) {
@@ -1922,11 +1640,7 @@ function BuyOrderFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
     trackAnalyticsEvent("buy_order_finder_search", { region: activeRegion ? "selected_region" : "all_regions" });
   }
 
-  const regionIds = unique([
-    defaultRegion,
-    regionChoice !== "All" ? regionChoice : "",
-    ...availableRegions.map((region) => String(region.regionId ?? "")).filter(Boolean),
-  ].filter(Boolean)).sort((a, b) => toNumber(a) - toNumber(b));
+  const regionOptions = activeRegionOptions(activeRegions, monitoredRegionId, activeRegion);
   const orders = sortBuyOrdersByBestPrice((orderState.data?.buyOrders ?? [])
     .map((order: AnyRecord) => normalizeBuyOrder(order, toNumber(selectedItem?.itemType)))
     .filter((order: ReturnType<typeof normalizeBuyOrder>) => !activeRegion || String(order.regionId) === String(activeRegion)));
@@ -1935,7 +1649,8 @@ function BuyOrderFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
   const totalDemand = orders.reduce((total, order) => total + order.quantity, 0);
   const totalValue = orders.reduce((total, order) => total + order.totalValue, 0);
   const marketCount = new Set(orders.map((order) => order.claimEntityId || order.claimName)).size;
-  const regionLabel = activeRegion ? `R${activeRegion}` : "All Regions";
+  const selectedRegion = activeRegion ? regionOptions.find((region) => region.regionId === activeRegion) : null;
+  const regionLabel = activeRegion ? (selectedRegion?.name ? `${selectedRegion.name} (R${activeRegion})` : `R${activeRegion}`) : "All Regions";
 
   return (
     <section className="price-finder buy-order-finder">
@@ -1963,7 +1678,7 @@ function BuyOrderFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
         <label className="research-filter-field price-region-field">
           <span>Region</span>
           <select value={regionChoice} onChange={(event) => { setRegionChoice(event.target.value); updateQueryState({ buyRegion: event.target.value === "All" ? "all" : event.target.value }); }}>
-            {regionIds.map((regionId) => <option value={regionId} key={regionId}>R{regionId}{regionId === defaultRegion ? " - Settlement Region" : ""}</option>)}
+            {regionOptions.map((region) => <option value={region.regionId} key={region.regionId}>{regionOptionLabel(region.regionId, regionOptions, monitoredRegionId)}</option>)}
             <option value="All">All Regions</option>
           </select>
         </label>
@@ -2054,6 +1769,7 @@ function PublicCraftFinder({ refreshToken, monitoredRegionId, monitoredOwnerName
   type PublicCraftSortKey = "output" | "tier" | "settlement" | "required" | "remaining" | "availableXp" | "owner";
   const [skillId, setSkillId] = usePersistedState("public-crafts.skill", "All");
   const [regionId, setRegionId] = usePersistedState("public-crafts.region", defaultRegionId || monitoredRegionId || "All");
+  const activeRegions = useActiveRegions(monitoredRegionId);
   const [sortKey, setSortKey] = usePersistedState<PublicCraftSortKey>("public-crafts.sort", "remaining");
   const [sortDir, setSortDir] = usePersistedState<"asc" | "desc">("public-crafts.direction", "desc");
   const hasSavedRegion = React.useRef(hasPersistedState("public-crafts.region"));
@@ -2103,7 +1819,7 @@ function PublicCraftFinder({ refreshToken, monitoredRegionId, monitoredOwnerName
       minimumLevel: toNumber(job.levelRequirements?.find((requirement: AnyRecord) => toNumber(requirement.skill_id) === requiredSkillId)?.level ?? job.levelRequirements?.[0]?.level),
     };
   }).filter((job) => job.remaining > 0);
-  const regions = unique([...publicJobs.map((job) => String(job.regionId)).filter(Boolean), ...(monitoredRegionId ? [monitoredRegionId] : [])]).sort((a, b) => toNumber(a) - toNumber(b));
+  const regions = activeRegionOptions(activeRegions, monitoredRegionId, regionId === "All" ? "" : regionId);
   const filteredJobs = publicJobs
     .filter((job) => regionId === "All" || String(job.regionId) === regionId)
     .sort((a, b) => {
@@ -2179,7 +1895,7 @@ function PublicCraftFinder({ refreshToken, monitoredRegionId, monitoredOwnerName
           </label>
           <label className="inline-field"><span>Region</span>
             <select className="select-control" value={regionId} onChange={(event) => { setRegionId(event.target.value); updateQueryState({ region: event.target.value }); trackAnalyticsEvent("public_craft_region_filter_used", { scope: event.target.value === "All" ? "all_regions" : "specific_region" }); }}>
-              <option>All</option>{regions.map((id) => <option key={id} value={id}>R{id}</option>)}
+              <option>All</option>{regions.map((region) => <option key={region.regionId} value={region.regionId}>{regionOptionLabel(region.regionId, regions, monitoredRegionId)}</option>)}
             </select>
           </label>
         </div>
@@ -2204,6 +1920,15 @@ function hasRecentCraftContribution(contributors: AnyRecord[]): boolean {
     const age = Date.now() - lastContribution.getTime();
     return age >= -5 * 1000 && age <= ACTIVE_CRAFT_WINDOW_MS;
   });
+}
+
+function craftProgressKey(job: AnyRecord): string {
+  const entityId = String(job.entityId ?? "").trim();
+  if (entityId) return `entity:${entityId}`;
+  const structure = String(job.buildingEntityId ?? job.buildingId ?? job.buildingName ?? job.structureName ?? "").trim();
+  const recipe = String(job.recipeId ?? job.recipeName ?? job.craftName ?? "").trim();
+  const output = String(job.craftedItem?.[0]?.item_id ?? job.craftedItem?.[0]?.cargo_id ?? job.outputItemId ?? job.outputCargoId ?? "").trim();
+  return `fallback:${structure}:${recipe}:${output}`;
 }
 
 function MemberPassiveCrafts({ members, refreshToken }: { members: AnyRecord[]; refreshToken: number }) {
@@ -2279,6 +2004,8 @@ function Production({ data, refreshToken, selectedMemberId, onSelectMember }: { 
   const [toolbeltTools, setToolbeltTools] = React.useState<AnyRecord[] | null>(null);
   const [toolbeltError, setToolbeltError] = React.useState(false);
   const toolsForMemberRef = React.useRef<string | null>(null);
+  const previousProgressRef = React.useRef<Map<string, number>>(new Map());
+  const [movingCraftKeys, setMovingCraftKeys] = React.useState<Set<string>>(() => new Set());
   const itemLookup = new Map([...(data.raw?.crafts?.items ?? []), ...(data.raw?.crafts?.cargos ?? [])].map((i: AnyRecord) => [String(i.id), i]));
   const selectedMember = selectedMemberId === "All" ? null : data.members.find((member: AnyRecord) => String(member.playerEntityId) === selectedMemberId) ?? null;
   const selectedCitizen = selectedMember ? data.citizens.find((citizen: AnyRecord) => String(citizen.userName ?? citizen.username) === String(selectedMember.userName ?? selectedMember.username)) ?? null : null;
@@ -2302,6 +2029,20 @@ function Production({ data, refreshToken, selectedMemberId, onSelectMember }: { 
       .catch(() => { if (!controller.signal.aborted) setToolbeltError(true); });
     return () => controller.abort();
   }, [selectedMember?.playerEntityId, refreshToken]);
+  React.useEffect(() => {
+    const previous = previousProgressRef.current;
+    const nextProgress = new Map<string, number>();
+    const moved = new Set<string>();
+    for (const job of data.crafts) {
+      const key = craftProgressKey(job);
+      const progress = toNumber(job.progress);
+      const prior = previous.get(key);
+      if (prior != null && progress > prior) moved.add(key);
+      nextProgress.set(key, progress);
+    }
+    previousProgressRef.current = nextProgress;
+    setMovingCraftKeys(moved);
+  }, [data.crafts, refreshToken]);
   function metrics(job: AnyRecord) {
     const item = itemLookup.get(String(job.craftedItem?.[0]?.item_id)) ?? {};
     const skillId = toNumber(job.levelRequirements?.[0]?.skill_id ?? job.experiencePerProgress?.[0]?.skill_id);
@@ -2348,18 +2089,24 @@ function Production({ data, refreshToken, selectedMemberId, onSelectMember }: { 
   }
   const privateCrafts = data.crafts.filter((job) => job.isPublic === false);
   const visibleCrafts = showPrivateCrafts ? data.crafts : data.crafts.filter((job) => job.isPublic !== false);
+  function isCraftUiActive(job: AnyRecord) {
+    const { total, progress } = metrics(job);
+    if (total <= progress) return false;
+    const contributors: AnyRecord[] = data.contributions[String(job.entityId)] ?? [];
+    return hasRecentCraftContribution(contributors) || movingCraftKeys.has(craftProgressKey(job));
+  }
   const jobs = [...visibleCrafts].sort((a, b) => {
     const aMetrics = metrics(a);
     const bMetrics = metrics(b);
+    const activeComparison = Number(isCraftUiActive(b)) - Number(isCraftUiActive(a));
+    if (activeComparison !== 0) return activeComparison;
     const aValue = sortKey === "remainingEffort" ? aMetrics.remaining : aMetrics[sortKey];
     const bValue = sortKey === "remainingEffort" ? bMetrics.remaining : bMetrics[sortKey];
     const comparison = sortKey === "name"
       ? String(aValue).localeCompare(String(bValue))
       : toNumber(aValue) - toNumber(bValue);
     if (comparison !== 0) return sortDir === "asc" ? comparison : -comparison;
-    const aActive = hasRecentCraftContribution(data.contributions[String(a.entityId)] ?? []) ? 1 : 0;
-    const bActive = hasRecentCraftContribution(data.contributions[String(b.entityId)] ?? []) ? 1 : 0;
-    return bActive - aActive || bMetrics.completion - aMetrics.completion;
+    return bMetrics.completion - aMetrics.completion;
   });
   const crafterCounts = visibleCrafts.reduce<Record<string, number>>((acc, job) => {
     const name = String(job.ownerUsername ?? "Unknown");
@@ -2367,8 +2114,7 @@ function Production({ data, refreshToken, selectedMemberId, onSelectMember }: { 
     return acc;
   }, {});
   const activeJobs = jobs.filter((job) => {
-    const total = toNumber(job.totalActionsRequired);
-    return total > toNumber(job.progress) && hasRecentCraftContribution(data.contributions[String(job.entityId)] ?? []);
+    return isCraftUiActive(job);
   }).length;
   const totalProductionXp = jobs.reduce((sum, job) => sum + metrics(job).totalXp, 0);
   const remainingProductionXp = jobs.reduce((sum, job) => sum + metrics(job).remainingXp, 0);
@@ -2446,7 +2192,7 @@ function Production({ data, refreshToken, selectedMemberId, onSelectMember }: { 
           const skillName = SKILL_NAMES[skillId] ?? job.levelRequirements?.[0]?.skillName ?? (skillId ? `Skill ${skillId}` : null);
           const pct = total > 0 ? Math.min(100, Math.round((progress / total) * 100)) : 0;
           const contributors: AnyRecord[] = data.contributions[String(job.entityId)] ?? [];
-          const isWorking = total > progress && hasRecentCraftContribution(contributors);
+          const isWorking = isCraftUiActive(job);
           const isDone = total > 0 && progress >= total;
           const status = isWorking ? "Active now" : isDone ? "Ready" : progress > 0 ? "Paused" : "Queued";
           const eligibilityStatus = eligibility(job);
@@ -2659,6 +2405,8 @@ function MapPanel({ data, focus, onClearFocus }: { data: ReturnType<typeof norma
   const [resourcePanelCollapsed, setResourcePanelCollapsed] = usePersistedState("map.resource-finder-collapsed", false);
   const [resources, setResources] = React.useState<AnyRecord[]>([]);
   const [resourceError, setResourceError] = React.useState("");
+  const settlementRegionId = String(data.claim.regionId ?? "");
+  const activeRegions = useActiveRegions(settlementRegionId);
   const roster = data.players;
   React.useEffect(() => {
     const controller = new AbortController();
@@ -2693,13 +2441,9 @@ function MapPanel({ data, focus, onClearFocus }: { data: ReturnType<typeof norma
   const resourceByToken = React.useMemo(() => new Map(resources.map((resource) => [mapResourceToken(resource), resource])), [resources]);
   const resourceCategories = React.useMemo(() => MAP_CATEGORY_ORDER.filter((category) => resources.some((resource) => mapResourceCategory(resource) === category)), [resources]);
   const resourceTiers = React.useMemo(() => unique(resources.map((resource) => String(resource.tier ?? "")).filter(Boolean)).sort((a, b) => toNumber(a) - toNumber(b)), [resources]);
-  const regionOptions = React.useMemo(() => unique([
-    ...ACTIVE_MAP_REGIONS,
-    String(data.claim.regionId ?? ""),
-    ...data.regionStatus.map((region) => String(region.regionId ?? "")),
-  ].filter(Boolean)).sort((a, b) => toNumber(a) - toNumber(b)), [data.claim.regionId, data.regionStatus]);
+  const regionOptions = React.useMemo(() => activeRegionOptions(activeRegions, settlementRegionId, resourceRegions.length === 1 ? resourceRegions[0] : ""), [activeRegions, settlementRegionId, resourceRegions]);
   const mapMarker = focus ?? defaultFocus;
-  const mapRegionIds = resourceRegions.length ? resourceRegions : regionOptions;
+  const mapRegionIds = resourceRegions.length ? resourceRegions : regionOptions.map((region) => region.regionId);
   const selectedResourceIds = React.useMemo(() => normalizedSelectedResources.filter((token) => token.startsWith("resource:")).map((token) => token.slice("resource:".length)), [normalizedSelectedResources]);
   const selectedEnemyIds = React.useMemo(() => normalizedSelectedResources.filter((token) => token.startsWith("enemy:")).map((token) => token.slice("enemy:".length)), [normalizedSelectedResources]);
   const mapUrl = React.useMemo(() => bitcraftMapUrl([...current], mapMarker, Boolean(focus), selectedResourceIds, mapRegionIds, selectedEnemyIds), [current, focus, mapMarker, selectedResourceIds.join(","), selectedEnemyIds.join(","), mapRegionIds.join(",")]);
@@ -2752,7 +2496,7 @@ function MapPanel({ data, focus, onClearFocus }: { data: ReturnType<typeof norma
     setResourceSearch("");
     setResourceTier("All");
     setResourceCategory("All");
-    setResourceRegions(data.claim.regionId != null ? [String(data.claim.regionId)] : []);
+    setResourceRegions(settlementRegionId ? [settlementRegionId] : []);
     onClearFocus();
   }
   const onlineCount = roster.filter((player) => player.signedIn).length;
@@ -2797,7 +2541,7 @@ function MapPanel({ data, focus, onClearFocus }: { data: ReturnType<typeof norma
             </button>
           </div>
           {!resourcePanelCollapsed ? <><div className="map-resource-controls">
-            <label className="field"><span>Region</span><select className="select-control map-region-select" value={resourceRegions.length === 1 ? resourceRegions[0] : "All"} onChange={(event) => setResourceRegion(event.target.value)}><option value="All">All regions</option>{regionOptions.map((id) => <option key={id} value={id}>Region {id}{String(id) === String(data.claim.regionId) ? " - settlement" : ""}</option>)}</select></label>
+            <label className="field"><span>Region</span><select className="select-control map-region-select" value={resourceRegions.length === 1 ? resourceRegions[0] : "All"} onChange={(event) => setResourceRegion(event.target.value)}><option value="All">All regions</option>{regionOptions.map((region) => <option key={region.regionId} value={region.regionId}>{regionOptionLabel(region.regionId, regionOptions, settlementRegionId)}</option>)}</select></label>
             <label className="field"><span>Tier</span><select className="select-control" value={resourceTier} onChange={(event) => setResourceTier(event.target.value)}><option>All</option>{resourceTiers.map((tier) => <option key={tier}>{tier}</option>)}</select></label>
             <label className="field"><span>Category</span><select className="select-control" value={resourceCategory} onChange={(event) => setResourceCategory(event.target.value)}><option>All</option>{resourceCategories.map((category) => <option key={category}>{category}</option>)}</select></label>
             <SearchBox value={resourceSearch} onChange={setResourceSearch} placeholder="Find resources" />
@@ -3221,8 +2965,8 @@ function HelpCenter({ version, onClose, onPrivacy, onTerms }: { version: string;
             <Shield size={14} />
           </button>
           <button className="help-link-button" onClick={() => { onClose(); onTerms(); }}>
-            <strong>Legal & Bot Terms</strong>
-            <span>Read usage terms for the site and Discord bot</span>
+            <strong>Legal Terms</strong>
+            <span>Read usage terms for the public settlement monitor</span>
             <FileText size={14} />
           </button>
         </div>
@@ -3240,10 +2984,9 @@ function TermsContent({ compact = false }: { compact?: boolean }) {
         <p>The app is not affiliated with Clockwork Labs. BitCraft&trade; is a trademark of Clockwork Labs, Inc. Data is provided by the BitJita API.</p>
       </section>
       <section className="terms-section">
-        <h3>Discord Bot Terms</h3>
-        <p>The optional Timbersteel Trade Discord bot posts settlement notifications and responds to slash commands using the same public BitJita data and locally stored app data used by this dashboard.</p>
-        <p>Using the bot in Discord means command names, command options, Discord user/server/channel identifiers, response status, and notification delivery diagnostics may be processed by this app and Discord to provide the requested bot features.</p>
-        <p>Bot responses are informational only. Server administrators can disable notifications, remove the bot, rotate its token, or delete local diagnostic/history data from the app administration tools.</p>
+        <h3>Public Data</h3>
+        <p>The selected settlement, dashboard history and market activity are based on public BitJita API data. Visitors tracking the same settlement use the same server-side history records so the app does not create per-user duplicate settlement data.</p>
+        <p>Browser preferences, including the selected settlement and optional BitCraft Sync URL, are stored in this browser. The Sync URL is not required to use the app.</p>
       </section>
       {!compact ? <p className="help-intro">Questions, bug reports and feature requests can be raised through the GitHub Issues link in this app.</p> : null}
     </>
@@ -3254,8 +2997,8 @@ function PrivacyContent() {
   return (
     <>
       <p className="help-intro">With your permission, this site uses first-party analytics cookies to understand which pages and tools are valuable and how long sections are used. This information is genuinely helpful while the app is being developed.</p>
-      <p className="help-intro">Analytics record a random browser identifier, visits to app sections and high-level feature actions. They do not record BitCraft usernames, selected member identities, typed search text, admin credentials or database contents.</p>
-      <p className="help-intro">The optional Discord bot does not use analytics cookies. When enabled, Discord slash commands and notifications may process Discord server, channel and user identifiers, command options, public BitJita data, and notification delivery diagnostics so the bot can respond and administrators can diagnose delivery issues.</p>
+      <p className="help-intro">Analytics record a random browser identifier, visits to app sections and high-level feature actions. They do not record typed search text, private credentials, the optional BitCraft Sync URL, or database contents.</p>
+      <p className="help-intro">The settlement you choose is stored in this browser and may be sent to the server to refresh shared public history for that settlement.</p>
       <p className="help-intro">Consent and analytics cookies last for up to 180 days. Raw usage events are retained for up to 90 days. You can change your preference in the app at any time; declining removes the analytics identifier from this browser.</p>
     </>
   );
@@ -3269,7 +3012,7 @@ function DedicatedLegalPage({ type }: { type: "terms" | "privacy" }) {
         <header>
           <div>
             {isTerms ? <FileText size={22} /> : <Shield size={22} />}
-            <h1>{isTerms ? "Terms & Discord Bot Use" : "Privacy Policy"}</h1>
+            <h1>{isTerms ? "Terms of Use" : "Privacy Policy"}</h1>
           </div>
           <a className="toolbar-button" href="/"><ExternalLink size={14} /> Open app</a>
         </header>
@@ -3300,7 +3043,7 @@ function TermsDialog({ onClose, onPrivacy }: { onClose: () => void; onPrivacy: (
             <FileText size={19} />
             <h2 id="terms-title">Legal & Bot Terms</h2>
           </div>
-          <button onClick={onClose} aria-label="Close legal and bot terms"><X size={16} /></button>
+          <button onClick={onClose} aria-label="Close legal terms"><X size={16} /></button>
         </header>
         <TermsContent compact />
         <div className="toolbar">
@@ -3352,15 +3095,6 @@ function UserSettingsDialog({
   onToastSettingsChange,
   theme,
   onThemeChange,
-  auth,
-  members,
-  onDiscordLogin,
-  onDiscordLogout,
-  onLinkCharacter,
-  onSaveAccountSettings,
-  onLoadAccountSettings,
-  showAdminTools,
-  onOpenAdmin,
   onResetSettings,
   onClose,
 }: {
@@ -3370,19 +3104,10 @@ function UserSettingsDialog({
   onToastSettingsChange: (settings: UserToastSettings) => void;
   theme: ThemeSettings;
   onThemeChange: (theme: ThemeSettings) => void;
-  auth: UserAuthState;
-  members: AnyRecord[];
-  onDiscordLogin: () => void;
-  onDiscordLogout: () => Promise<void>;
-  onLinkCharacter: (member: AnyRecord | null) => Promise<void>;
-  onSaveAccountSettings: () => Promise<void>;
-  onLoadAccountSettings: () => void;
-  showAdminTools: boolean;
-  onOpenAdmin: () => void;
   onResetSettings: () => void;
   onClose: () => void;
 }) {
-  const [settingsSection, setSettingsSection] = React.useState<"account" | "theme" | "preferences" | "data">("account");
+  const [settingsSection, setSettingsSection] = React.useState<"theme" | "preferences" | "data">("preferences");
   React.useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -3391,15 +3116,9 @@ function UserSettingsDialog({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
   const [themeExpanded, setThemeExpanded] = React.useState(false);
-  const [themeShareOpen, setThemeShareOpen] = React.useState(false);
-  const [themeImportText, setThemeImportText] = React.useState("");
-  const [themeShareStatus, setThemeShareStatus] = React.useState("");
   const [customTheme, setCustomTheme] = React.useState<ThemeSettings>(() => loadSavedCustomTheme());
   const [customThemeStatus, setCustomThemeStatus] = React.useState("");
   const [lastThemeChoice, setLastThemeChoice] = React.useState("");
-  const [selectedCharacterId, setSelectedCharacterId] = React.useState(auth.user?.characterPlayerId ?? "");
-  const [accountStatus, setAccountStatus] = React.useState("");
-  React.useEffect(() => setSelectedCharacterId(auth.user?.characterPlayerId ?? ""), [auth.user?.characterPlayerId]);
   const themeFingerprint = JSON.stringify(theme);
   const customThemeFingerprint = JSON.stringify(customTheme);
   const matchedBuiltInPreset = THEME_PRESETS.find((preset) => JSON.stringify(preset.theme) === themeFingerprint)?.id;
@@ -3415,7 +3134,6 @@ function UserSettingsDialog({
     onThemeChange({ ...theme, [key]: clampThemeNumber(value, config.min, config.max, DEFAULT_THEME[key]) });
   };
   const previewGradient = `linear-gradient(180deg, ${theme.gradientTop} ${theme.gradientTopStop}%, ${theme.gradientMid} ${theme.gradientMidStop}%, ${theme.gradientBase} ${theme.gradientFadeStop}%)`;
-  const themePayload = React.useMemo(() => JSON.stringify({ schema: "timbersteel-local-theme", version: 2, theme }, null, 2), [theme]);
   const saveCustomTheme = () => {
     localStorage.setItem(CUSTOM_THEME_STORAGE_KEY, JSON.stringify({ schema: "timbersteel-local-theme", version: 2, theme }));
     setCustomTheme(theme);
@@ -3427,66 +3145,8 @@ function UserSettingsDialog({
     onThemeChange(customTheme);
     setLastThemeChoice("custom");
     setThemeExpanded(true);
-    setThemeShareStatus("");
     setCustomThemeStatus(customThemeFingerprint === JSON.stringify(DEFAULT_THEME) ? "Custom starts from the default theme until you save your own." : "");
   };
-  const openThemeShare = () => {
-    const nextOpen = !themeShareOpen;
-    if (nextOpen && !themeImportText.trim()) setThemeImportText(themePayload);
-    setThemeShareStatus("");
-    setThemeShareOpen(nextOpen);
-  };
-  const copyTheme = async () => {
-    setThemeImportText(themePayload);
-    try {
-      await navigator.clipboard?.writeText(themePayload);
-      setThemeShareStatus("Theme copied to clipboard.");
-    } catch {
-      setThemeShareStatus("Theme JSON is ready below. Copy it manually if clipboard access is blocked.");
-    }
-  };
-  const downloadTheme = () => {
-    const blob = new Blob([themePayload], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "timbersteel-theme.json";
-    link.click();
-    URL.revokeObjectURL(url);
-    setThemeShareStatus("Theme export downloaded.");
-  };
-  const applyImportedTheme = () => {
-    try {
-      const parsed = JSON.parse(themeImportText);
-      const result = normalizeThemeCandidate(parsed);
-      if (!result) throw new Error("No recognised colour fields were found.");
-      onThemeChange(result.theme);
-      setLastThemeChoice("custom-editing");
-      setThemeExpanded(true);
-      setThemeShareStatus(`Imported ${result.count} theme setting${result.count === 1 ? "" : "s"}. Save as Custom if you want to keep it in the preset list.`);
-    } catch (error) {
-      setThemeShareStatus(error instanceof Error ? error.message : "Could not import that theme JSON.");
-    }
-  };
-  const selectedCharacter = members.find((member) => String(member.playerEntityId) === selectedCharacterId) ?? null;
-  const memberDisplayName = (member: AnyRecord | null | undefined) => String(member?.userName ?? member?.username ?? member?.playerUsername ?? member?.name ?? member?.playerEntityId ?? "Unknown member");
-  const accountName = auth.user?.globalName || auth.user?.username || "Discord user";
-  const statusLabel = auth.user?.characterStatus === "approved"
-    ? "Approved"
-    : auth.user?.characterStatus === "pending"
-      ? "Awaiting admin approval"
-      : auth.user?.characterStatus === "rejected"
-        ? "Rejected"
-        : "Not linked";
-  async function runAccountAction(action: () => Promise<void>, success: string) {
-    setAccountStatus("");
-    try {
-      await action();
-      setAccountStatus(success);
-    } catch (error) {
-      setAccountStatus(error instanceof Error ? error.message : String(error));
-    }
-  }
   return (
     <div className="help-overlay" onClick={onClose}>
       <section className="help-dialog settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title" onClick={(event) => event.stopPropagation()}>
@@ -3500,7 +3160,6 @@ function UserSettingsDialog({
         <div className="settings-shell">
           <nav className="settings-section-tabs" aria-label="Settings sections">
             {([
-              ["account", "Account", MessageCircle],
               ["theme", "Theme", Star],
               ["preferences", "Preferences", Bell],
               ["data", "Local data", HardDrive],
@@ -3511,60 +3170,6 @@ function UserSettingsDialog({
             ))}
           </nav>
           <div className="settings-grid">
-          {settingsSection === "account" ? <section className="settings-account-section">
-            <div className="settings-section-heading">
-              <div>
-                <h3>Discord Account</h3>
-                <p className="legend">Optional sign-in lets you link your Discord account to a BitCraft character and save settings beyond this browser.</p>
-              </div>
-              {auth.user ? <button className="toolbar-button" onClick={() => runAccountAction(onDiscordLogout, "Signed out of Discord.")}><LogOut size={14} /> Sign out</button> : null}
-            </div>
-            {!auth.user ? (
-              <div className="account-connect-card">
-                <div>
-                  <strong>Not signed in</strong>
-                  <span>{auth.discordLoginEnabled ? "Sign in with Discord to request a character link and save your preferences on this server." : "Discord login is not configured on this server yet."}</span>
-                </div>
-                <button className="toolbar-button primary" disabled={!auth.discordLoginEnabled} onClick={onDiscordLogin}><MessageCircle size={14} /> Sign in with Discord</button>
-              </div>
-            ) : (
-              <div className="account-profile-card">
-                <div className="account-profile-main">
-                  {auth.user.avatarUrl ? <img src={auth.user.avatarUrl} alt="" /> : <span>{accountName.slice(0, 1).toUpperCase()}</span>}
-                  <div>
-                    <strong>{accountName}</strong>
-                    <small>Discord ID {auth.user.discordId}</small>
-                  </div>
-                  <em className={`link-status ${auth.user.characterStatus}`}>{statusLabel}</em>
-                </div>
-                <div className="account-link-grid">
-                  <label className="field">
-                    <span>BitCraft character</span>
-                    <select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}>
-                      <option value="">Select your character</option>
-                      {auth.user.characterPlayerId && !members.some((member) => String(member.playerEntityId) === String(auth.user?.characterPlayerId)) ? <option value={auth.user.characterPlayerId}>{auth.user.characterName || auth.user.characterPlayerId}</option> : null}
-                      {members.map((member) => <option key={member.playerEntityId ?? memberDisplayName(member)} value={String(member.playerEntityId ?? "")}>{memberDisplayName(member)}</option>)}
-                    </select>
-                  </label>
-                  <button className="toolbar-button primary" disabled={!selectedCharacter} onClick={() => runAccountAction(() => onLinkCharacter(selectedCharacter), "Character link request saved for admin approval.")}><UserPlus size={14} /> Request link approval</button>
-                </div>
-                <div className="settings-account-actions">
-                  <button className="toolbar-button" onClick={() => runAccountAction(onSaveAccountSettings, "Settings saved to your Discord account.")}><Save size={14} /> Save settings to account</button>
-                  <button className="toolbar-button" disabled={!auth.user.settings || !Object.keys(auth.user.settings).length} onClick={onLoadAccountSettings}><Download size={14} /> Load saved settings</button>
-                </div>
-                {accountStatus ? <p className="theme-share-status">{accountStatus}</p> : null}
-              </div>
-            )}
-          </section> : null}
-          {settingsSection === "account" ? <section>
-            <h3>This Browser</h3>
-            <p className="legend">Your page, filters, density and notification preferences are saved in this browser only. This uses local browser storage, not analytics cookies, so it works even if analytics cookies are declined.</p>
-          </section> : null}
-          {settingsSection === "account" && showAdminTools ? <section>
-            <h3>Admin Tools</h3>
-            <p className="legend">For settlement monitor administrators. Opens the admin console where configuration, database, accounts and diagnostics are managed.</p>
-            <button className="toolbar-button" onClick={onOpenAdmin}><KeyRound size={14} /> Open Admin Console</button>
-          </section> : null}
           {settingsSection === "theme" ? <section className={`settings-theme-section ${themeExpanded ? "expanded" : ""}`}>
             <div className="settings-section-heading">
               <div>
@@ -3573,7 +3178,6 @@ function UserSettingsDialog({
               </div>
               <div className="settings-heading-actions">
                 <button className="toolbar-button" onClick={() => { onThemeChange(DEFAULT_THEME); setLastThemeChoice("default"); setThemeExpanded(false); }}><RefreshCw size={14} /> Reset Default</button>
-                <button className="toolbar-button" onClick={openThemeShare}><Share2 size={14} /> Import / Export</button>
                 {themeExpanded ? <button className="toolbar-button primary" onClick={saveCustomTheme}><Save size={14} /> Save Custom</button> : null}
               </div>
             </div>
@@ -3600,24 +3204,6 @@ function UserSettingsDialog({
               </button>
             </div>
             {customThemeStatus ? <p className="theme-share-status">{customThemeStatus}</p> : null}
-            {themeShareOpen ? (
-              <div className="theme-share-panel">
-                <div>
-                  <strong>Theme backup and sharing</strong>
-                  <p className="legend">Export this browser theme as JSON, or paste a shared Timbersteel theme below and apply it locally.</p>
-                </div>
-                <div className="theme-share-actions">
-                  <button className="toolbar-button" onClick={copyTheme}><Share2 size={14} /> Copy current theme</button>
-                  <button className="toolbar-button" onClick={downloadTheme}><Download size={14} /> Download JSON</button>
-                  <button className="toolbar-button primary" onClick={applyImportedTheme}><Upload size={14} /> Apply import</button>
-                </div>
-                <label className="field theme-json-field">
-                  <span>Theme JSON</span>
-                  <textarea value={themeImportText} onChange={(event) => setThemeImportText(event.target.value)} spellCheck={false} />
-                </label>
-                {themeShareStatus ? <p className="theme-share-status">{themeShareStatus}</p> : null}
-              </div>
-            ) : null}
             <div className="theme-editor-layout" hidden={!themeExpanded}>
               <div className="theme-field-groups">
                 <div className="theme-field-group">
@@ -3743,38 +3329,138 @@ function CookieBanner({ onConsent, onPrivacy }: { onConsent: (choice: Exclude<An
   );
 }
 
-function DiscordSignInPrompt({ authHref, onDiscordLogin, onClose, onSettings }: { authHref: string; onDiscordLogin: () => void; onClose: () => void; onSettings: () => void }) {
-  return (
-    <div className="help-overlay discord-signin-overlay" onClick={onClose}>
-      <section className="help-dialog discord-signin-dialog" role="dialog" aria-modal="true" aria-labelledby="discord-signin-title" onClick={(event) => event.stopPropagation()}>
-        <header>
-          <div>
-            <MessageCircle size={19} />
-            <h2 id="discord-signin-title">Sign in with Discord</h2>
-          </div>
-          <button onClick={onClose} aria-label="Close Discord sign-in prompt"><X size={16} /></button>
-        </header>
-        <div className="discord-signin-body">
-          <strong>Keep your preferences with you.</strong>
-          <p>Discord sign-in lets you link your BitCraft character for approval and save your app settings on this server instead of only in this browser.</p>
-          <ul>
-            <li><CheckCircle2 size={14} /> Request a verified character link.</li>
-            <li><CheckCircle2 size={14} /> Restore saved settings after changing browser or device.</li>
-            <li><CheckCircle2 size={14} /> Local browsing still works if you skip this.</li>
-          </ul>
-        </div>
-        <div className="help-actions">
-          <a className="toolbar-button primary" href={authHref} onClick={onDiscordLogin}><MessageCircle size={14} /> Sign in with Discord</a>
-          <button className="toolbar-button" onClick={onSettings}><Settings size={14} /> Open settings</button>
-          <button className="toolbar-button" onClick={onClose}>Maybe later</button>
-        </div>
-      </section>
-    </div>
-  );
+type SettlementSearchResult = {
+  entityId: string;
+  name: string;
+  owner?: string;
+  regionName?: string;
+  regionId?: string;
+  tier?: string | number;
+};
+
+function readLocalString(key: string, fallback = "") {
+  try {
+    return localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
+  }
 }
 
-function TablePanel({ title, subtitle, rows, columns }: { title: string; subtitle: string; rows: AnyRecord[]; columns: Array<[string, (row: AnyRecord, index: number) => React.ReactNode]> }) {
-  return <div className="panel"><Header title={title}>{subtitle}</Header><DataTable rows={rows} columns={columns} /></div>;
+function saveLocalMonitorSettings(claimId: string, syncUrl: string) {
+  localStorage.setItem(LOCAL_CLAIM_ID_STORAGE_KEY, claimId);
+  localStorage.setItem(LOCAL_SYNC_URL_STORAGE_KEY, syncUrl);
+}
+
+function validOptionalSyncUrl(value: string) {
+  if (!value.trim()) return true;
+  try {
+    const parsed = new URL(value.trim());
+    return parsed.protocol === "https:" && parsed.hostname === "bitcraftsync.app";
+  } catch {
+    return false;
+  }
+}
+
+function SettlementSetupDialog({
+  open,
+  currentClaimId,
+  currentSyncUrl,
+  mode = "dialog",
+  onSave,
+}: {
+  open: boolean;
+  currentClaimId: string;
+  currentSyncUrl: string;
+  mode?: "dialog" | "page";
+  onSave: (claimId: string, syncUrl: string) => void;
+}) {
+  const [query, setQuery] = React.useState("");
+  const [manualClaimId, setManualClaimId] = React.useState(currentClaimId);
+  const [syncUrlDraft, setSyncUrlDraft] = React.useState(currentSyncUrl);
+  const [results, setResults] = React.useState<SettlementSearchResult[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState("");
+  React.useEffect(() => {
+    setManualClaimId(currentClaimId);
+    setSyncUrlDraft(currentSyncUrl);
+  }, [currentClaimId, currentSyncUrl, open]);
+  React.useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setResults([]);
+      setError("");
+      setLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch(`${LOCAL_API}/claims/search?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error ?? "Settlement search failed");
+        setResults(Array.isArray(body.claims) ? body.claims : []);
+      } catch (err) {
+        if (!controller.signal.aborted) setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 250);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
+  if (!open) return null;
+  const syncUrlInvalid = !validOptionalSyncUrl(syncUrlDraft);
+  const canSaveManual = /^\d{8,}$/.test(manualClaimId.trim()) && !syncUrlInvalid;
+  const chooseSettlement = (settlement: SettlementSearchResult) => {
+    const id = String(settlement.entityId ?? "").trim();
+    if (!id) return;
+    onSave(id, syncUrlDraft.trim());
+  };
+  const content = (
+    <section className="help-dialog settlement-setup-dialog" role={mode === "dialog" ? "dialog" : "region"} aria-modal={mode === "dialog" ? "true" : undefined} aria-labelledby="settlement-setup-title" onClick={(event) => event.stopPropagation()}>
+      <header>
+        <div>
+          <Search size={19} />
+          <h2 id="settlement-setup-title">Choose Settlement</h2>
+        </div>
+      </header>
+      <div className="settlement-setup-body">
+        <label className="field">
+          <span>Search settlements</span>
+          <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Type a settlement name" />
+        </label>
+        <div className="settlement-search-results">
+          {loading ? <p className="legend">Searching settlements...</p> : null}
+          {error ? <p className="error">{error}</p> : null}
+          {!loading && query.trim().length >= 2 && !results.length && !error ? <p className="legend">No settlements found.</p> : null}
+          {results.map((settlement) => (
+            <button type="button" key={settlement.entityId} onClick={() => chooseSettlement(settlement)}>
+              <strong>{settlement.name || `Settlement ${settlement.entityId}`}</strong>
+              <span>{[settlement.owner ? `Owner ${settlement.owner}` : "", settlement.regionName || (settlement.regionId ? `Region ${settlement.regionId}` : ""), settlement.tier ? `T${settlement.tier}` : ""].filter(Boolean).join(" | ")}</span>
+            </button>
+          ))}
+        </div>
+        <label className="field">
+          <span>Settlement ID</span>
+          <input value={manualClaimId} onChange={(event) => setManualClaimId(event.target.value)} placeholder="Paste a claim/settlement ID" />
+        </label>
+        <label className="field">
+          <span>BitCraft Sync URL (optional)</span>
+          <input value={syncUrlDraft} onChange={(event) => setSyncUrlDraft(event.target.value)} placeholder="https://bitcraftsync.app/s/..." />
+        </label>
+        {syncUrlInvalid ? <p className="error">BitCraft Sync URL must be a bitcraftsync.app HTTPS link, or left blank.</p> : null}
+      </div>
+      <div className="help-actions">
+        <button className="toolbar-button primary" disabled={!canSaveManual} onClick={() => onSave(manualClaimId.trim(), syncUrlDraft.trim())}><Save size={14} /> Save Settlement</button>
+      </div>
+    </section>
+  );
+  if (mode === "page") return <main className="onboarding-page">{content}</main>;
+  return <div className="help-overlay settlement-setup-overlay">{content}</div>;
 }
 
 function AppSkeleton() {
@@ -3818,1282 +3504,15 @@ function ApiErrorState({ message }: { message: string }) {
   );
 }
 
-type AdminTab = "status" | "analytics" | "configuration" | "discord" | "database" | "users" | "accounts" | "audit" | "backups";
-
-function bytesLabel(value: unknown) {
-  const bytes = toNumber(value);
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function AdminPanel({
-  settings,
-  onSettingsSaved,
-  botOnly = false,
-  onAuthChanged,
-}: {
-  settings: AppSettings;
-  onSettingsSaved: (settings: AppSettings) => void;
-  botOnly?: boolean;
-  onAuthChanged?: (auth: AnyRecord) => void;
-}) {
-  const [auth, setAuth] = React.useState<AnyRecord | null>(null);
-  const [authLoading, setAuthLoading] = React.useState(true);
-  const [username, setUsername] = React.useState("admin");
-  const [password, setPassword] = React.useState("");
-  const [setupKey, setSetupKey] = React.useState("");
-  const [tab, setTab] = React.useState<AdminTab>(botOnly ? "discord" : "status");
-  const [botSection, setBotSection] = React.useState<BotSection>("setup");
-  const [message, setMessage] = React.useState<string | null>(null);
-  const [messageKind, setMessageKind] = React.useState<"success" | "error" | "info">("info");
-  const [draft, setDraft] = React.useState<AppSettings>(settings);
-  const [status, setStatus] = React.useState<AnyRecord | null>(null);
-  const [diagnostics, setDiagnostics] = React.useState<AnyRecord[]>([]);
-  const [tables, setTables] = React.useState<AnyRecord[]>([]);
-  const [selectedTable, setSelectedTable] = React.useState("");
-  const [tableResult, setTableResult] = React.useState<AnyRecord>({ rows: [], columns: [], total: 0, offset: 0, limit: 50 });
-  const [tableSearch, setTableSearch] = React.useState("");
-  const [tableOffset, setTableOffset] = React.useState(0);
-  const [users, setUsers] = React.useState<AnyRecord[]>([]);
-  const [linkedAccounts, setLinkedAccounts] = React.useState<AppUser[]>([]);
-  const [newUser, setNewUser] = React.useState({ username: "", password: "", role: "admin" });
-  const [resetUser, setResetUser] = React.useState("");
-  const [resetPassword, setResetPassword] = React.useState("");
-  const [auditData, setAuditData] = React.useState<AnyRecord>({ auditLog: [], logins: [] });
-  const [backups, setBackups] = React.useState<AnyRecord[]>([]);
-  const [analyticsDays, setAnalyticsDays] = React.useState("30");
-  const [analyticsData, setAnalyticsData] = React.useState<AnyRecord | null>(null);
-  const [discordDiscovery, setDiscordDiscovery] = React.useState<AnyRecord | null>(null);
-  const [discordToolResults, setDiscordToolResults] = React.useState<Record<string, AnyRecord | null>>({});
-  const [expandedRoleOption, setExpandedRoleOption] = React.useState<string | null>(null);
-  const [roleDraft, setRoleDraft] = React.useState({ name: "", color: "#5865f2", hoist: false, mentionable: false });
-  const [announcementDraft, setAnnouncementDraft] = React.useState({ channelId: "", title: "", message: "" });
-  const [pinnedDraft, setPinnedDraft] = React.useState({ channelId: "", messageId: "", title: "", message: "" });
-  const [eventDraft, setEventDraft] = React.useState({ name: "", description: "", location: "Discord", startTime: "", endTime: "" });
-  const [moderationDraft, setModerationDraft] = React.useState({ userId: "", reason: "", timeoutMinutes: "60", deleteMessageSeconds: "0", channelId: "", purgeLimit: "25", unbanUserId: "" });
-  const [safetyDraft, setSafetyDraft] = React.useState({ blockedWords: "", ruleName: "Timbersteel keyword filter", slowmodeSeconds: "10", lockdownChannelId: "", nicknamePattern: "^[A-Za-z0-9 _.-]{2,32}$" });
-  const [recordsDraft, setRecordsDraft] = React.useState({ userId: "", reason: "", note: "" });
-  const [pollDraft, setPollDraft] = React.useState({ channelId: "", title: "", options: "" });
-  const [rsvpDraft, setRsvpDraft] = React.useState({ channelId: "", title: "", description: "" });
-  const [embedDraft, setEmbedDraft] = React.useState({ channelId: "", title: "", description: "", color: "#f0c64f" });
-  const [commandDraft, setCommandDraft] = React.useState({ name: "", description: "", response: "" });
-  const [customCommands, setCustomCommands] = React.useState<AnyRecord[]>([]);
-  const [discordDiagnosticsFilter, setDiscordDiagnosticsFilter] = React.useState("all");
-  const discordToolResult = discordToolResults[botSection] ?? null;
-  const adminRoles: Record<string, string> = auth?.roles ?? { owner: "Owner", admin: "Administrator", "discord-manager": "Discord Manager", moderator: "Moderator", viewer: "Viewer" };
-  const canManageAdmins = Boolean(auth?.user?.permissions?.includes("*") || auth?.user?.permissions?.includes("users.manage"));
-  const setAdminAuthState = React.useCallback((next: AnyRecord) => {
-    setAuth(next);
-    onAuthChanged?.(next);
-  }, [onAuthChanged]);
-  const setDiscordToolResult = React.useCallback((result: AnyRecord | null) => {
-    setDiscordToolResults((current) => ({ ...current, [botSection]: result }));
-  }, [botSection]);
-
-  async function api(path: string, options: RequestInit = {}) {
-    const headers = new Headers(options.headers);
-    headers.set("content-type", "application/json");
-    if (options.method && options.method !== "GET" && auth?.csrfToken) headers.set("x-csrf-token", String(auth.csrfToken));
-    const response = await fetch(`${LOCAL_API}${path}`, {
-      ...options,
-      headers,
-    });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
-    return body;
-  }
-
-  async function run(task: () => Promise<void>, success?: string) {
-    setMessage(null);
-    setMessageKind("info");
-    try {
-      await task();
-      if (success) {
-        setMessageKind("success");
-        setMessage(success);
-      }
-    } catch (error) {
-      setMessageKind("error");
-      setMessage(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  async function refreshStatus() {
-    setStatus(await api("/admin/status"));
-  }
-
-  async function refreshTables() {
-    const result = await api("/admin/tables");
-    setTables(result.tables ?? []);
-    setSelectedTable((current) => current || result.tables?.[0]?.name || "");
-  }
-
-  async function refreshUsers() {
-    setUsers((await api("/admin/users")).users ?? []);
-  }
-
-  async function refreshLinkedAccounts() {
-    setLinkedAccounts((await api("/admin/user-accounts")).accounts ?? []);
-  }
-
-  async function refreshAudit() {
-    setAuditData(await api("/admin/audit?limit=100"));
-  }
-
-  async function refreshBackups() {
-    setBackups((await api("/admin/backups")).backups ?? []);
-  }
-
-  async function refreshAnalytics() {
-    setAnalyticsData(await api(`/admin/analytics?days=${encodeURIComponent(analyticsDays)}`));
-  }
-
-  async function refreshDiscordDiscovery() {
-    setDiscordDiscovery(await api("/admin/discord/discovery"));
-  }
-
-  async function refreshCustomCommands() {
-    setCustomCommands((await api("/admin/discord/custom-commands")).commands ?? []);
-  }
-
-  React.useEffect(() => {
-    api("/admin/me").then(setAdminAuthState).catch((error) => {
-      setAdminAuthState({ authenticated: false, setupRequired: false, error: error instanceof Error ? error.message : String(error) });
-      setMessageKind("error");
-      setMessage(error.message);
-    }).finally(() => setAuthLoading(false));
-  }, []);
-  React.useEffect(() => setDraft(settings), [settings]);
-  const hasUnsavedSettings = React.useMemo(() => JSON.stringify(draft) !== JSON.stringify(settings), [draft, settings]);
-  React.useEffect(() => {
-    if (!auth?.authenticated) return;
-    run(async () => {
-      if (tab === "status" || tab === "discord") await refreshStatus();
-      if (botOnly && tab === "discord") await refreshDiscordDiscovery();
-      if (botOnly && tab === "discord" && botSection === "commands") await refreshCustomCommands();
-      if (tab === "analytics") await refreshAnalytics();
-      if (tab === "database") await refreshTables();
-      if (tab === "users") await refreshUsers();
-      if (tab === "accounts") await refreshLinkedAccounts();
-      if (tab === "audit") await refreshAudit();
-      if (tab === "backups") await refreshBackups();
-    });
-  }, [auth?.authenticated, tab, analyticsDays, botSection]);
-  React.useEffect(() => {
-    if (!auth?.authenticated || tab !== "database" || !selectedTable) return;
-    const timer = window.setTimeout(() => {
-      run(async () => setTableResult(await api(`/admin/table?name=${encodeURIComponent(selectedTable)}&limit=50&offset=${tableOffset}&search=${encodeURIComponent(tableSearch)}`)));
-    }, 150);
-    return () => window.clearTimeout(timer);
-  }, [auth?.authenticated, selectedTable, tableOffset, tableSearch, tab]);
-
-  async function submitAuth(event: React.FormEvent) {
-    event.preventDefault();
-    await run(async () => {
-      const route = auth?.setupRequired ? "/admin/setup" : "/admin/login";
-      const result = await api(route, { method: "POST", body: JSON.stringify({ username, password, setupKey }) });
-      setAdminAuthState(result);
-      setPassword("");
-      setSetupKey("");
-    });
-  }
-
-  async function saveSettings() {
-    await run(async () => {
-      const result = await api("/admin/settings", { method: "PUT", body: JSON.stringify(draft) });
-      const next = normalizeAppSettings(result);
-      setDraft(next);
-      onSettingsSaved(next);
-    }, "Settings saved and applied.");
-  }
-
-  function revertSettings() {
-    setDraft(settings);
-    setMessageKind("info");
-    setMessage("Unsaved changes reverted.");
-  }
-
-  function updateDraft<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
-    setDraft((current) => ({ ...current, [key]: value }));
-  }
-
-  function updateDiscord(value: Partial<DiscordSettings>) {
-    setDraft((current) => ({ ...current, discord: { ...current.discord, ...value } }));
-  }
-
-  function updateDiscordNotify(key: keyof DiscordSettings["notify"], value: boolean) {
-    setDraft((current) => ({ ...current, discord: { ...current.discord, notify: { ...current.discord.notify, [key]: value } } }));
-  }
-
-  function updateDiscordPresence(value: Partial<DiscordPresence>) {
-    setDraft((current) => ({ ...current, discord: { ...current.discord, presence: { ...current.discord.presence, ...value } } }));
-  }
-
-  function updateDiscordChannel(key: string, value: string) {
-    setDraft((current) => ({
-      ...current,
-      discord: {
-        ...current.discord,
-        channels: { ...current.discord.channels, [key]: value },
-        craftChannels: key in DEFAULT_CRAFT_CHANNELS ? { ...current.discord.craftChannels, [key]: value } : current.discord.craftChannels,
-        ...(key === "notifications" ? { channelId: value } : {}),
-      },
-    }));
-  }
-
-  function updateDiscordRole(key: string, value: string) {
-    setDraft((current) => ({ ...current, discord: { ...current.discord, craftRoles: { ...current.discord.craftRoles, [key]: value } } }));
-  }
-  function updateDiscordColourRole(key: string, patch: Partial<ColourRoleDefinition>) {
-    setDraft((current) => ({
-      ...current,
-      discord: {
-        ...current.discord,
-        colourRoles: current.discord.colourRoles.map((entry) => entry.key === key ? { ...entry, ...patch } : entry),
-      },
-    }));
-  }
-
-  function addDiscordColourRole() {
-    const label = `Colour ${draft.discord.colourRoles.length + 1}`;
-    setDraft((current) => ({
-      ...current,
-      discord: {
-        ...current.discord,
-        colourRoles: [...current.discord.colourRoles, { key: uniqueKey(), label, roleName: label, roleId: "", color: 0xf4c430 }],
-      },
-    }));
-  }
-
-  function removeDiscordColourRole(key: string) {
-    setDraft((current) => ({ ...current, discord: { ...current.discord, colourRoles: current.discord.colourRoles.filter((entry) => entry.key !== key) } }));
-  }
-
-  function updateDiscordRolePanel(panelKey: string, patch: Partial<DiscordRolePanel>) {
-    setDraft((current) => ({ ...current, discord: { ...current.discord, rolePanels: current.discord.rolePanels.map((panel) => panel.key === panelKey ? { ...panel, ...patch } : panel) } }));
-  }
-
-  function updateDiscordRolePanelOption(panelKey: string, optionKey: string, patch: Partial<DiscordRoleOption>) {
-    setDraft((current) => ({
-      ...current,
-      discord: {
-        ...current.discord,
-        rolePanels: current.discord.rolePanels.map((panel) => panel.key === panelKey ? { ...panel, options: panel.options.map((option) => option.key === optionKey ? { ...option, ...patch } : option) } : panel),
-      },
-    }));
-  }
-
-  function addDiscordRolePanelOption(panelKey: string) {
-    const label = "New Role";
-    const key = uniqueKey("role");
-    setDraft((current) => ({
-      ...current,
-      discord: {
-        ...current.discord,
-        rolePanels: current.discord.rolePanels.map((panel) => panel.key === panelKey ? { ...panel, options: [...panel.options, { key, label, roleId: "", emoji: "" }] } : panel),
-      },
-    }));
-    setExpandedRoleOption(`${panelKey}:${key}`);
-  }
-
-  function removeDiscordRolePanelOption(panelKey: string, optionKey: string) {
-    setDraft((current) => ({ ...current, discord: { ...current.discord, rolePanels: current.discord.rolePanels.map((panel) => panel.key === panelKey ? { ...panel, options: panel.options.filter((option) => option.key !== optionKey) } : panel) } }));
-    setExpandedRoleOption((current) => current === `${panelKey}:${optionKey}` ? null : current);
-  }
-
-  function updateWelcomeFlow(patch: Partial<DiscordWelcomeFlow>) {
-    setDraft((current) => ({ ...current, discord: { ...current.discord, welcomeFlow: { ...current.discord.welcomeFlow, ...patch } } }));
-  }
-
-  async function syncDiscordColourRoles() {
-    const result = await api("/admin/discord/colour-roles/manage", { method: "POST", body: JSON.stringify({ colourRoles: draft.discord.colourRoles, colourRolesChannelId: draft.discord.colourRolesChannelId }) });
-    const next = normalizeAppSettings(result.settings);
-    setDraft(next);
-    onSettingsSaved(next);
-    await refreshDiscordDiscovery();
-  }
-
-  async function createDiscordRoleFromDashboard() {
-    const result = await api("/admin/discord/roles/create", { method: "POST", body: JSON.stringify(roleDraft) });
-    setRoleDraft((current) => ({ ...current, name: "" }));
-    await refreshDiscordDiscovery();
-    setDiscordToolResult({ createdRole: result.role });
-  }
-
-  async function postRolePanel(panelKey: string) {
-    const result = await api("/admin/discord/role-panel/post", { method: "POST", body: JSON.stringify({ panelKey }) });
-    const next = normalizeAppSettings(result.settings);
-    setDraft(next);
-    onSettingsSaved(next);
-  }
-
-  async function postWelcomeFlow() {
-    const result = await api("/admin/discord/welcome/post", { method: "POST", body: "{}" });
-    const next = normalizeAppSettings(result.settings);
-    setDraft(next);
-    onSettingsSaved(next);
-  }
-
-  async function runModerationAction(action: "timeout" | "kick" | "ban" | "unban" | "purge") {
-    const payload = action === "purge"
-      ? { channelId: moderationDraft.channelId, limit: Number(moderationDraft.purgeLimit), reason: moderationDraft.reason }
-      : action === "unban"
-        ? { userId: moderationDraft.unbanUserId || moderationDraft.userId, reason: moderationDraft.reason }
-        : {
-          userId: moderationDraft.userId,
-          reason: moderationDraft.reason,
-          minutes: action === "timeout" ? Number(moderationDraft.timeoutMinutes) : undefined,
-          deleteMessageSeconds: action === "ban" ? Number(moderationDraft.deleteMessageSeconds) : undefined,
-        };
-    const result = await api(`/admin/discord/moderation/${action}`, { method: "POST", body: JSON.stringify(payload) });
-    setDiscordToolResult({ ...result, __type: "moderationAction" });
-  }
-
-  function confirmDanger(message: string, phrase = "CONFIRM") {
-    const response = window.prompt(`${message}\n\nType ${phrase} to continue.`);
-    return response === phrase;
-  }
-
-  function confirmModeration(message: string) {
-    return confirmDanger(message);
-  }
-
-  async function runBotEndpoint(path: string, payload: AnyRecord, type: string) {
-    const result = await api(path, { method: "POST", body: JSON.stringify(payload) });
-    setDiscordToolResult({ ...result, __type: type });
-    return result;
-  }
-
-  function updateNotificationChannel(key: string, value: string) {
-    setDraft((current) => ({ ...current, discord: { ...current.discord, notificationChannels: { ...current.discord.notificationChannels, [key]: value } } }));
-  }
-
-  async function uploadBrand(type: "logo" | "favicon", file?: File) {
-    if (!file) return;
-    if (file.size > 1024 * 1024) {
-      setMessageKind("error");
-      return setMessage("Image must be smaller than 1 MB.");
-    }
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(new Error("Unable to read image"));
-      reader.readAsDataURL(file);
-    });
-    await run(async () => {
-      const result = await api("/admin/branding", { method: "POST", body: JSON.stringify({ type, dataUrl }) });
-      const next = { ...draft, branding: result.branding };
-      setDraft(next);
-      onSettingsSaved(next);
-    }, `${type === "logo" ? "Logo" : "Favicon"} uploaded.`);
-  }
-
-  async function removeBrand(type: "logo" | "favicon") {
-    await run(async () => {
-      const result = await api(`/admin/branding?type=${type}`, { method: "DELETE" });
-      const next = { ...draft, branding: result.branding };
-      setDraft(next);
-      onSettingsSaved(next);
-    }, `${type === "logo" ? "Logo" : "Favicon"} removed.`);
-  }
-
-  const tabs: Array<[AdminTab, string]> = botOnly ? [] : [["status", "Status"], ["analytics", "Analytics"], ["configuration", "Configuration"], ["database", "Database"], ["users", "Administrators"], ["accounts", "Linked Accounts"], ["audit", "Audit"], ["backups", "Backups"]];
-  const discordTestButtons = [
-    ["basic", "Basic"],
-    ["listing", "Listing"],
-    ["sale", "Sale"],
-    ["craftStarted", "Craft Started"],
-    ["craftCompleted", "Craft Completed"],
-    ["supplies", "Supplies"],
-    ["appUpdate", "App Update"],
-  ] as const;
-  if (authLoading) return <div className="panel admin-login"><Header title="Admin">Checking administrator session</Header><div className="loading">Loading...</div></div>;
-  if (!auth?.authenticated) {
-    return (
-      <div className="panel admin-login">
-        <header className="members-topbar admin-topbar">
-          <div>
-            <h2>{botOnly ? "Discord Bot Control" : "Admin"}</h2>
-            <p>{auth?.setupRequired ? "Create the first administrator account" : botOnly ? "Sign in to manage bot settings and notifications" : "Sign in to manage this installation"}</p>
-          </div>
-        </header>
-        <form className="form-card" onSubmit={submitAuth}>
-          <label className="field"><span>Username</span><input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" /></label>
-          {auth?.setupKeyRequired ? <label className="field"><span>Server Setup Key</span><input type="password" value={setupKey} onChange={(event) => setSetupKey(event.target.value)} autoComplete="one-time-code" /></label> : null}
-          <label className="field"><span>Password</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={12} autoComplete={auth?.setupRequired ? "new-password" : "current-password"} /></label>
-          <button className="toolbar-button primary" type="submit"><KeyRound size={15} /> {auth?.setupRequired ? "Create Administrator" : "Sign In"}</button>
-          {message ? <p className="legend">{message}</p> : null}
-        </form>
-      </div>
-    );
-  }
-
-  const tableRows: AnyRecord[] = tableResult.rows ?? [];
-  const tableColumns = (tableResult.columns ?? Object.keys(tableRows[0] ?? {})).slice(0, 10);
-  const discordChannelLabel = (key: string) => {
-    if (key === "notifications") return "Default notifications";
-    if (key === "modNotes") return "Mod notes";
-    if (key === "modLog") return "Mod log";
-    return key[0].toUpperCase() + key.slice(1);
-  };
-  const channelOptions = Object.entries(draft.discord.channels ?? {}).map(([key, id]) => ({ key, label: discordChannelLabel(key), id })).filter((entry) => entry.id || entry.key === "notifications");
-  const channelSelect = (key: string, value: string, allowProfession = false) => (
-    <select value={value} onChange={(event) => updateNotificationChannel(key, event.target.value)}>
-      {allowProfession ? <option value="profession">Profession channel</option> : null}
-      {channelOptions.map((entry) => <option key={entry.key} value={entry.key}>{entry.label}</option>)}
-    </select>
-  );
-  const discoveredChannels: AnyRecord[] = discordDiscovery?.channels ?? [];
-  const discoveredRoles: AnyRecord[] = discordDiscovery?.roles ?? [];
-  const discoveredMembers: AnyRecord[] = discordDiscovery?.members ?? [];
-  const roleById = (id: string) => discoveredRoles.find((role) => String(role.id) === String(id));
-  const roleMemberCountText = (role: AnyRecord | undefined | null) => role?.memberCountAvailable === false ? "Member count unavailable" : `${formatNumber(role?.memberCount)} members`;
-  const roleStatusText = (role: AnyRecord | undefined | null) => role ? `${roleMemberCountText(role)} | ${role.manageabilityReason ?? (role.botCanManage ? "Bot can manage" : "Not manageable")}` : "";
-  const memberCountWarning = discordDiscovery?.memberCountAvailable === false ? (
-    <div className="error">Discord member counts are unavailable. Enable the bot's Server Members Intent in the Discord Developer Portal, then sync the server again. {discordDiscovery.memberCountError ? `Discord returned: ${discordDiscovery.memberCountError}` : ""}</div>
-  ) : null;
-  const channelIdSelect = (value: string, onChange: (value: string) => void) => (
-    <select value={value} onChange={(event) => onChange(event.target.value)}>
-      <option value="">Select a channel</option>
-      {value && !discoveredChannels.some((channel) => String(channel.id) === String(value)) ? <option value={value}>Unknown channel ({value})</option> : null}
-      {discoveredChannels.map((channel) => <option key={channel.id} value={channel.id}>{channel.label ?? `#${channel.name}`} ({channel.id})</option>)}
-    </select>
-  );
-  const memberIdSelect = (value: string, onChange: (value: string) => void) => (
-    <select value={value} onChange={(event) => onChange(event.target.value)}>
-      <option value="">Select a member</option>
-      {value && !discoveredMembers.some((member) => String(member.id) === String(value)) ? <option value={value}>Unknown member ({value})</option> : null}
-      {discoveredMembers.map((member) => <option key={member.id} value={member.id}>{member.username ?? member.id} ({member.id})</option>)}
-    </select>
-  );
-  const roleIdSelect = (value: string, onChange: (value: string) => void) => (
-    <select value={value} onChange={(event) => onChange(event.target.value)}>
-      <option value="">Select a role</option>
-      {value && !discoveredRoles.some((role) => String(role.id) === String(value)) ? <option value={value}>Unknown role ({value})</option> : null}
-      {discoveredRoles.map((role) => <option key={role.id} value={role.id}>{role.name}{role.botCanManage ? "" : ` - ${role.manageabilityReason ?? "not manageable"}`}</option>)}
-    </select>
-  );
-  const discordDelivery = status?.discord?.lastDelivery ?? {};
-  const discordLog: AnyRecord[] = Array.isArray(status?.discord?.deliveryLog) ? status.discord.deliveryLog : [];
-  const discordDeliveryLabel = discordDelivery.status === "failed"
-    ? `Failed ${dateLabel(discordDelivery.at)}: ${discordDelivery.error ?? "Unknown Discord error"}`
-    : discordDelivery.status === "sent"
-      ? `Sent ${dateLabel(discordDelivery.at)}: ${discordDelivery.eventType ?? "notification"}${discordDelivery.channelId ? ` to ${discordDelivery.channelId}` : ""}`
-      : discordDelivery.status === "skipped"
-        ? `Skipped ${dateLabel(discordDelivery.at)}: ${discordDelivery.reason ?? "Not enabled"}`
-        : "No Discord deliveries recorded";
-  const adminSetupItems = [
-    { label: "Administrator account", done: Boolean(auth?.user), detail: auth?.user?.username ? `Signed in as ${auth.user.username}` : "Create or sign in to an admin account." },
-    { label: "Settlement defaults", done: Boolean(draft.claimId), detail: draft.claimId ? `Settlement ${draft.claimId}` : "Add the monitored settlement ID." },
-    { label: "Local data collection", done: Boolean(status?.polling?.enabled || status?.counts?.snapshots), detail: status?.polling?.enabled ? `Collects every ${Math.round(toNumber(status.polling.intervalMs) / 1000)} seconds` : "Enable server polling in production or run manual collection." },
-    { label: "Database history", done: toNumber(status?.counts?.snapshots) > 0 || toNumber(status?.counts?.activity_events) > 0 || toNumber(status?.counts?.market_trades) > 0, detail: `${formatNumber(status?.counts?.snapshots)} snapshots, ${formatNumber(status?.counts?.market_trades)} trades` },
-    { label: "Branding", done: Boolean(draft.branding?.logo || draft.branding?.favicon), detail: draft.branding?.logo || draft.branding?.favicon ? "Custom brand assets configured." : "Optional logo and favicon can be added." },
-    { label: "Discord bot", done: Boolean(draft.discord?.botTokenConfigured && draft.discord?.enabled), detail: draft.discord?.botTokenConfigured ? (draft.discord.enabled ? "Enabled and token configured." : "Token configured, bot disabled.") : "Optional bot token not configured." },
-  ];
-  const completedSetupItems = adminSetupItems.filter((item) => item.done).length;
-  const botWorkflowItems = [
-    { label: "Connect bot", done: Boolean(draft.discord?.botTokenConfigured), detail: draft.discord?.botTokenConfigured ? `Token configured via ${draft.discord.botTokenSource ?? "server"}.` : "Add the bot token in Setup." },
-    { label: "Sync Discord server", done: Boolean(discoveredChannels.length || discoveredRoles.length || discoveredMembers.length), detail: `${formatNumber(discoveredChannels.length)} channels, ${formatNumber(discoveredRoles.length)} roles, ${formatNumber(discoveredMembers.length)} members cached.` },
-    { label: "Choose notification channels", done: Boolean(Object.values(draft.discord?.notificationChannels ?? {}).some(Boolean)), detail: "Route app, supply, craft and moderation messages." },
-    { label: "Register slash commands", done: Boolean(status?.discord?.registeredCommandsAt), detail: status?.discord?.registeredCommandsAt ? `Last registered ${dateLabel(status.discord.registeredCommandsAt)}.` : "Use Tests & Commands after settings are saved." },
-  ];
-
-  function discordSnowflakeDate(id: unknown) {
-    try {
-      const raw = String(id ?? "");
-      if (!/^\d+$/.test(raw)) return null;
-      return new Date(Number((BigInt(raw) >> 22n) + 1420070400000n));
-    } catch {
-      return null;
-    }
-  }
-
-  function discordAuditActionLabel(actionType: unknown) {
-    const labels: Record<string, string> = {
-      "1": "Guild updated",
-      "10": "Channel created",
-      "11": "Channel updated",
-      "12": "Channel deleted",
-      "13": "Channel permissions created",
-      "14": "Channel permissions updated",
-      "15": "Channel permissions deleted",
-      "20": "Member removed",
-      "21": "Member pruned",
-      "22": "Member banned",
-      "23": "Member unbanned",
-      "24": "Member updated",
-      "25": "Member roles updated",
-      "26": "Member moved",
-      "27": "Member disconnected",
-      "28": "Bot added",
-      "30": "Role created",
-      "31": "Role updated",
-      "32": "Role deleted",
-      "40": "Invite created",
-      "41": "Invite updated",
-      "42": "Invite deleted",
-      "50": "Webhook created",
-      "51": "Webhook updated",
-      "52": "Webhook deleted",
-      "60": "Emoji created",
-      "61": "Emoji updated",
-      "62": "Emoji deleted",
-      "72": "Message deleted",
-      "73": "Messages bulk deleted",
-      "74": "Message pinned",
-      "75": "Message unpinned",
-      "80": "Integration created",
-      "81": "Integration updated",
-      "82": "Integration deleted",
-      "90": "Stage instance created",
-      "91": "Stage instance updated",
-      "92": "Stage instance deleted",
-      "110": "Thread created",
-      "111": "Thread updated",
-      "112": "Thread deleted",
-      "121": "AutoMod rule created",
-      "122": "AutoMod rule updated",
-      "123": "AutoMod rule deleted",
-    };
-    const key = String(actionType ?? "");
-    return labels[key] ?? `Action ${key || "unknown"}`;
-  }
-
-  function discordAuditUserLabel(users: AnyRecord[], id: unknown) {
-    const user = users.find((entry) => String(entry.id) === String(id));
-    return String(user?.global_name ?? user?.username ?? id ?? "Unknown user");
-  }
-
-  function discordChangeLabel(change: AnyRecord) {
-    const key = String(change.key ?? "change").replaceAll("_", " ");
-    const next = change.new_value;
-    const previous = change.old_value;
-    const format = (value: unknown) => {
-      if (value === undefined) return "";
-      if (Array.isArray(value)) return `${formatNumber(value.length)} item${value.length === 1 ? "" : "s"}`;
-      if (typeof value === "object" && value !== null) return JSON.stringify(value);
-      return String(value);
-    };
-    if (next !== undefined && previous !== undefined) return `${key}: ${format(previous)} -> ${format(next)}`;
-    if (next !== undefined) return `${key}: ${format(next)}`;
-    if (previous !== undefined) return `${key}: removed ${format(previous)}`;
-    return key;
-  }
-
-  function renderDiscordToolResult(result: AnyRecord) {
-    const resultType = String(result.__type ?? "");
-    if (Array.isArray(result.entries) && Array.isArray(result.users)) {
-      return <div className="discord-audit-report">
-        <div className="split-header">
-          <div>
-            <h4>Audit Log</h4>
-            <p className="legend">Latest Discord server actions returned by the bot.</p>
-          </div>
-          <span className="role-option-status ok">{formatNumber(result.entries.length)} entries</span>
-        </div>
-        {!result.entries.length ? <div className="empty-state"><FileText />No audit entries returned.</div> : null}
-        <div className="discord-audit-list">{result.entries.map((entry: AnyRecord) => {
-          const occurredAt = discordSnowflakeDate(entry.id);
-          const changes = Array.isArray(entry.changes) ? entry.changes : [];
-          return <article className="discord-audit-entry" key={entry.id}>
-            <div className="discord-audit-icon"><FileText size={16} /></div>
-            <div>
-              <strong>{discordAuditActionLabel(entry.actionType)}</strong>
-              <span>{discordAuditUserLabel(result.users, entry.userId)}{entry.targetId ? ` -> ${entry.targetId}` : ""}</span>
-              {entry.reason ? <p>Reason: {entry.reason}</p> : null}
-              {changes.length ? <ul>{changes.slice(0, 5).map((change: AnyRecord, index: number) => <li key={`${entry.id}-${index}`}>{discordChangeLabel(change)}</li>)}</ul> : null}
-            </div>
-            <time>{occurredAt ? dateLabel(occurredAt.toISOString()) : entry.id}</time>
-          </article>;
-        })}</div>
-      </div>;
-    }
-    if (resultType === "roleCleanup" || (Array.isArray(result.unusedRoles) && Array.isArray(result.duplicateColours))) {
-      const unusedRoles = result.unusedRoles ?? [];
-      const duplicateColours = result.duplicateColours ?? [];
-      const missingConfiguredRoles = result.missingConfiguredRoles ?? [];
-      const notManageableConfiguredRoles = result.notManageableConfiguredRoles ?? [];
-      return <div className="discord-report">
-        <div className="split-header">
-          <div><h4>Role Cleanup</h4><p className="legend">Potential Discord role issues found from the latest server sync.</p></div>
-          <span className="role-option-status warn">{formatNumber(unusedRoles.length + duplicateColours.length + missingConfiguredRoles.length + notManageableConfiguredRoles.length)} findings</span>
-        </div>
-        <div className="discord-report-metrics">
-          <Info label="Unused roles" value={formatNumber(unusedRoles.length)} />
-          <Info label="Duplicate colours" value={formatNumber(duplicateColours.length)} />
-          <Info label="Missing configured" value={formatNumber(missingConfiguredRoles.length)} />
-          <Info label="Not manageable" value={formatNumber(notManageableConfiguredRoles.length)} />
-        </div>
-        <div className="discord-report-grid">
-          <section><h5>Unused Roles</h5>{unusedRoles.length ? unusedRoles.map((role: AnyRecord) => <div className="discord-report-row" key={role.id}><span className="role-swatch" style={{ backgroundColor: role.color ? `#${Number(role.color).toString(16).padStart(6, "0")}` : "transparent" }} /><strong>{role.name}</strong><small>{roleMemberCountText(role)} | {role.manageabilityReason ?? "Role can be reviewed"}</small></div>) : <p className="legend">No unused roles found.</p>}</section>
-          <section><h5>Duplicate Colours</h5>{duplicateColours.length ? duplicateColours.map((group: AnyRecord) => <div className="discord-report-row" key={group.color}><span className="role-swatch" style={{ backgroundColor: group.color ? `#${Number(group.color).toString(16).padStart(6, "0")}` : "transparent" }} /><strong>#{Number(group.color ?? 0).toString(16).padStart(6, "0")}</strong><small>{(group.roles ?? []).map((role: AnyRecord) => role.name).join(", ")}</small></div>) : <p className="legend">No duplicate role colours found.</p>}</section>
-          <section><h5>Missing Configured Roles</h5>{missingConfiguredRoles.length ? missingConfiguredRoles.map((roleId: string) => <div className="discord-report-row" key={roleId}><AlertTriangle size={15} /><strong>Missing role</strong><small>{roleId}</small></div>) : <p className="legend">All configured roles exist.</p>}</section>
-          <section><h5>Not Manageable</h5>{notManageableConfiguredRoles.length ? notManageableConfiguredRoles.map((role: AnyRecord) => <div className="discord-report-row" key={role.id}><Lock size={15} /><strong>{role.name}</strong><small>{role.manageabilityReason ?? "Bot cannot manage this role"}</small></div>) : <p className="legend">Configured roles are manageable.</p>}</section>
-        </div>
-      </div>;
-    }
-    if (resultType === "channelPermissions" || Array.isArray(result.channels)) {
-      const channels = result.channels ?? [];
-      const missing = channels.filter((channel: AnyRecord) => !channel.found);
-      const denied = channels.filter((channel: AnyRecord) => (channel.deniedConfiguredRoles ?? []).length);
-      return <div className="discord-report">
-        <div className="split-header">
-          <div><h4>Channel Checks</h4><p className="legend">Configured channels and role permission overwrite warnings.</p></div>
-          <span className={`role-option-status ${missing.length || denied.length ? "warn" : "ok"}`}>{missing.length || denied.length ? `${missing.length + denied.length} warnings` : "Looks good"}</span>
-        </div>
-        <div className="discord-report-metrics">
-          <Info label="Configured channels" value={formatNumber(channels.length)} />
-          <Info label="Missing channels" value={formatNumber(missing.length)} />
-          <Info label="Denied role overwrites" value={formatNumber(denied.length)} />
-        </div>
-        <div className="discord-report-list">{channels.map((channel: AnyRecord) => <article className="discord-report-item" key={`${channel.key}-${channel.id}`}>
-          <div className={`discord-report-dot ${channel.found ? "ok" : "warn"}`} />
-          <div><strong>{channel.name}</strong><span>{channel.key} | {channel.id}</span></div>
-          <span className={`role-option-status ${channel.found && !(channel.deniedConfiguredRoles ?? []).length ? "ok" : "warn"}`}>{!channel.found ? "Missing" : (channel.deniedConfiguredRoles ?? []).length ? "Denied role overwrite" : "Found"}</span>
-        </article>)}</div>
-      </div>;
-    }
-    if (resultType === "inactiveReport" || Array.isArray(result.inactive)) {
-      const inactive = result.inactive ?? [];
-      return <div className="discord-report">
-        <div className="split-header">
-          <div><h4>Inactive Members</h4><p className="legend">Members with no recent messages or sampled reactions in the checked channels.</p></div>
-          <span className="role-option-status warn">{formatNumber(inactive.length)} inactive</span>
-        </div>
-        <div className="discord-report-metrics">
-          <Info label="Period" value={`${formatNumber(result.days)} days`} />
-          <Info label="Members scanned" value={result.totalMembers === null ? "Unavailable" : formatNumber(result.totalMembers)} />
-          <Info label="Active found" value={formatNumber(result.activeCount)} />
-          <Info label="Channels checked" value={formatNumber(result.scannedChannels)} />
-          <Info label="Reaction checks" value={formatNumber(result.reactionChecks)} />
-        </div>
-        <div className="discord-report-list">{inactive.length ? inactive.map((member: AnyRecord) => <article className="discord-report-item" key={member.id}>
-          <div className="discord-report-dot warn" />
-          <div><strong>{member.username}</strong><span>{member.id}</span></div>
-          <span className="role-option-status warn">Inactive</span>
-        </article>) : <p className="legend">No inactive members found in this scan.</p>}</div>
-      </div>;
-    }
-    if (resultType === "moderationBans" || Array.isArray(result.bans)) {
-      const bans = result.bans ?? [];
-      return <div className="discord-report">
-        <div className="split-header">
-          <div><h4>Ban List</h4><p className="legend">Current Discord server bans returned by the bot.</p></div>
-          <span className="role-option-status warn">{formatNumber(bans.length)} banned</span>
-        </div>
-        <div className="discord-report-list">{bans.length ? bans.map((entry: AnyRecord) => <article className="discord-report-item" key={entry.user?.id ?? entry.id}>
-          <div className="discord-report-dot warn" />
-          <div><strong>{entry.user?.username ?? "Unknown user"}</strong><span>{entry.user?.id ?? "-"}{entry.reason ? ` | ${entry.reason}` : ""}</span></div>
-          <span className="role-option-status warn">Banned</span>
-        </article>) : <p className="legend">No banned users returned by Discord.</p>}</div>
-      </div>;
-    }
-    if (resultType === "moderationAction") {
-      const labels: Record<string, string> = {
-        timeout: "Timeout Applied",
-        timeout_removed: "Timeout Removed",
-        kick: "Member Kicked",
-        ban: "Member Banned",
-        unban: "Member Unbanned",
-        purge: "Messages Purged",
-      };
-      return <div className="discord-report">
-        <div className="split-header">
-          <div><h4>{labels[result.action] ?? "Moderation Action"}</h4><p className="legend">Discord accepted the moderation request.</p></div>
-          <span className="role-option-status ok">Success</span>
-        </div>
-        <div className="discord-report-metrics">
-          <Info label="Action" value={labels[result.action] ?? result.action ?? "Moderation"} />
-          {result.userId ? <Info label="User ID" value={result.userId} /> : null}
-          {result.channelId ? <Info label="Channel ID" value={result.channelId} /> : null}
-          {result.minutes != null ? <Info label="Timeout" value={result.minutes ? `${formatNumber(result.minutes)} minutes` : "Removed"} /> : null}
-          {result.deleted != null ? <Info label="Deleted" value={`${formatNumber(result.deleted)} messages`} /> : null}
-        </div>
-      </div>;
-    }
-    if (resultType === "botAction") {
-      const response = result.response ?? result.rule ?? result.command ?? {};
-      return <div className="discord-report">
-        <div className="split-header"><div><h4>Action Complete</h4><p className="legend">The bot action completed successfully.</p></div><span className="role-option-status ok">Success</span></div>
-        <div className="discord-report-metrics">
-          <Info label="Result" value={result.action ?? response.name ?? response.title ?? response.id ?? "Completed"} />
-          {result.response?.id ? <Info label="Message ID" value={result.response.id} /> : null}
-          {result.rule?.id ? <Info label="Rule ID" value={result.rule.id} /> : null}
-          {result.caseId ? <Info label="Case ID" value={`#${result.caseId}`} /> : null}
-          {result.unbanAt ? <Info label="Unban At" value={dateLabel(result.unbanAt)} /> : null}
-        </div>
-      </div>;
-    }
-    if (resultType === "botReport") {
-      const rows = result.cases ?? result.warnings ?? result.notes ?? result.mismatches ?? result.commands ?? result.rules ?? [];
-      const title = result.cases ? "Case Log" : result.warnings ? "Warnings" : result.notes ? "Mod Notes" : result.mismatches ? "Nickname Report" : result.commands ? "Custom Commands" : result.rules ? "Auto-Moderation Rules" : "Report";
-      return <div className="discord-report">
-        <div className="split-header"><div><h4>{title}</h4><p className="legend">Latest bot report output.</p></div><span className="role-option-status">{formatNumber(Array.isArray(rows) ? rows.length : 0)} rows</span></div>
-        <div className="discord-report-list">{Array.isArray(rows) && rows.length ? rows.slice(0, 100).map((row: AnyRecord, index: number) => <article className="discord-report-item" key={row.id ?? row.name ?? index}>
-          <div className="discord-report-dot ok" />
-          <div><strong>{row.name ?? row.username ?? row.case_type ?? row.reason ?? row.note ?? row.user?.username ?? `Record ${index + 1}`}</strong><span>{row.description ?? row.response ?? row.user_id ?? row.user?.id ?? row.created_at ?? row.occurred_at ?? JSON.stringify(row).slice(0, 180)}</span></div>
-          <span className="role-option-status">{row.active === 0 ? "Cleared" : row.enabled === false ? "Off" : "Active"}</span>
-        </article>) : <p className="legend">No records returned.</p>}</div>
-      </div>;
-    }
-    return <pre className="discord-tool-result">{JSON.stringify(result, null, 2)}</pre>;
-  }
-  return (
-    <div className={`panel admin-console ${botOnly ? "bot-console" : "admin-page"}`}>
-      {botOnly ? (
-        <div className="split-header">
-          <Header title="Discord Bot Control">Manage bot setup, notifications, self-assign roles, tools and diagnostics</Header>
-          <div className="toolbar">
-            <a className="toolbar-button" href="/"><ExternalLink size={15} /> Open App</a>
-            <button className="toolbar-button" onClick={() => run(async () => { await api("/admin/logout", { method: "POST", body: "{}" }); setAdminAuthState({ authenticated: false, setupRequired: false }); })}><LogOut size={15} /> Sign out</button>
-          </div>
-        </div>
-      ) : (
-        <header className="members-topbar admin-topbar">
-          <div>
-            <h2>Admin Console</h2>
-            <p>Configuration and operational controls for this installation</p>
-          </div>
-          <div className="dashboard-top-meta" aria-label="Admin status">
-            <div className="dashboard-meta-cluster">
-              <span><Server size={15} /> {status?.environment ?? "Local"}</span>
-              <span>{status?.polling?.enabled ? "Collection enabled" : "Collection disabled"}</span>
-            </div>
-            <div className="toolbar">
-              <a className="toolbar-button" href="/bot" target="_blank" rel="noreferrer"><MessageCircle size={15} /> Bot Dashboard</a>
-              <button className="toolbar-button" onClick={() => run(async () => { await api("/admin/logout", { method: "POST", body: "{}" }); setAdminAuthState({ authenticated: false, setupRequired: false }); })}><LogOut size={15} /> Sign out</button>
-            </div>
-          </div>
-        </header>
-      )}
-      {tabs.length ? <div className="admin-tabs">{tabs.map(([key, label]) => <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{label}</button>)}</div> : null}
-      {message ? <div className={`admin-message ${messageKind}`}>{message}</div> : null}
-
-      {tab === "status" ? (
-        <div className="admin-section">
-          <section className="form-card setup-checklist-card">
-            <div className="split-header">
-              <div>
-                <h3><CheckCircle2 size={17} /> Setup Checklist</h3>
-                <p className="legend">A quick operational checklist for this installation. Optional items are marked when configured, but do not block local use.</p>
-              </div>
-              <span className="setup-progress-pill">{completedSetupItems}/{adminSetupItems.length} complete</span>
-            </div>
-            <div className="setup-checklist">
-              {adminSetupItems.map((item) => (
-                <div className={item.done ? "done" : ""} key={item.label}>
-                  <span>{item.done ? <CheckCircle2 size={15} /> : <Circle size={15} />}</span>
-                  <strong>{item.label}</strong>
-                  <small>{item.detail}</small>
-                </div>
-              ))}
-            </div>
-          </section>
-          <div className="metric-grid admin-metrics">
-            <Stat icon={<Server />} label="Environment" value={status?.environment ?? "-"} />
-            <Stat icon={<Database />} label="Database" value={bytesLabel(status?.databaseSize)} />
-            <Stat icon={<Save />} label="Snapshots" value={formatNumber(status?.counts?.snapshots)} />
-            <Stat icon={<CircleDollarSign />} label="Confirmed Trades" value={formatNumber(status?.counts?.market_trades)} />
-            <Stat icon={<Activity />} label="Activity Events" value={formatNumber(status?.counts?.activity_events)} />
-          </div>
-          <section className="form-card">
-            <div className="split-header"><h3><Server size={17} /> Collection Status</h3><div className="toolbar"><button className="toolbar-button" onClick={() => run(refreshStatus)}><RefreshCw size={15} /> Refresh</button><button className="toolbar-button primary" onClick={() => run(async () => { await api("/admin/poll", { method: "POST", body: "{}" }); await refreshStatus(); }, "Collection run completed.")}><RefreshCw size={15} /> Collect Now</button></div></div>
-            <div className="status-detail">
-              <Info label="Server polling" value={status?.polling?.enabled ? `Enabled, every ${Math.round(status.polling.intervalMs / 1000)} seconds` : "Disabled"} />
-              <Info label="Last successful collection" value={dateLabel(status?.polling?.lastSuccessAt)} />
-              <Info label="Storage activity sync" value={status?.polling?.storageLastSuccessAt ? `${dateLabel(status.polling.storageLastSuccessAt)} - ${formatNumber(status.polling.storageInserted)} new events from ${formatNumber(status.polling.storageRequests)} containers` : "Not collected yet"} />
-              <Info label="Storage sync error" value={status?.polling?.storageLastError ?? "None"} />
-              <Info label="Last error" value={status?.polling?.lastError ?? "None"} />
-              <Info label="Discord delivery" value={discordDeliveryLabel} />
-              <Info label="Storage" value={status?.storageLabel ?? "-"} />
-            </div>
-          </section>
-          <section className="form-card">
-            <div className="split-header"><h3><Activity size={17} /> BitJita Endpoint Check</h3><button className="toolbar-button" onClick={() => run(async () => setDiagnostics((await api("/admin/diagnostics", { method: "POST", body: "{}" })).checks ?? []), "Endpoint check completed.")}><RefreshCw size={15} /> Run Checks</button></div>
-            {diagnostics.length ? <div className="diagnostics">{[...diagnostics].sort((a, b) => toNumber(b.durationMs) - toNumber(a.durationMs)).map((check) => <div key={check.label} className={check.ok ? "ok" : "fail"}><strong>{check.label}</strong><span>{check.ok ? `${check.durationMs} ms` : check.error}</span></div>)}</div> : <p className="legend">Run checks to time public data sources, including each settlement storage container used for Activity history.</p>}
-          </section>
-        </div>
-      ) : null}
-
-      {tab === "analytics" ? (
-        <div className="admin-section analytics-admin">
-          <section className="form-card">
-            <div className="split-header">
-              <h3><TrendingUp size={17} /> Usage Analytics</h3>
-              <div className="toolbar"><label className="inline-field"><span>Period</span><select className="select-control" value={analyticsDays} onChange={(event) => setAnalyticsDays(event.target.value)}><option value="1">Last 24 hours</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select></label><button className="toolbar-button danger" onClick={() => { if (confirmDanger("Delete all collected usage analytics? This cannot be undone.")) run(async () => { await api("/admin/analytics", { method: "DELETE", body: "{}" }); await refreshAnalytics(); }, "Usage analytics deleted."); }}><X size={14} /> Clear Data</button></div>
-            </div>
-            <p className="legend">First-party analytics collected only from visitors who accept analytics cookies. Browser identifiers are random, reporting is aggregate, and raw events are retained for up to {analyticsData?.retentionDays ?? 90} days.</p>
-            <div className="metric-grid analytics-metrics">
-              <Stat icon={<Users />} label="Visitors" value={formatNumber(analyticsData?.totals?.visitors)} />
-              <Stat icon={<Globe2 />} label="Sessions" value={formatNumber(analyticsData?.totals?.sessions)} />
-              <Stat icon={<Activity />} label="Page Views" value={formatNumber(analyticsData?.totals?.pageViews)} />
-              <Stat icon={<Command />} label="Feature Uses" value={formatNumber(analyticsData?.totals?.interactions)} />
-              <Stat icon={<RefreshCw />} label="Time Recorded" value={formatDuration(toNumber(analyticsData?.totals?.durationSeconds))} />
-            </div>
-          </section>
-          <div className="admin-grid">
-            <section className="form-card">
-              <h3><Globe2 size={17} /> Most Used Pages</h3>
-              <DataTable rows={analyticsData?.pages ?? []} columns={[
-                ["Page", (row) => String(row.page).replaceAll("publiccrafts", "Public Craft Finder")],
-                ["Views", (row) => formatNumber(row.pageViews)],
-                ["Visitors", (row) => formatNumber(row.visitors)],
-                ["Time", (row) => formatDuration(toNumber(row.durationSeconds))],
-              ]} />
-            </section>
-            <section className="form-card">
-              <h3><Factory size={17} /> Feature Usage</h3>
-              <DataTable rows={analyticsData?.features ?? []} columns={[
-                ["Feature", (row) => String(row.eventName).replaceAll("_", " ")],
-                ["Uses", (row) => formatNumber(row.uses)],
-                ["Visitors", (row) => formatNumber(row.visitors)],
-              ]} />
-            </section>
-          </div>
-        </div>
-      ) : null}
-
-      {tab === "configuration" ? (
-        <div className="admin-grid">
-          <section className="form-card">
-            <h3><Shield size={17} /> Settlement Defaults</h3>
-            <label className="field"><span>Settlement ID</span><input value={draft.claimId} onChange={(event) => updateDraft("claimId", event.target.value)} /></label>
-            <label className="field"><span>BitCraft Sync URL</span><input value={draft.syncUrl} onChange={(event) => updateDraft("syncUrl", event.target.value)} /></label>
-            <label className="field"><span>Default opening page</span><select value={draft.defaultPage} onChange={(event) => updateDraft("defaultPage", event.target.value as ActivePanel)}>{NAV.filter(([id]) => id !== "admin").map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
-            <label className="field"><span>Public Crafts default region ID</span><input value={draft.defaultRegion} onChange={(event) => updateDraft("defaultRegion", event.target.value)} placeholder="Use settlement region" /></label>
-            <label className="field"><span>Browser refresh interval (seconds)</span><input type="number" min={15} max={300} value={draft.refreshSeconds} onChange={(event) => updateDraft("refreshSeconds", Number(event.target.value))} /></label>
-            <label className="field"><span>Snapshot retention (days)</span><input type="number" min={30} max={3650} value={draft.snapshotRetentionDays} onChange={(event) => updateDraft("snapshotRetentionDays", Number(event.target.value))} /></label>
-            <button className="toolbar-button primary" onClick={saveSettings}><Save size={15} /> Save Configuration</button>
-          </section>
-          <div className="admin-section">
-            <section className="form-card">
-              <h3><Upload size={17} /> Branding</h3>
-              {(["logo", "favicon"] as const).map((type) => {
-                const asset = draft.branding?.[type];
-                return <div className="brand-upload" key={type}><div>{asset ? <img src={`${asset.url}?v=${encodeURIComponent(asset.updatedAt)}`} alt="" /> : <Shield size={25} />}<strong>{type === "logo" ? "App Logo" : "Browser Favicon"}</strong></div><label className="toolbar-button"><Upload size={14} /> Upload<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadBrand(type, event.target.files?.[0])} /></label>{asset ? <button className="toolbar-button" onClick={() => removeBrand(type)}><X size={14} /> Remove</button> : null}</div>;
-              })}
-              <p className="legend">PNG, JPG or WebP up to 1 MB. The logo is shown in the app chrome and the favicon is used by the browser tab.</p>
-            </section>
-          </div>
-        </div>
-      ) : null}
-
-      {tab === "discord" ? (
-        <div className="admin-section bot-dashboard">
-          {botOnly ? (
-            <>
-              <div className="bot-overview">
-                <div><MessageCircle size={19} /><strong>{draft.discord.enabled ? "Bot Enabled" : "Bot Disabled"}</strong><span>Slash commands and notification delivery</span></div>
-                <div><Bell size={19} /><strong>{Object.values(draft.discord.notify).filter(Boolean).length} Rules On</strong><span>Notification categories currently enabled</span></div>
-                <div><Command size={19} /><strong>{draft.discord.botTokenConfigured ? "Token Set" : "Token Missing"}</strong><span>{draft.discord.botTokenConfigured ? `Configured via ${draft.discord.botTokenSource ?? "server"}` : "Add a bot token to send messages"}</span></div>
-                <div><Activity size={19} /><strong>{discordDelivery.status ?? "No delivery"}</strong><span>{discordDeliveryLabel}</span></div>
-              </div>
-              <section className="bot-workflow-card" aria-label="Bot setup workflow">
-                {botWorkflowItems.map((item) => (
-                  <button key={item.label} type="button" onClick={() => item.label === "Connect bot" ? setBotSection("setup") : item.label === "Sync Discord server" ? setBotSection("setup") : item.label === "Choose notification channels" ? setBotSection("notifications") : setBotSection("tests")}>
-                    <span className={item.done ? "done" : ""}>{item.done ? <CheckCircle2 size={15} /> : <Circle size={15} />}</span>
-                    <strong>{item.label}</strong>
-                    <small>{item.detail}</small>
-                  </button>
-                ))}
-              </section>
-            </>
-          ) : null}
-          <div className={botOnly ? "bot-layout" : ""}>
-          <React.Suspense fallback={<div className="loading">Loading Discord controls...</div>}>
-          {botOnly ? (
-            <BotSectionNav active={botSection} onSelect={setBotSection} />
-          ) : null}
-        <div className={`admin-grid discord-admin${botOnly ? ` bot-admin-section bot-section-${botSection}` : ""}`}>
-          {(!botOnly || botSection === "setup") ? (
-            <DiscordSetupSection
-              discord={draft.discord}
-              discordDiscovery={discordDiscovery}
-              discoveredChannelCount={discoveredChannels.length}
-              discoveredRoleCount={discoveredRoles.length}
-              formatNumber={formatNumber}
-              onSync={() => run(refreshDiscordDiscovery, "Discord server data synced.")}
-              status={status}
-              updateDiscord={updateDiscord}
-              updateDiscordPresence={updateDiscordPresence}
-            />
-          ) : null}
-          {(!botOnly || botSection === "channels") ? (
-            <DiscordChannelsSection
-              botOnly={botOnly}
-              channelFields={DISCORD_CHANNEL_FIELDS}
-              channelIdSelect={channelIdSelect}
-              discordChannelLabel={discordChannelLabel}
-              discordChannels={draft.discord.channels}
-              discoveredChannelCount={discoveredChannels.length}
-              updateDiscordChannel={updateDiscordChannel}
-            />
-          ) : null}
-          {(!botOnly || botSection === "roleManager") ? (
-            <DiscordRoleManagerSection
-              discoveredRoles={discoveredRoles}
-              formatNumber={formatNumber}
-              memberCountWarning={memberCountWarning}
-              onCreateRole={() => run(createDiscordRoleFromDashboard, "Discord role created.")}
-              onSyncRoles={() => run(refreshDiscordDiscovery, "Discord roles synced.")}
-              roleDraft={roleDraft}
-              roleStatusText={roleStatusText}
-              setRoleDraft={setRoleDraft}
-            />
-          ) : null}
-          {(!botOnly || botSection === "roles") ? (
-            <DiscordCraftWatchRolesSection
-              botOnly={botOnly}
-              craftRoleKeys={Object.keys(DEFAULT_CRAFT_ROLES)}
-              craftRoles={draft.discord.craftRoles}
-              discoveredRoles={discoveredRoles}
-              memberCountWarning={memberCountWarning}
-              roleIdSelect={roleIdSelect}
-              roleStatusText={roleStatusText}
-              updateDiscordRole={updateDiscordRole}
-            />
-          ) : null}
-          {(!botOnly || botSection === "colours") ? (
-            <DiscordColourRolesSection
-              addDiscordColourRole={addDiscordColourRole}
-              channelIdSelect={channelIdSelect}
-              colourRoles={draft.discord.colourRoles}
-              colourRolesChannelId={draft.discord.colourRolesChannelId}
-              discoveredRoles={discoveredRoles}
-              discordColorToHex={discordColorToHex}
-              hexToDiscordColor={hexToDiscordColor}
-              memberCountWarning={memberCountWarning}
-              onPostSelector={() => run(async () => { await api("/admin/discord/colour-roles/post", { method: "POST", body: "{}" }); }, "Colour role selector posted.")}
-              onSyncRoles={() => run(syncDiscordColourRoles, "Colour roles created and synced.")}
-              removeDiscordColourRole={removeDiscordColourRole}
-              roleStatusText={roleStatusText}
-              updateDiscord={updateDiscord}
-              updateDiscordColourRole={updateDiscordColourRole}
-            />
-          ) : null}
-          {(!botOnly || botSection === "community") ? <DiscordRolePanelsSection
-            expandedRoleOption={expandedRoleOption}
-            roleById={roleById}
-            roleIdSelect={roleIdSelect}
-            rolePanels={draft.discord.rolePanels}
-            channelIdSelect={channelIdSelect}
-            onAddOption={addDiscordRolePanelOption}
-            onPostPanel={(panelKey, panelLabel) => run(async () => postRolePanel(panelKey), `${panelLabel} posted or updated.`)}
-            onPostWelcome={() => run(postWelcomeFlow, "Welcome message posted or updated.")}
-            onRemoveOption={removeDiscordRolePanelOption}
-            onSetExpandedRoleOption={setExpandedRoleOption}
-            onUpdateOption={updateDiscordRolePanelOption}
-            onUpdatePanel={updateDiscordRolePanel}
-            onUpdateWelcomeFlow={updateWelcomeFlow}
-            roleStatusText={roleStatusText}
-            welcomeFlow={draft.discord.welcomeFlow}
-          /> : null}
-          {(!botOnly || botSection === "moderation") ? (
-            <DiscordModerationSection
-              channelIdSelect={channelIdSelect}
-              confirmModeration={confirmModeration}
-              discordToolResult={discordToolResult}
-              discoveredMemberCount={discoveredMembers.length}
-              memberIdSelect={memberIdSelect}
-              moderationDraft={moderationDraft}
-              onBan={() => run(async () => runModerationAction("ban"), "Ban sent to Discord.")}
-              onKick={() => run(async () => runModerationAction("kick"), "Kick sent to Discord.")}
-              onLoadBans={() => run(async () => setDiscordToolResult({ ...await api("/admin/discord/moderation/bans"), __type: "moderationBans" }), "Ban list loaded.")}
-              onPurge={() => run(async () => runModerationAction("purge"), "Channel cleanup sent to Discord.")}
-              onRemoveTimeout={() => run(async () => { setModerationDraft((current) => ({ ...current, timeoutMinutes: "0" })); const result = await api("/admin/discord/moderation/timeout", { method: "POST", body: JSON.stringify({ userId: moderationDraft.userId, minutes: 0, reason: moderationDraft.reason }) }); setDiscordToolResult({ ...result, __type: "moderationAction" }); }, "Timeout removed.")}
-              onSync={() => run(refreshDiscordDiscovery, "Discord members, channels and roles synced.")}
-              onTempBan={() => run(async () => runBotEndpoint("/admin/discord/moderation/temp-ban", { userId: moderationDraft.userId, hours: Number(moderationDraft.timeoutMinutes), reason: moderationDraft.reason, deleteMessageSeconds: Number(moderationDraft.deleteMessageSeconds) }, "moderationAction"), "Temporary ban recorded.")}
-              onTimeout={() => run(async () => runModerationAction("timeout"), "Timeout action sent to Discord.")}
-              onUnban={() => run(async () => runModerationAction("unban"), "Unban sent to Discord.")}
-              renderDiscordToolResult={renderDiscordToolResult}
-              setModerationDraft={setModerationDraft}
-            />
-          ) : null}
-          {(!botOnly || botSection === "safety") ? (
-            <DiscordSafetySection
-              channelIdSelect={channelIdSelect}
-              confirmModeration={confirmModeration}
-              discordToolResult={discordToolResult}
-              onApplySlowmode={() => run(async () => runBotEndpoint("/admin/discord/moderation/slowmode", { channelId: safetyDraft.lockdownChannelId, seconds: Number(safetyDraft.slowmodeSeconds) }, "botAction"), "Slowmode updated.")}
-              onCreateAutomodRule={() => run(async () => runBotEndpoint("/admin/discord/moderation/automod", { name: safetyDraft.ruleName, blockedWords: safetyDraft.blockedWords }, "botAction"), "Auto-moderation rule created.")}
-              onLoadAutomodRules={() => run(async () => setDiscordToolResult({ ...await api("/admin/discord/moderation/automod"), __type: "botReport" }), "Auto-moderation rules loaded.")}
-              onLockChannel={() => run(async () => runBotEndpoint("/admin/discord/moderation/lockdown", { channelId: safetyDraft.lockdownChannelId, locked: true }, "botAction"), "Channel locked.")}
-              onNicknameReport={() => run(async () => runBotEndpoint("/admin/discord/moderation/nickname-report", { pattern: safetyDraft.nicknamePattern }, "botReport"), "Nickname report loaded.")}
-              onSync={() => run(refreshDiscordDiscovery, "Discord server data synced.")}
-              onUnlockChannel={() => run(async () => runBotEndpoint("/admin/discord/moderation/lockdown", { channelId: safetyDraft.lockdownChannelId, locked: false }, "botAction"), "Channel unlocked.")}
-              renderDiscordToolResult={renderDiscordToolResult}
-              safetyDraft={safetyDraft}
-              setSafetyDraft={setSafetyDraft}
-            />
-          ) : null}
-          {(!botOnly || botSection === "records") ? (
-            <DiscordMemberRecordsSection
-              confirmModeration={confirmModeration}
-              discordToolResult={discordToolResult}
-              memberIdSelect={memberIdSelect}
-              onAddNote={() => run(async () => runBotEndpoint("/admin/discord/moderation/notes", recordsDraft, "botAction"), "Mod note saved.")}
-              onAddWarning={() => run(async () => runBotEndpoint("/admin/discord/moderation/warnings", recordsDraft, "botAction"), "Warning recorded.")}
-              onClearWarnings={() => run(async () => runBotEndpoint("/admin/discord/moderation/warnings/clear", recordsDraft, "botAction"), "Warnings cleared.")}
-              onLoadCaseLog={() => run(async () => setDiscordToolResult({ ...await api("/admin/discord/moderation/cases"), __type: "botReport" }), "Case log loaded.")}
-              onLoadNotes={() => run(async () => runBotEndpoint("/admin/discord/moderation/notes/list", recordsDraft, "botReport"), "Mod notes loaded.")}
-              onLoadProfile={() => run(async () => runBotEndpoint("/admin/discord/moderation/profile", recordsDraft, "botReport"), "Member profile loaded.")}
-              onLoadWarnings={() => run(async () => runBotEndpoint("/admin/discord/moderation/warnings/list", recordsDraft, "botReport"), "Warnings loaded.")}
-              onSync={() => run(refreshDiscordDiscovery, "Discord members synced.")}
-              recordsDraft={recordsDraft}
-              renderDiscordToolResult={renderDiscordToolResult}
-              setRecordsDraft={setRecordsDraft}
-            />
-          ) : null}
-          {(!botOnly || botSection === "content") ? <section className="form-card discord-channel-card bot-tools-card">
-            <div className="split-header"><div><h3><MessageCircle size={17} /> Posts & Events</h3><p className="legend">Create polls, RSVP posts and clean embeds for Discord-only community management.</p></div></div>
-            <div className="discord-tool-forms">
-              <div className="discord-tool-form-card"><h4><CircleHelp size={15} /> Poll</h4><label className="field"><span>Channel</span>{channelIdSelect(pollDraft.channelId, (value) => setPollDraft((current) => ({ ...current, channelId: value })))}</label><label className="field"><span>Title</span><input value={pollDraft.title} onChange={(event) => setPollDraft((current) => ({ ...current, title: event.target.value }))} /></label><label className="field"><span>Options</span><textarea value={pollDraft.options} onChange={(event) => setPollDraft((current) => ({ ...current, options: event.target.value }))} placeholder="One option per line" /></label><button className="toolbar-button primary bot-post-button" onClick={() => run(async () => runBotEndpoint("/admin/discord/poll", pollDraft, "botAction"), "Poll posted.")}><MessageCircle size={14} /> Post Poll</button></div>
-              <div className="discord-tool-form-card"><h4><Bell size={15} /> Event RSVP</h4><label className="field"><span>Channel</span>{channelIdSelect(rsvpDraft.channelId, (value) => setRsvpDraft((current) => ({ ...current, channelId: value })))}</label><label className="field"><span>Title</span><input value={rsvpDraft.title} onChange={(event) => setRsvpDraft((current) => ({ ...current, title: event.target.value }))} /></label><label className="field"><span>Description</span><textarea value={rsvpDraft.description} onChange={(event) => setRsvpDraft((current) => ({ ...current, description: event.target.value }))} /></label><button className="toolbar-button primary bot-post-button" onClick={() => run(async () => runBotEndpoint("/admin/discord/rsvp", rsvpDraft, "botAction"), "RSVP posted.")}><Bell size={14} /> Post RSVP</button></div>
-              <div className="discord-tool-form-card"><h4><Star size={15} /> Clean Embed Builder</h4><label className="field"><span>Channel</span>{channelIdSelect(embedDraft.channelId, (value) => setEmbedDraft((current) => ({ ...current, channelId: value })))}</label><label className="field"><span>Title</span><input value={embedDraft.title} onChange={(event) => setEmbedDraft((current) => ({ ...current, title: event.target.value }))} /></label><label className="field"><span>Message</span><textarea value={embedDraft.description} onChange={(event) => setEmbedDraft((current) => ({ ...current, description: event.target.value }))} /></label><label className="colour-picker-field"><input type="color" value={embedDraft.color} onChange={(event) => setEmbedDraft((current) => ({ ...current, color: event.target.value }))} /><code>{embedDraft.color}</code></label><button className="toolbar-button primary bot-post-button" onClick={() => run(async () => runBotEndpoint("/admin/discord/embed", embedDraft, "botAction"), "Embed posted.")}><Star size={14} /> Post Embed</button></div>
-            </div>
-            {discordToolResult ? <div className="discord-tool-output">{renderDiscordToolResult(discordToolResult)}</div> : null}
-          </section> : null}
-          {(!botOnly || botSection === "commands") ? <section className="form-card discord-channel-card bot-tools-card">
-            <div className="split-header"><div><h3><Command size={17} /> Custom Commands</h3><p className="legend">Create Discord slash commands that respond with static server information. Select an existing command to edit it, then re-register slash commands after saving.</p></div><button className="toolbar-button" onClick={() => run(refreshCustomCommands, "Custom commands loaded.")}><RefreshCw size={15} /> Refresh</button></div>
-            <div className="discord-tool-forms">
-              <div className="discord-tool-form-card">
-                <h4><Save size={15} /> Command Editor</h4>
-                <label className="field"><span>Command name</span><input value={commandDraft.name} onChange={(event) => setCommandDraft((current) => ({ ...current, name: event.target.value }))} placeholder="rules" /></label>
-                <label className="field"><span>Description</span><input value={commandDraft.description} onChange={(event) => setCommandDraft((current) => ({ ...current, description: event.target.value }))} /></label>
-                <label className="field"><span>Response</span><textarea value={commandDraft.response} onChange={(event) => setCommandDraft((current) => ({ ...current, response: event.target.value }))} /></label>
-                <div className="toolbar">
-                  <button className="toolbar-button primary" disabled={!commandDraft.name.trim() || !commandDraft.response.trim()} onClick={() => run(async () => { await api("/admin/discord/custom-commands", { method: "PUT", body: JSON.stringify(commandDraft) }); await refreshCustomCommands(); }, "Custom command saved. Re-register slash commands to publish it.")}><Save size={14} /> Save Command</button>
-                  <button className="toolbar-button" onClick={() => setCommandDraft({ name: "", description: "", response: "" })}><Plus size={14} /> New</button>
-                  <button className="toolbar-button danger" disabled={!commandDraft.name.trim()} onClick={() => confirmModeration("Delete this custom command?") && run(async () => { await api(`/admin/discord/custom-commands?name=${encodeURIComponent(commandDraft.name)}`, { method: "DELETE" }); setCommandDraft({ name: "", description: "", response: "" }); await refreshCustomCommands(); }, "Custom command deleted.")}><X size={14} /> Delete</button>
-                  <button className="toolbar-button bot-post-button" onClick={() => run(async () => { const commands = await api("/admin/discord/register-commands", { method: "POST", body: "{}" }); setDiscordToolResult({ ...commands, __type: "botReport" }); }, "Slash commands registered.")}><Command size={14} /> Register Slash Commands</button>
-                </div>
-              </div>
-              <div className="discord-tool-form-card">
-                <h4><Command size={15} /> Existing Commands</h4>
-                <div className="discord-report-list command-list">{customCommands.length ? customCommands.map((command) => (
-                  <button type="button" className={`discord-report-item command-list-item ${commandDraft.name === command.name ? "active" : ""}`} key={command.name} onClick={() => setCommandDraft({ name: String(command.name ?? ""), description: String(command.description ?? ""), response: String(command.response ?? "") })}>
-                    <div className="discord-report-dot ok" />
-                    <div><strong>/{command.name}</strong><span>{command.description || command.response}</span></div>
-                    <span className="role-option-status">Edit</span>
-                  </button>
-                )) : <p className="legend">No custom commands yet.</p>}</div>
-              </div>
-            </div>
-            {discordToolResult ? <div className="discord-tool-output">{renderDiscordToolResult(discordToolResult)}</div> : null}
-          </section> : null}
-          {(!botOnly || botSection === "tools") ? <section className="form-card discord-channel-card bot-tools-card">
-            <div className="split-header">
-              <div>
-                <h3><Wrench size={17} /> Server Management Tools</h3>
-                <p className="legend">Run Discord health reports, post managed announcements, maintain pinned information and schedule events from one place.</p>
-              </div>
-            </div>
-            <div className="discord-tool-actions">
-              <button className="discord-tool-action" onClick={() => run(async () => setDiscordToolResult({ ...await api("/admin/discord/audit-log"), __type: "auditLog" }), "Audit log loaded.")}>
-                <span className="discord-tool-action-icon"><FileText size={18} /></span>
-                <span><strong>Audit Log</strong><small>Review recent bot and Discord management actions in a readable timeline.</small><em>Run report</em></span>
-              </button>
-              <button className="discord-tool-action" onClick={() => run(async () => setDiscordToolResult({ ...await api("/admin/discord/role-cleanup"), __type: "roleCleanup" }), "Role cleanup report loaded.")}>
-                <span className="discord-tool-action-icon"><Users size={18} /></span>
-                <span><strong>Role Cleanup</strong><small>Find unused roles, duplicate colours and role manageability problems.</small><em>Run report</em></span>
-              </button>
-              <button className="discord-tool-action" onClick={() => run(async () => setDiscordToolResult({ ...await api("/admin/discord/channel-permissions"), __type: "channelPermissions" }), "Channel permission report loaded.")}>
-                <span className="discord-tool-action-icon"><Lock size={18} /></span>
-                <span><strong>Channel Checks</strong><small>Check whether key roles can read and post in important channels.</small><em>Run report</em></span>
-              </button>
-              <button className="discord-tool-action" onClick={() => run(async () => setDiscordToolResult({ ...await api("/admin/discord/inactive-report", { method: "POST", body: JSON.stringify({ days: 30 }) }), __type: "inactiveReport" }), "Inactive member report loaded.")}>
-                <span className="discord-tool-action-icon"><Activity size={18} /></span>
-                <span><strong>Inactive Members</strong><small>List synced Discord members with no recent observed activity.</small><em>Run 30 day report</em></span>
-              </button>
-            </div>
-            <div className="discord-tool-section-header">
-              <div>
-                <h4>Post & Maintain Content</h4>
-                <p className="legend">Use these for clean server messages without manually formatting Discord embeds.</p>
-              </div>
-            </div>
-            <div className="discord-tool-forms">
-              <div className="discord-tool-form-card">
-                <h4><MessageCircle size={15} /> Announcement Builder</h4>
-                <p className="legend">Post a formatted announcement to any configured channel.</p>
-                <label className="field"><span>Channel</span>{channelIdSelect(announcementDraft.channelId, (value) => setAnnouncementDraft((current) => ({ ...current, channelId: value })))}</label>
-                <label className="field"><span>Title</span><input value={announcementDraft.title} onChange={(event) => setAnnouncementDraft((current) => ({ ...current, title: event.target.value }))} /></label>
-                <label className="field"><span>Message</span><textarea value={announcementDraft.message} onChange={(event) => setAnnouncementDraft((current) => ({ ...current, message: event.target.value }))} /></label>
-                <button className="toolbar-button primary bot-post-button" onClick={() => run(async () => { await api("/admin/discord/announcement", { method: "POST", body: JSON.stringify(announcementDraft) }); }, "Announcement posted.")}><MessageCircle size={14} /> Post Announcement</button>
-              </div>
-              <div className="discord-tool-form-card">
-                <h4><Pin size={15} /> Pinned Info Updater</h4>
-                <p className="legend">Create or update one maintained information post for a channel.</p>
-                <label className="field"><span>Channel</span>{channelIdSelect(pinnedDraft.channelId, (value) => setPinnedDraft((current) => ({ ...current, channelId: value })))}</label>
-                <label className="field"><span>Existing message ID</span><input value={pinnedDraft.messageId} onChange={(event) => setPinnedDraft((current) => ({ ...current, messageId: event.target.value }))} placeholder="Blank posts a new pinned message" /></label>
-                <label className="field"><span>Title</span><input value={pinnedDraft.title} onChange={(event) => setPinnedDraft((current) => ({ ...current, title: event.target.value }))} /></label>
-                <label className="field"><span>Message</span><textarea value={pinnedDraft.message} onChange={(event) => setPinnedDraft((current) => ({ ...current, message: event.target.value }))} /></label>
-                <button className="toolbar-button bot-post-button" onClick={() => run(async () => { const result = await api("/admin/discord/pinned-info", { method: "POST", body: JSON.stringify(pinnedDraft) }); setPinnedDraft((current) => ({ ...current, messageId: String(result.response?.id ?? current.messageId) })); }, "Pinned info posted or updated.")}><Pin size={14} /> Post/Update Pin</button>
-              </div>
-              <div className="discord-tool-form-card">
-                <h4><Bell size={15} /> Event Scheduler</h4>
-                <p className="legend">Create a Discord event for planned gathering or crafting sessions.</p>
-                <label className="field"><span>Name</span><input value={eventDraft.name} onChange={(event) => setEventDraft((current) => ({ ...current, name: event.target.value }))} /></label>
-                <label className="field"><span>Location</span><input value={eventDraft.location} onChange={(event) => setEventDraft((current) => ({ ...current, location: event.target.value }))} /></label>
-                <label className="field"><span>Start</span><input type="datetime-local" value={eventDraft.startTime} onChange={(event) => setEventDraft((current) => ({ ...current, startTime: event.target.value }))} /></label>
-                <label className="field"><span>End</span><input type="datetime-local" value={eventDraft.endTime} onChange={(event) => setEventDraft((current) => ({ ...current, endTime: event.target.value }))} /></label>
-                <label className="field"><span>Description</span><textarea value={eventDraft.description} onChange={(event) => setEventDraft((current) => ({ ...current, description: event.target.value }))} /></label>
-                <button className="toolbar-button" onClick={() => run(async () => { await api("/admin/discord/scheduled-event", { method: "POST", body: JSON.stringify(eventDraft) }); }, "Discord event created.")}><Bell size={14} /> Create Event</button>
-              </div>
-            </div>
-            {discordToolResult ? <div className="discord-tool-output">{renderDiscordToolResult(discordToolResult)}</div> : null}
-          </section> : null}
-          {(!botOnly || botSection === "notifications") ? (
-            <DiscordNotificationsSection
-              channelSelect={channelSelect}
-              discord={draft.discord}
-              discordDeliveryLabel={discordDeliveryLabel}
-              updateDiscord={updateDiscord}
-              updateDiscordNotify={updateDiscordNotify}
-            />
-          ) : null}
-          {(!botOnly || botSection === "tests") ? (
-            <DiscordTestsPanel
-              botOnly={botOnly}
-              discordTestButtons={discordTestButtons}
-              onRegisterCommands={() =>
-                run(async () => {
-                  const result = await api("/admin/discord/register-commands", { method: "POST", body: "{}" });
-                  setMessageKind("success");
-                  setMessage(`Registered ${formatNumber(result.commands?.length)} Discord slash commands.`);
-                })
-              }
-              onSendTest={(kind, label) =>
-                run(async () => {
-                  await api("/admin/discord/test", { method: "POST", body: JSON.stringify({ kind }) });
-                }, `${label} Discord test sent.`)
-              }
-            />
-          ) : null}
-          {(!botOnly || botSection === "diagnostics") ? <DiscordDiagnosticsPanel filter={discordDiagnosticsFilter} log={discordLog} onFilterChange={setDiscordDiagnosticsFilter} onRefresh={() => run(refreshStatus)} /> : null}
-        </div>
-        </React.Suspense>
-        </div>
-        </div>
-      ) : null}
-
-      {tab === "database" ? (
-        <section className="form-card database-browser">
-          <div className="split-header"><h3><Database size={17} /> Database Browser</h3><select className="select-control" value={selectedTable} onChange={(event) => { setSelectedTable(event.target.value); setTableOffset(0); }}>{tables.map((table) => <option key={table.name} value={table.name}>{table.name} ({formatNumber(table.rows)})</option>)}</select></div>
-          <div className="database-toolbar"><SearchBox value={tableSearch} onChange={(value) => { setTableSearch(value); setTableOffset(0); }} placeholder="Filter table records" /><a className="toolbar-button" href={`${LOCAL_API}/admin/export?name=${encodeURIComponent(selectedTable)}&format=csv&search=${encodeURIComponent(tableSearch)}`}><Download size={14} /> CSV</a><a className="toolbar-button" href={`${LOCAL_API}/admin/export?name=${encodeURIComponent(selectedTable)}&format=json&search=${encodeURIComponent(tableSearch)}`}><Download size={14} /> JSON</a></div>
-          {tableColumns.length ? <DataTable rows={tableRows} columns={tableColumns.map((key: string) => [key, (row: AnyRecord) => { const value = String(row[key] ?? "-"); return value.length > 90 ? `${value.slice(0, 90)}...` : value; }])} /> : <p className="legend">No records returned.</p>}
-          <div className="pager"><span>{formatNumber(tableResult.total)} matching records</span><button className="toolbar-button" disabled={!tableOffset} onClick={() => setTableOffset(Math.max(0, tableOffset - 50))}>Previous</button><button className="toolbar-button" disabled={tableOffset + 50 >= tableResult.total} onClick={() => setTableOffset(tableOffset + 50)}>Next</button></div>
-        </section>
-      ) : null}
-
-      {tab === "users" ? (
-        <div className="admin-grid">
-          <section className="form-card">
-            <h3><UserPlus size={17} /> Add Administrator</h3>
-            {!canManageAdmins ? <p className="legend">Your administrator role can view this page but cannot create or change administrator accounts.</p> : null}
-            <label className="field"><span>Username</span><input value={newUser.username} onChange={(event) => setNewUser({ ...newUser, username: event.target.value })} /></label>
-            <label className="field"><span>Initial password</span><input type="password" minLength={12} value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} /></label>
-            <label className="field"><span>Role</span><select value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}>{Object.entries(adminRoles).map(([role, label]) => <option key={role} value={role}>{label}</option>)}</select></label>
-            <button className="toolbar-button primary" disabled={!canManageAdmins} onClick={() => run(async () => { await api("/admin/users", { method: "POST", body: JSON.stringify(newUser) }); setNewUser({ username: "", password: "", role: "admin" }); await refreshUsers(); }, "Administrator created.")}><UserPlus size={15} /> Create Account</button>
-            <h3><KeyRound size={17} /> Reset Password</h3>
-            <label className="field"><span>Administrator</span><select value={resetUser} onChange={(event) => setResetUser(event.target.value)}><option value="">Select user</option>{users.map((entry) => <option value={entry.id} key={entry.id}>{entry.username}</option>)}</select></label>
-            <label className="field"><span>New password</span><input type="password" minLength={12} value={resetPassword} onChange={(event) => setResetPassword(event.target.value)} /></label>
-            <button className="toolbar-button" disabled={!canManageAdmins} onClick={() => run(async () => { const result = await api("/admin/user/password", { method: "PUT", body: JSON.stringify({ userId: Number(resetUser), password: resetPassword }) }); setResetPassword(""); if (result.signedOut) setAdminAuthState({ authenticated: false, setupRequired: false }); else await refreshUsers(); }, "Password reset; existing sessions for that user were signed out.")}><Save size={15} /> Reset Password</button>
-          </section>
-          <section className="form-card">
-            <h3><Users size={17} /> Administrators</h3>
-            <div className="admin-users">{users.map((entry) => <div key={entry.id}><strong>{entry.username}</strong><span>{entry.active ? "Active" : "Disabled"} | {entry.roleLabel ?? adminRoles[entry.role] ?? entry.role ?? "Viewer"} | {formatNumber(entry.sessions)} sessions | Last login {dateLabel(entry.last_login_at)}</span><label className="field compact-field"><span>Role</span><select value={entry.role ?? "viewer"} disabled={!canManageAdmins || entry.id === auth.user?.id} onChange={(event) => run(async () => { const result = await api("/admin/user/role", { method: "PUT", body: JSON.stringify({ userId: entry.id, role: event.target.value }) }); if (result.signedOut) setAdminAuthState({ authenticated: false, setupRequired: false }); else await refreshUsers(); }, "Administrator role updated and sessions cleared.")}>{Object.entries(adminRoles).map(([role, label]) => <option key={role} value={role}>{label}</option>)}</select></label><div className="toolbar"><button className="toolbar-button" disabled={!canManageAdmins} onClick={() => run(async () => { await api("/admin/sessions/clear", { method: "POST", body: JSON.stringify({ userId: entry.id }) }); await refreshUsers(); }, "Sessions cleared.")}>Clear Sessions</button><button className="toolbar-button" disabled={!canManageAdmins || entry.id === auth.user?.id} onClick={() => run(async () => { await api("/admin/user/status", { method: "PUT", body: JSON.stringify({ userId: entry.id, active: !entry.active }) }); await refreshUsers(); }, "Account status updated.")}>{entry.active ? "Disable" : "Enable"}</button></div></div>)}</div>
-          </section>
-        </div>
-      ) : null}
-
-      {tab === "accounts" ? (
-        <section className="form-card linked-accounts-card">
-          <div className="split-header">
-            <h3><MessageCircle size={17} /> Discord Linked Accounts</h3>
-            <button className="toolbar-button" onClick={() => run(refreshLinkedAccounts)}><RefreshCw size={14} /> Refresh</button>
-          </div>
-          <p className="legend">Users can sign in with Discord and request a BitCraft character link. Approval is manual because Discord identity does not prove character ownership by itself.</p>
-          <div className="linked-account-list">
-            {linkedAccounts.length ? linkedAccounts.map((account) => (
-              <div className="linked-account-row" key={account.id}>
-                <div className="linked-account-user">
-                  {account.avatarUrl ? <img src={account.avatarUrl} alt="" /> : <span>{(account.globalName || account.username || "?").slice(0, 1).toUpperCase()}</span>}
-                  <div>
-                    <strong>{account.globalName || account.username || "Discord user"}</strong>
-                    <small>{account.username ? `@${account.username}` : account.discordId} | Last login {dateLabel(account.lastLoginAt)}</small>
-                  </div>
-                </div>
-                <div>
-                  <strong>{account.characterName || "No character selected"}</strong>
-                  <small>{account.characterPlayerId || "No BitCraft player ID"}</small>
-                </div>
-                <em className={`link-status ${account.characterStatus}`}>{account.characterStatus || "unlinked"}</em>
-                <div className="toolbar">
-                  {(["approved", "pending", "rejected"] as const).map((status) => (
-                    <button
-                      className={`toolbar-button ${account.characterStatus === status ? "primary" : ""}`}
-                      disabled={!account.characterPlayerId}
-                      key={status}
-                      onClick={() => run(async () => {
-                        const result = await api("/admin/user-accounts/approval", { method: "PUT", body: JSON.stringify({ userId: account.id, status }) });
-                        setLinkedAccounts(result.accounts ?? []);
-                      }, `Account marked ${status}.`)}
-                    >
-                      {status === "approved" ? <CheckCircle2 size={14} /> : status === "pending" ? <Clock size={14} /> : <Ban size={14} />}
-                      {status[0].toUpperCase() + status.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )) : <p className="legend">No Discord users have signed in yet.</p>}
-          </div>
-        </section>
-      ) : null}
-
-      {tab === "audit" ? (
-        <div className="admin-grid audit-grid">
-          <section className="form-card"><h3><Activity size={17} /> Admin Actions</h3><div className="audit-list">{auditData.auditLog.map((entry: AnyRecord) => <div key={entry.id}><strong>{entry.action}</strong><span>{entry.username} | {dateLabel(entry.occurred_at)}</span></div>)}</div></section>
-          <section className="form-card"><h3><Lock size={17} /> Sign-in History</h3><div className="audit-list">{auditData.logins.map((entry: AnyRecord) => <div key={entry.id} className={entry.successful ? "" : "failed"}><strong>{entry.successful ? "Successful sign-in" : "Failed sign-in"}</strong><span>{entry.username} | {dateLabel(entry.occurred_at)} | {entry.remote_address ?? "-"}</span></div>)}</div></section>
-        </div>
-      ) : null}
-
-      {tab === "backups" ? (
-        <div className="admin-section">
-          <section className="form-card">
-            <div className="split-header"><h3><HardDrive size={17} /> Database Backups</h3><button className="toolbar-button primary" onClick={() => run(async () => { await api("/admin/backups", { method: "POST", body: "{}" }); await refreshBackups(); }, "Backup created.")}><Save size={15} /> Create Backup</button></div>
-            <p className="legend">Backups are SQLite copies stored on the server. Restoration is intentionally performed on the VPS while the service is stopped.</p>
-            <div className="backup-list">{backups.map((backup) => <div key={backup.name}><div><strong>{backup.name}</strong><span>{bytesLabel(backup.size)} | {dateLabel(backup.createdAt)}</span></div><a className="toolbar-button" href={`${LOCAL_API}/admin/backup?name=${encodeURIComponent(backup.name)}`}><Download size={14} /> Download</a></div>)}</div>
-          </section>
-          <section className="form-card maintenance-card">
-            <h3><Database size={17} /> Retention Maintenance</h3>
-            <p className="legend">Removes snapshots older than the configured {draft.snapshotRetentionDays}-day retention window. Market and activity history are retained.</p>
-            <button className="toolbar-button" onClick={() => run(async () => { const result = await api("/admin/maintenance/prune", { method: "POST", body: "{}" }); await refreshStatus(); setMessageKind("success"); setMessage(`Removed ${formatNumber(result.removed)} expired snapshots.`); })}><RefreshCw size={15} /> Remove Expired Snapshots</button>
-          </section>
-        </div>
-      ) : null}
-      {hasUnsavedSettings ? (
-        <div className="floating-save">
-          <div><strong>Unsaved changes</strong><span>Save to apply these settings.</span></div>
-          <button className="toolbar-button" onClick={revertSettings}><RefreshCw size={14} /> Revert</button>
-          <button className="toolbar-button primary" onClick={saveSettings}><Save size={14} /> Save Changes</button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function DashboardApp() {
   const [active, setActive] = usePersistedState<ActivePanel>("navigation.page", "dashboard");
   const mainRef = React.useRef<HTMLElement | null>(null);
   const defaultPageAppliedRef = React.useRef(false);
   const savedPageRef = React.useRef(hasPersistedState("navigation.page") || Boolean(urlPanel()));
   const [appSettings, setAppSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
-  const [userAuth, setUserAuth] = React.useState<UserAuthState>({ user: null, discordLoginEnabled: false });
-  const [adminAuth, setAdminAuth] = React.useState<AnyRecord>({ authenticated: false });
-  const [claimId, setClaimId] = React.useState(DEFAULT_CLAIM_ID);
-  const [syncUrl, setSyncUrl] = React.useState(DEFAULT_SYNC_URL);
+  const [claimId, setClaimId] = React.useState(() => readLocalString(LOCAL_CLAIM_ID_STORAGE_KEY));
+  const [syncUrl, setSyncUrl] = React.useState(() => readLocalString(LOCAL_SYNC_URL_STORAGE_KEY));
+  const [settlementSetupOpen, setSettlementSetupOpen] = React.useState(() => !readLocalString(LOCAL_CLAIM_ID_STORAGE_KEY));
   const [browserTheme, setBrowserTheme] = usePersistedState<ThemeSettings>("theme.local", DEFAULT_THEME);
   const [refreshToken, setRefreshToken] = React.useState(0);
   const [historyRefreshToken, setHistoryRefreshToken] = React.useState(0);
@@ -5106,7 +3525,6 @@ function DashboardApp() {
   const [density, setDensity] = usePersistedState<"comfortable" | "compact">("layout.density", "comfortable");
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState("layout.sidebarCollapsed", false);
   const [sidebarGroups, setSidebarGroups] = usePersistedState<Record<string, boolean>>("layout.sidebarGroups", DEFAULT_SIDEBAR_GROUPS);
-  const [discordPromptDismissed, setDiscordPromptDismissed] = usePersistedState("auth.discordPromptDismissed", false);
   const [helpOpen, setHelpOpen] = React.useState(false);
   const [userSettingsOpen, setUserSettingsOpen] = React.useState(false);
   const [privacyOpen, setPrivacyOpen] = React.useState(false);
@@ -5124,7 +3542,6 @@ function DashboardApp() {
     return { ...normalized, raw: state.data };
   }, [state.data]);
   const localHistory = useLocalHistory(refreshToken + historyRefreshToken, claimId, active);
-  const discordAuthHref = `${LOCAL_API}/auth/discord/start?returnTo=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`;
   const selectedProductionMember = selectedMemberId === "All" ? null : data.members.find((member: AnyRecord) => String(member.playerEntityId) === selectedMemberId) ?? null;
   analyticsConsent = consent;
   const dismissToast = React.useCallback((id: string) => {
@@ -5133,57 +3550,18 @@ function DashboardApp() {
     toastTimersRef.current.delete(id);
     setToasts((current) => current.filter((notice) => notice.id !== id));
   }, []);
-  const refreshUserAuth = React.useCallback(async () => {
-    const response = await fetch(`${LOCAL_API}/auth/me`);
-    if (!response.ok) return;
-    setUserAuth(await response.json());
+  const saveMonitorSettings = React.useCallback((nextClaimId: string, nextSyncUrl: string) => {
+    saveLocalMonitorSettings(nextClaimId, nextSyncUrl);
+    setClaimId(nextClaimId);
+    setSyncUrl(nextSyncUrl);
+    setSettlementSetupOpen(false);
+    setRefreshToken((x) => x + 1);
+    setHistoryRefreshToken((x) => x + 1);
   }, []);
-  const refreshAdminAuth = React.useCallback(async () => {
-    try {
-      const response = await fetch(`${LOCAL_API}/admin/me`);
-      if (!response.ok) {
-        setAdminAuth({ authenticated: false });
-        return;
-      }
-      setAdminAuth(await response.json());
-    } catch {
-      setAdminAuth({ authenticated: false });
-    }
+  const saveSyncUrl = React.useCallback((nextSyncUrl: string) => {
+    localStorage.setItem(LOCAL_SYNC_URL_STORAGE_KEY, nextSyncUrl);
+    setSyncUrl(nextSyncUrl);
   }, []);
-  const discordLogin = React.useCallback(() => {
-    setDiscordPromptDismissed(true);
-    window.location.href = discordAuthHref;
-  }, [discordAuthHref, setDiscordPromptDismissed]);
-  const discordLogout = React.useCallback(async () => {
-    const response = await fetch(`${LOCAL_API}/auth/logout`, { method: "POST" });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? "Unable to sign out");
-    setUserAuth(body);
-  }, []);
-  const linkDiscordCharacter = React.useCallback(async (member: AnyRecord | null) => {
-    const payload = member ? { characterPlayerId: String(member.playerEntityId ?? ""), characterName: String(member.userName ?? member.username ?? member.playerUsername ?? member.name ?? "") } : {};
-    const response = await fetch(`${LOCAL_API}/auth/character`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? "Unable to save character link request");
-    setUserAuth((current) => ({ ...current, user: body.user }));
-  }, []);
-  const saveAccountSettings = React.useCallback(async () => {
-    const settings = { density, toastSettings: userToastSettings, theme: browserTheme, sidebarCollapsed, sidebarGroups, selectedMemberId };
-    const response = await fetch(`${LOCAL_API}/auth/settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ settings }) });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? "Unable to save account settings");
-    setUserAuth((current) => ({ ...current, user: body.user }));
-  }, [browserTheme, density, selectedMemberId, sidebarCollapsed, sidebarGroups, userToastSettings]);
-  const loadAccountSettings = React.useCallback(() => {
-    const saved = userAuth.user?.settings ?? {};
-    if (saved.density === "comfortable" || saved.density === "compact") setDensity(saved.density);
-    if (saved.toastSettings && typeof saved.toastSettings === "object") setUserToastSettings({ ...DEFAULT_USER_TOAST_SETTINGS, ...saved.toastSettings });
-    const savedTheme = normalizeThemeCandidate(saved.theme)?.theme;
-    if (savedTheme) setBrowserTheme(savedTheme);
-    if (typeof saved.sidebarCollapsed === "boolean") setSidebarCollapsed(saved.sidebarCollapsed);
-    if (saved.sidebarGroups && typeof saved.sidebarGroups === "object" && !Array.isArray(saved.sidebarGroups)) setSidebarGroups({ ...DEFAULT_SIDEBAR_GROUPS, ...saved.sidebarGroups });
-    if (typeof saved.selectedMemberId === "string") setSelectedMemberId(saved.selectedMemberId);
-  }, [setBrowserTheme, setDensity, setSelectedMemberId, setSidebarCollapsed, setSidebarGroups, setUserToastSettings, userAuth.user?.settings]);
   const navigate = React.useCallback((panel: ActivePanel, marketTab?: string, nextMapFocus?: MapFocus) => {
     setActive(panel);
     const activeMapFocus = panel === "map" ? nextMapFocus ?? mapFocus : null;
@@ -5262,21 +3640,13 @@ function DashboardApp() {
         if (!config) return;
         const next = normalizeAppSettings(config);
         setAppSettings(next);
-        setClaimId(next.claimId);
-        setSyncUrl(next.syncUrl);
-        if (!defaultPageAppliedRef.current && !savedPageRef.current && next.defaultPage !== "admin") {
+        if (!defaultPageAppliedRef.current && !savedPageRef.current) {
           defaultPageAppliedRef.current = true;
           setActive(next.defaultPage);
         }
       })
       .catch(() => undefined);
   }, []);
-  React.useEffect(() => {
-    refreshUserAuth().catch(() => undefined);
-  }, [refreshUserAuth]);
-  React.useEffect(() => {
-    refreshAdminAuth().catch(() => undefined);
-  }, [refreshAdminAuth]);
   React.useEffect(() => {
     applyTheme(browserTheme);
   }, [browserTheme]);
@@ -5365,30 +3735,28 @@ function DashboardApp() {
     craftQueueRef.current = { claimId, jobs: current };
   }, [appSettings.toastSettings.production, claimId, data.crafts, data.raw?.crafts, pushToast, state.data, userToastSettings.production]);
   React.useEffect(() => {
-    if (active !== "dashboard" || !appSettings.browserSnapshotsEnabled || !state.data || !data.claim?.entityId) return;
+    if (!claimId || !state.data) return;
     const controller = new AbortController();
-    async function record() {
+    async function refreshSharedHistory() {
       try {
-        const response = await fetch(`${LOCAL_API}/snapshot`, {
+        const response = await fetch(`${LOCAL_API}/refresh`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            claimId,
-            claim: data.claim,
-            membersCount: data.members.length,
-            buildingsCount: data.buildings.length,
-            market: data.market,
-          }),
+          body: JSON.stringify({ claimId }),
           signal: controller.signal,
         });
         if (response.ok) setHistoryRefreshToken((x) => x + 1);
       } catch {
-        // The app can still run without the local history server.
+        // Live BitJita data remains usable if shared history refresh is unavailable.
       }
     }
-    record();
+    refreshSharedHistory();
     return () => controller.abort();
-  }, [active, appSettings.browserSnapshotsEnabled, claimId, state.data, data.claim, data.members.length, data.buildings.length, data.market]);
+  }, [claimId, refreshToken, state.data]);
+
+  if (!claimId) {
+    return <SettlementSetupDialog open currentClaimId="" currentSyncUrl="" mode="page" onSave={saveMonitorSettings} />;
+  }
 
   const panels: Record<string, React.ReactNode> = {
     dashboard: <Dashboard data={data} activity={localHistory.activity} snapshots={localHistory.snapshots} dashboardSummary={localHistory.dashboard} lastUpdated={lastUpdated} onNavigate={navigate} />,
@@ -5404,9 +3772,8 @@ function DashboardApp() {
     market: <Market data={data} history={localHistory.market} claimId={claimId} />,
     empire: <Region data={data} />,
     map: <MapPanel data={data} focus={mapFocus} onClearFocus={() => { setMapFocus(null); updateQueryState({ mapName: null, mapX: null, mapZ: null }); }} />,
-    sync: <SyncPanel syncUrl={syncUrl} />,
+    sync: <SyncPanel syncUrl={syncUrl} onSyncUrlSaved={saveSyncUrl} />,
     activity: <ActivityPanel activity={localHistory.activity} activityTotal={localHistory.activityTotal} claimId={claimId} error={localHistory.error} />,
-    admin: <AdminPanel settings={appSettings} onAuthChanged={setAdminAuth} onSettingsSaved={(settings) => { setAppSettings(settings); setClaimId(settings.claimId); setSyncUrl(settings.syncUrl ?? DEFAULT_SYNC_URL); setRefreshToken((x) => x + 1); setHistoryRefreshToken((x) => x + 1); }} />,
   };
   const activePanel = panels[active] ?? panels.dashboard;
   const apiWarnings = React.useMemo(() => {
@@ -5427,12 +3794,6 @@ function DashboardApp() {
             {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
         </div>
-        <a className="discord-cta" href={DISCORD_URL} target="_blank" rel="noreferrer"><DiscordIcon size={18} /><span>Join Our Discord</span><ExternalLink size={13} /></a>
-        {userAuth.discordLoginEnabled && !userAuth.user ? (
-          <a className="sidebar-auth-cta" href={discordAuthHref} onClick={() => setDiscordPromptDismissed(true)}>
-            <MessageCircle size={16} /><span>Sign in with Discord</span>
-          </a>
-        ) : null}
         <nav aria-label="Main navigation">
           {NAV_GROUPS.map((group) => {
             const hasActivePage = group.items.some(([id]) => active === id);
@@ -5479,7 +3840,7 @@ function DashboardApp() {
         </div>
       </aside>
       <main ref={mainRef}>
-        {state.loading && !state.data ? <AppSkeleton /> : state.error && !state.data ? <ApiErrorState message={state.error} /> : (
+        {!claimId ? <AppSkeleton /> : state.loading && !state.data ? <AppSkeleton /> : state.error && !state.data ? <ApiErrorState message={state.error} /> : (
           <>
             <ApiStatusBanner warnings={apiWarnings} lastUpdated={lastUpdated} />
             <div className="page-view" key={active}>{activePanel}</div>
@@ -5495,25 +3856,13 @@ function DashboardApp() {
             <a href={`${GITHUB_REPOSITORY}/issues`} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Feature Requests</a>
             <BuyMeCoffeeButton />
             <button className="footer-link" onClick={() => setPrivacyOpen(true)}><Shield size={13} /> Privacy & Analytics</button>
-            <button className="footer-link" onClick={() => setTermsOpen(true)}><FileText size={13} /> Terms & Bot Use</button>
+            <button className="footer-link" onClick={() => setTermsOpen(true)}><FileText size={13} /> Terms</button>
             <a href="https://bitcraftmap.com/" target="_blank" rel="noreferrer"><ExternalLink size={13} /> BitCraft Map</a>
           </div>
         </footer>
       </main>
       <div className="floating-actions" aria-label="Application tools">
-        {adminAuth.authenticated ? <a
-          className={active === "admin" ? "active" : ""}
-          href={panelHref("admin")}
-          aria-label="Admin console"
-          title="Admin console"
-          onClick={(event) => {
-            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-            event.preventDefault();
-            navigate("admin");
-          }}
-        >
-          <KeyRound size={18} />
-        </a> : null}
+        <button onClick={() => setSettlementSetupOpen(true)} aria-label="Change settlement" title="Change settlement"><MapPin size={18} /></button>
         <button onClick={() => setUserSettingsOpen(true)} aria-label="Browser settings" title="Browser settings"><Settings size={18} /></button>
         <button className="notification-button" onClick={() => { setNoticeOpen(true); setNotificationLog((current) => current.map((notice) => ({ ...notice, read: true }))); }} aria-label="Updates" title="Updates"><Bell size={18} />{notificationLog.some((notice) => !notice.read) ? <b>{notificationLog.filter((notice) => !notice.read).length}</b> : null}</button>
         <button className="floating-help" onClick={() => setHelpOpen(true)} aria-label="Help and application information" title="Help and application information">?</button>
@@ -5521,8 +3870,8 @@ function DashboardApp() {
       <ToastStack notices={toasts} onDismiss={dismissToast} />
       {noticeOpen ? <NotificationDrawer notices={notificationLog} onClose={() => setNoticeOpen(false)} onOpenNotice={(notice) => { setNoticeOpen(false); navigate(notice.destination ?? "activity"); }} /> : null}
       {commandOpen ? <CommandPalette data={data} onClose={() => setCommandOpen(false)} onNavigate={(panel, tab) => navigate(panel, tab)} onSelectMember={setSelectedMemberId} /> : null}
-      {!discordPromptDismissed && userAuth.discordLoginEnabled && !userAuth.user ? <DiscordSignInPrompt authHref={discordAuthHref} onDiscordLogin={discordLogin} onClose={() => setDiscordPromptDismissed(true)} onSettings={() => { setDiscordPromptDismissed(true); setUserSettingsOpen(true); }} /> : null}
-      {userSettingsOpen ? <UserSettingsDialog density={density} onDensityChange={setDensity} toastSettings={{ ...DEFAULT_USER_TOAST_SETTINGS, ...userToastSettings }} onToastSettingsChange={setUserToastSettings} theme={{ ...DEFAULT_THEME, ...browserTheme }} onThemeChange={setBrowserTheme} auth={userAuth} members={data.members} onDiscordLogin={discordLogin} onDiscordLogout={discordLogout} onLinkCharacter={linkDiscordCharacter} onSaveAccountSettings={saveAccountSettings} onLoadAccountSettings={loadAccountSettings} showAdminTools={Boolean(adminAuth.authenticated)} onOpenAdmin={() => { setUserSettingsOpen(false); navigate("admin"); }} onResetSettings={() => { clearBrowserLocalSettings(); window.location.reload(); }} onClose={() => setUserSettingsOpen(false)} /> : null}
+      <SettlementSetupDialog open={settlementSetupOpen} currentClaimId={claimId} currentSyncUrl={syncUrl} onSave={saveMonitorSettings} />
+      {userSettingsOpen ? <UserSettingsDialog density={density} onDensityChange={setDensity} toastSettings={{ ...DEFAULT_USER_TOAST_SETTINGS, ...userToastSettings }} onToastSettingsChange={setUserToastSettings} theme={{ ...DEFAULT_THEME, ...browserTheme }} onThemeChange={setBrowserTheme} onResetSettings={() => { clearBrowserLocalSettings(); window.location.reload(); }} onClose={() => setUserSettingsOpen(false)} /> : null}
       {helpOpen ? <HelpCenter version={APP_VERSION} onClose={() => setHelpOpen(false)} onPrivacy={() => setPrivacyOpen(true)} onTerms={() => setTermsOpen(true)} /> : null}
       {consent == null && !privacyOpen ? <CookieBanner onConsent={(choice) => { setAnalyticsPreference(choice); setConsent(choice); }} onPrivacy={() => setPrivacyOpen(true)} /> : null}
       {privacyOpen ? <PrivacyDialog consent={consent} onConsent={(choice) => { setAnalyticsPreference(choice); setConsent(choice); setPrivacyOpen(false); }} onClose={() => setPrivacyOpen(false)} /> : null}
@@ -5531,35 +3880,9 @@ function DashboardApp() {
   );
 }
 
-function BotControlApp() {
-  const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
-  const [loading, setLoading] = React.useState(true);
-  React.useEffect(() => {
-    fetch(`${LOCAL_API}/config`)
-      .then((response) => response.ok ? response.json() : null)
-      .then((config) => {
-        const next = normalizeAppSettings(config);
-        setSettings(next);
-        applyTheme(next.theme);
-      })
-      .catch(() => applyTheme(DEFAULT_THEME))
-      .finally(() => setLoading(false));
-  }, []);
-  return loading ? <main><AppSkeleton /></main> : (
-    <main className="bot-control-page">
-      <AdminPanel settings={settings} onSettingsSaved={(next) => {
-        setSettings(next);
-        applyTheme(next.theme);
-      }} botOnly />
-    </main>
-  );
-}
-
 function App() {
   const dedicatedLegalPath = window.location.pathname === "/terms" ? "terms" : window.location.pathname === "/privacy" ? "privacy" : null;
-  const dedicatedBotPath = window.location.pathname === "/bot" || window.location.hostname.toLowerCase().startsWith("bot.");
   if (dedicatedLegalPath) return <DedicatedLegalPage type={dedicatedLegalPath} />;
-  if (dedicatedBotPath) return <BotControlApp />;
   return <DashboardApp />;
 }
 

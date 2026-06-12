@@ -14,12 +14,11 @@ The maintained application is in [`apps/bitcraft-local`](./apps/bitcraft-local).
 - Imports retained confirmed-sales history from BitJita completed trades, with settlement-member filtering.
 - Helps players find large public crafts for skill XP and navigate directly to their locations on the world map.
 - Displays lightweight in-app notifications for new listings, confirmed sales, and settlement craft queue changes while the dashboard is open.
-- Optionally sends Discord bot notifications and provides slash commands for supplies, online members, active crafts, and item price checks.
 - Provides a floating help panel on every page with version, documentation, changelog, and issue-reporting links.
-- Supports opt-in first-party usage analytics with an in-app cookie notice, privacy controls and Admin reporting.
-- Embeds the settlement's BitCraft Sync board for material planning and shared goals.
-- Provides a protected admin console for configuration, branding, theme editing, diagnostics, account management, audit history, database inspection, exports and backups.
-- Stores Discord bot tokens as protected server secrets, hidden from the admin database browser.
+- Supports opt-in first-party usage analytics with an in-app cookie notice and privacy controls.
+- Prompts each visitor to choose a settlement on first visit; no settlement is selected by default.
+- Optionally embeds the visitor's BitCraft Sync board for material planning and shared goals.
+- Stores visitor preferences, including selected settlement and optional Sync URL, in the browser.
 
 ## Application Pages
 
@@ -170,9 +169,9 @@ An embedded [BitCraft Map](https://bitcraftmap.com/) view:
 
 ### Sync
 
-Embeds a configured [BitCraft Sync](https://bitcraftsync.app/) settlement board, used for shared materials, crafting goals, and shopping requirements.
+Embeds an optional [BitCraft Sync](https://bitcraftsync.app/) settlement board, used for shared materials, crafting goals, and shopping requirements.
 
-The configured board URL can be changed through Admin.
+If a visitor does not add a Sync URL during onboarding, the Sync page shows a compact optional form instead of requiring one.
 
 ### Activity
 
@@ -185,74 +184,21 @@ The configured board URL can be changed through Admin.
 - Optional compact view to reduce repeated low-signal entries.
 - Storage history is collected by the server in the background and read locally by browsers, avoiding slow container-log requests during page refreshes; the member filter roster is loaded separately without blocking the timeline.
 
-### Admin
+### Public Version
 
-Admin controls local application settings, not access to public gameplay data. Public BitCraft data remains visible without an admin account.
+This repository is the public-facing version of the monitor. It does not include admin pages, Discord login, the Discord bot dashboard, import/export settings, or server-side user accounts.
 
-Admin features:
+On first visit, the app requires the visitor to search for and choose a settlement. The optional BitCraft Sync URL can be provided during onboarding or later from the Sync page. Both values are stored locally in that browser.
 
-- Select which settlement/claim ID the dashboard monitors.
-- Configure the embedded BitCraft Sync URL.
-- Choose the default opening page, Public Craft Finder region, refresh interval, notification categories and snapshot retention window.
-- Configure optional Discord bot notifications, test delivery, and register slash commands.
-- Review or clear consented first-party usage analytics, including popular pages, recorded engagement time and feature usage.
-- Customize the application colour theme with live preview and presets.
-- Upload a logo shown in the app and a favicon shown in the browser tab.
-- Review server collection health and run public BitJita endpoint diagnostics, including per-container Activity storage timing.
-- Inspect, search and export local SQLite tables during testing.
-- Create and download database backups, and prune expired snapshots without deleting market/activity history.
-- Manage multiple administrator accounts, sessions and passwords.
-- Review administrator actions and sign-in attempts.
-
-### Discord Bot
-
-The Discord integration is optional and runs inside the existing Node server. It can post settlement notifications to a configured channel and exposes Discord slash commands at `/api/discord/interactions`.
-
-Available commands:
-
-- `/supplies` shows settlement supplies, upkeep and runway.
-- `/online` shows online settlement members.
-- `/crafts` lists active settlement crafts, optionally filtered by skill text.
-- `/price` looks up recent BitJita sale pricing for an item, defaulting to the monitored settlement region.
-- `/craftwatch list` shows your personal craft profession watches and mutes.
-- `/craftwatch clear` removes your craft watch settings.
-
-Discord setup is managed in **Admin > Discord**. The bot token is stored in the protected `app_secrets` table or can be supplied with `DISCORD_BOT_TOKEN`; it is not returned through the settings API or shown in the admin table browser.
-
-Craft notifications include **Watch profession** and **Mute profession** buttons. Watching a profession makes future matching craft alerts mention that Discord user; muting suppresses those personal watch mentions.
-
-Craft-start notifications can be filtered by minimum total XP, allowed crafter names and a configurable time-present delay. The default delay is five minutes, so mistaken crafts that are cancelled quickly do not alert.
-
-#### Discord Bot Terms
-
-The Discord bot is optional and provided as part of this unofficial community app. It posts settlement notifications and responds to slash commands using public BitJita data and locally stored app data. Bot output is informational only and may be delayed, incomplete or inaccurate.
-
-Using the bot means Discord command names, command options, server IDs, channel IDs, user IDs, delivery status, and notification diagnostics may be processed by this app and Discord so the bot can respond and administrators can diagnose delivery issues. Server administrators can disable notifications, remove the bot, rotate the bot token, or delete local diagnostic/history data from the administration tools.
-
-Dedicated public pages are available for Discord application submission:
-
-- Terms of Service: `/terms`
-- Privacy Policy: `/privacy`
-
-Authentication behavior:
-
-- The first administrator is created from the Admin page; additional administrators can then be created there.
-- Passwords are stored as salted `scrypt` hashes.
-- Login sessions use an `HttpOnly`, `SameSite=Lax` cookie.
-- Administrator changes require a session-bound request token and same-origin request validation.
-- Repeated failed logins are temporarily throttled.
-- In production, first-time admin creation requires the server-side `ADMIN_SETUP_KEY`.
-- Production history collection is server-owned; public browsers cannot submit snapshots.
+Server-side SQLite history is shared by settlement ID. If Alice and Bob both track the same settlement, their browsers read the same market, activity, snapshot and contribution records instead of creating per-user duplicates.
 
 ### Privacy And Analytics
 
 Analytics are disabled until a visitor explicitly selects **Accept Analytics** in the cookie notice or Privacy & Analytics dialog. The app remains fully usable when analytics are declined.
 
-When accepted, first-party cookies store the user's consent and a random browser identifier for up to 180 days. The application records section page views, time spent in each section and high-level feature usage including Market tabs, Price Finder searches, member-details opening, Production eligibility filters, Public Craft Finder controls, map links, and Activity filters. Raw analytics events are retained for up to 90 days, and results are available to administrators in **Admin > Analytics**, where all analytics data can also be deleted.
+When accepted, first-party cookies store the user's consent and a random browser identifier for up to 180 days. The application records section page views, time spent in each section and high-level feature usage including Market tabs, Price Finder searches, member-details opening, Production eligibility filters, Public Craft Finder controls, map links, and Activity filters. Raw analytics events are retained for up to 90 days.
 
-The app does not include BitCraft usernames, selected member identities, typed search text, admin credentials, item IDs, item names, region query values, or database contents in analytics events. Visitors may withdraw permission at any time through **Privacy & Analytics**, which removes the analytics browser identifier.
-
-The optional Discord bot does not use analytics cookies. When enabled, Discord slash commands and notifications may process Discord server, channel and user identifiers, command options, public BitJita data, and notification delivery diagnostics. This is separate from browser analytics consent and is required for the bot features to operate.
+The app does not include typed search text, the optional BitCraft Sync URL, item IDs, item names, region query values, private credentials, or database contents in analytics events. Visitors may withdraw permission at any time through **Privacy & Analytics**, which removes the analytics browser identifier.
 
 ## Data Sources And Persistence
 
@@ -282,11 +228,8 @@ It records:
 | `market_trades` | Imported, deduplicated completed sell trades for settlement members |
 | `activity_events` | Settlement activity history |
 | `analytics_events` | Consented first-party aggregate usage analytics |
-| `admin_users` | Local admin credentials |
-| `admin_sessions` | Authenticated sessions |
-| `app_settings` | Settlement, Sync, display, branding and collection configuration |
-| `admin_audit_log` | Administrative changes and operations |
-| `admin_login_events` | Successful and failed sign-in records |
+| `public_claim_tracking` | Recently selected settlement IDs for shared refresh |
+| `app_settings` | Public app display and collection configuration |
 
 Development default:
 
@@ -300,8 +243,7 @@ Production default configured by the deployment service:
 /var/lib/bitcraft-claim-monitor/bitcraft-local.sqlite
 ```
 
-The server polls and records snapshots and settlement storage activity every 30 seconds even when nobody has the website open. Browser views read that persisted Activity history locally rather than waiting for every storage API request.
-Uploaded branding is stored under `branding/` and administrator-created SQLite backups under `backups/` inside the same data directory.
+The server records snapshots and settlement storage activity for recently selected settlements. Browser views read persisted Activity history from the local API rather than waiting for every storage API request.
 
 ## Tech Stack
 
@@ -377,14 +319,8 @@ Supported application server environment variables:
 | `BITCRAFT_LOCAL_DATA_DIR` | SQLite storage directory | `apps/bitcraft-local/data` |
 | `BITJITA_API_ORIGIN` | Alternate BitJita upstream origin | `https://bitjita.com` |
 | `BITJITA_APP_IDENTIFIER` | Identifier sent with upstream BitJita requests | project GitHub identifier |
-| `ADMIN_SETUP_KEY` | One-time key required to create the first production admin | unset |
 | `ENABLE_SERVER_POLLING` | Override server-side snapshot polling | enabled in production |
 | `SNAPSHOT_INTERVAL_MS` | Polling interval, minimum 10 seconds | `30000` |
-| `DISCORD_BOT_TOKEN` | Optional Discord bot token override | admin-stored secret |
-| `DISCORD_APPLICATION_ID` | Optional Discord application ID override | admin setting |
-| `DISCORD_PUBLIC_KEY` | Optional Discord interactions public key override | admin setting |
-| `DISCORD_GUILD_ID` | Optional Discord guild ID override for command registration | admin setting |
-| `DISCORD_CHANNEL_ID` | Optional Discord notification channel ID override | admin setting |
 
 ## VPS Deployment
 
@@ -421,7 +357,7 @@ apps/bitcraft-local/                 Maintained application
   src/components/                    Extracted React components
   src/api/                           Frontend API hooks and fetch helpers
   src/styles/                        Incremental stylesheet modules
-  server.mjs                         SQLite API, BitJita proxy, auth, production server
+  server.mjs                         SQLite API, BitJita proxy, production server
   dev.mjs                            Local frontend/API launcher
 deploy/                              systemd and Caddy production configuration
 DEPLOYMENT.md                        VPS installation and maintenance guide
@@ -431,8 +367,7 @@ BITJITA_API_AUDIT.md                 Public API audit and integration notes
 ## Security Notes
 
 - Gameplay information displayed by the dashboard comes from public BitJita endpoints.
-- Admin access protects local configuration and local persisted database inspection.
-- Do not commit `bitcraft-local.sqlite`, setup keys, environment files containing secrets, or VPS backups.
+- Do not commit `bitcraft-local.sqlite`, environment files containing secrets, or VPS backups.
 - Keep the production Node process bound to localhost and expose it through HTTPS with Caddy.
 - Back up the SQLite database separately from the Git repository.
 

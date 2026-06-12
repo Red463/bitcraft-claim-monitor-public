@@ -15,8 +15,7 @@ export type ActivePanel =
   | "empire"
   | "map"
   | "sync"
-  | "activity"
-  | "admin";
+  | "activity";
 
 export type LoadState<T> = { data: T | null; error: string | null; loading: boolean };
 

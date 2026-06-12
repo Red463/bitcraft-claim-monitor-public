@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.1-beta.1] - 2026-06-12
+
+### Changed
+
+- Converted the public app flow to browser-local settlement setup with shared server-side history refreshes keyed by settlement ID.
+- Replaced hardcoded active region dropdowns with a shared BitJita-backed active-region source for Map, Market tools and Public Craft Finder.
+- Updated Production status so crafts can show active when their progress increased during the latest refresh, even if BitJita contribution timestamps lag.
+
+### Removed
+
+- Removed public access to login, admin, Discord bot configuration and bot dashboard source files.
+
 ## [1.0.0-beta.1] - 2026-06-12
 
 ### Changed

@@ -9,6 +9,10 @@ export function useLocalHistory(refreshToken: number, claimId: string, activePan
   const [state, setState] = React.useState<LocalHistoryState>({ market: null, activity: [], activityTotal: 0, snapshots: [], dashboard: null, error: null, refreshToken: 0 });
 
   React.useEffect(() => {
+    if (!claimId.trim()) {
+      setState((prev) => ({ ...prev, market: null, activity: [], activityTotal: 0, snapshots: [], dashboard: null, error: null }));
+      return;
+    }
     const controller = new AbortController();
     async function load() {
       try {

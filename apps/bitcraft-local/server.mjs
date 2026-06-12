@@ -13,14 +13,14 @@ const isProduction = process.env.NODE_ENV === "production";
 const serveFrontend = isProduction || process.env.SERVE_STATIC === "true";
 const adminSetupKey = process.env.ADMIN_SETUP_KEY ?? "";
 const serverPollingEnabled = process.env.ENABLE_SERVER_POLLING !== "false";
-const discordStartupEnabled = process.env.ENABLE_DISCORD_STARTUP !== "false";
+const discordStartupEnabled = false;
 const snapshotIntervalMs = Math.max(Number(process.env.SNAPSHOT_INTERVAL_MS ?? 30000), 10000);
 const productionMissingGraceMs = Math.max(Number(process.env.PRODUCTION_MISSING_GRACE_MS ?? 120000), 0);
 const dataDir = process.env.BITCRAFT_LOCAL_DATA_DIR ?? path.join(root, "data");
 const packageJson = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 const appVersion = String(packageJson.version ?? "0.0.0-dev");
-const appIdentifier = process.env.BITJITA_APP_IDENTIFIER ?? "BitCraft Claim Monitor (github.com/Red463/bitcraft-claim-monitor)";
-const changelogUrl = "https://github.com/Red463/bitcraft-claim-monitor/blob/main/CHANGELOG.md";
+const appIdentifier = process.env.BITJITA_APP_IDENTIFIER ?? "BitCraft Claim Monitor Public (github.com/Red463/bitcraft-claim-monitor-public)";
+const changelogUrl = "https://github.com/Red463/bitcraft-claim-monitor-public/blob/main/CHANGELOG.md";
 const changelogPath = path.resolve(root, "..", "..", "CHANGELOG.md");
 const repoRoot = path.resolve(root, "..", "..");
 const brandingDir = path.join(dataDir, "branding");
@@ -148,6 +148,13 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS public_claim_tracking (
+    claim_id TEXT PRIMARY KEY,
+    selected_at TEXT NOT NULL,
+    last_refresh_requested_at TEXT,
+    last_refresh_completed_at TEXT,
+    last_refresh_error TEXT
   );
   CREATE TABLE IF NOT EXISTS production_jobs (
     job_key TEXT PRIMARY KEY,
@@ -286,6 +293,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_market_events_claim_time ON market_events (claim_id, occurred_at DESC);
   CREATE INDEX IF NOT EXISTS idx_market_trades_claim_time ON market_trades (claim_id, occurred_at DESC);
   CREATE INDEX IF NOT EXISTS idx_activity_claim_time ON activity_events (claim_id, occurred_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_public_claim_tracking_selected ON public_claim_tracking (selected_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_public_claim_tracking_refresh ON public_claim_tracking (last_refresh_requested_at DESC);
   CREATE INDEX IF NOT EXISTS idx_analytics_time ON analytics_events (occurred_at DESC);
   CREATE INDEX IF NOT EXISTS idx_analytics_page_time ON analytics_events (page, occurred_at DESC);
   CREATE INDEX IF NOT EXISTS idx_production_claim_status ON production_jobs (claim_id, status, last_seen DESC);
@@ -318,8 +327,10 @@ ensureColumn("admin_users", "role", "TEXT NOT NULL DEFAULT 'owner'");
 ensureColumn("production_jobs", "start_notified", "INTEGER NOT NULL DEFAULT 0");
 db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_activity_source ON activity_events (claim_id, event_type, source_key) WHERE source_key IS NOT NULL;");
 
-const defaultClaimId = "1369094286777412590";
-const defaultSyncUrl = "https://bitcraftsync.app/s/MUFJw3#claims=1369094286777412590&players=1369094286756659093%2C576460752388321942%2C864691128512324120&shopping=i.2036617800%3A20&p.exc=1369094286756659093%3A1369094286764705296%2C1369094286756792917%3B864691128512324120%3A1369094286778153104%2C1369094286772328807%2C1369094286761962469%3B576460752388321942%3A1369094286783870822&crafts=1&crafts.pf=includedPlayers";
+const legacyDefaultClaimId = "1369094286777412590";
+const legacyDefaultSyncUrl = "https://bitcraftsync.app/s/MUFJw3#claims=1369094286777412590&players=1369094286756659093%2C576460752388321942%2C864691128512324120&shopping=i.2036617800%3A20&p.exc=1369094286756659093%3A1369094286764705296%2C1369094286756792917%3B864691128512324120%3A1369094286778153104%2C1369094286772328807%2C1369094286761962469%3B576460752388321942%3A1369094286783870822&crafts=1&crafts.pf=includedPlayers";
+const defaultClaimId = "";
+const defaultSyncUrl = "";
 const defaultTheme = {
   bg: "#0c0d10",
   sidebar: "#06070a",
@@ -335,19 +346,19 @@ const defaultTheme = {
 const now = new Date().toISOString();
 db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("claim_id", defaultClaimId, now);
 db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("bitcraft_sync_url", defaultSyncUrl, now);
+db.prepare("UPDATE app_settings SET value = ?, updated_at = ? WHERE key = ? AND value = ?").run("", now, "claim_id", legacyDefaultClaimId);
+db.prepare("UPDATE app_settings SET value = ?, updated_at = ? WHERE key = ? AND value = ?").run("", now, "bitcraft_sync_url", legacyDefaultSyncUrl);
 db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("theme_json", JSON.stringify(defaultTheme), now);
 db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("refresh_seconds", "30", now);
 db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("default_page", "dashboard", now);
 db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("default_region", "", now);
+db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("manual_active_regions_json", "[]", now);
 db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("toast_json", JSON.stringify({ marketListings: true, marketSales: true, production: true }), now);
 db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("branding_json", JSON.stringify({}), now);
 db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("snapshot_retention_days", "365", now);
-db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("discord_json", JSON.stringify({ enabled: false, applicationId: "", publicKey: "", guildId: "", channelId: "", minSaleValue: 0, supplyRunwayDaysThreshold: 7, productionMinXp: 40000, productionMinAgeMinutes: 5, productionUsers: "", craftChannels: { forestry: "1509932116077711411", carpentry: "1509932154442875201", masonry: "1509932188446101585", mining: "1509932207060291797", smithing: "1509932228090658936", scholar: "1509932259262595245", hunting: "1510275986766434325", leatherworking: "1509932280829710547", tailoring: "1509932306486398976", farming: "1509932539626786926", fishing: "1509932564641747074", cooking: "1509932588180181033", foraging: "1509932609378058412" }, notify: { marketListings: true, marketSales: true, production: true, productionStarted: true, productionCompleted: true, lowSupplies: false, appUpdates: true } }), now);
-db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("discord_last_announced_version", "", now);
-db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("discord_last_supply_report_at", "", now);
-db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("discord_last_low_supplies_at", "", now);
-db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)").run("discord_last_delivery_json", JSON.stringify({ status: "none" }), now);
-db.prepare("DELETE FROM app_settings WHERE key = ?").run("analytics_json");
+for (const oldKey of ["discord_json", "discord_last_announced_version", "discord_last_supply_report_at", "discord_last_low_supplies_at", "discord_last_delivery_json", "analytics_json"]) {
+  db.prepare("DELETE FROM app_settings WHERE key = ?").run(oldKey);
+}
 
 const statements = {
   latestSnapshot: db.prepare("SELECT * FROM snapshots WHERE claim_id = ? ORDER BY captured_at DESC, id DESC LIMIT 1"),
@@ -463,6 +474,23 @@ const statements = {
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
   `),
   deleteSecret: db.prepare("DELETE FROM app_secrets WHERE key = ?"),
+  upsertTrackedClaimSelection: db.prepare(`
+    INSERT INTO public_claim_tracking (claim_id, selected_at, last_refresh_error) VALUES (?, ?, NULL)
+    ON CONFLICT(claim_id) DO UPDATE SET selected_at = excluded.selected_at, last_refresh_error = NULL
+  `),
+  markTrackedClaimRefreshRequested: db.prepare(`
+    INSERT INTO public_claim_tracking (claim_id, selected_at, last_refresh_requested_at, last_refresh_error) VALUES (?, ?, ?, NULL)
+    ON CONFLICT(claim_id) DO UPDATE SET selected_at = excluded.selected_at, last_refresh_requested_at = excluded.last_refresh_requested_at, last_refresh_error = NULL
+  `),
+  markTrackedClaimRefreshCompleted: db.prepare("UPDATE public_claim_tracking SET last_refresh_completed_at = ?, last_refresh_error = NULL WHERE claim_id = ?"),
+  markTrackedClaimRefreshFailed: db.prepare("UPDATE public_claim_tracking SET last_refresh_error = ? WHERE claim_id = ?"),
+  recentTrackedClaims: db.prepare(`
+    SELECT claim_id
+    FROM public_claim_tracking
+    WHERE COALESCE(last_refresh_requested_at, selected_at) >= ?
+    ORDER BY COALESCE(last_refresh_requested_at, selected_at) DESC
+    LIMIT ?
+  `),
   adminCount: db.prepare("SELECT COUNT(*) AS count FROM admin_users"),
   adminByUsername: db.prepare("SELECT * FROM admin_users WHERE username = ? AND active = 1"),
   adminBySession: db.prepare(`
@@ -1113,8 +1141,8 @@ function getSettings() {
   const branding = safeJson(statements.getSetting.get("branding_json")?.value, {});
   const savedDefaultPage = statements.getSetting.get("default_page")?.value ?? "dashboard";
   return {
-    claimId: statements.getSetting.get("claim_id")?.value ?? defaultClaimId,
-    syncUrl: statements.getSetting.get("bitcraft_sync_url")?.value ?? defaultSyncUrl,
+    claimId: statements.getSetting.get("claim_id")?.value ?? "",
+    syncUrl: statements.getSetting.get("bitcraft_sync_url")?.value ?? "",
     theme: { ...defaultTheme, ...theme },
     refreshSeconds: Math.min(Math.max(toNumber(statements.getSetting.get("refresh_seconds")?.value) || 30, 15), 300),
     defaultPage: validPage(savedDefaultPage) ? savedDefaultPage : "dashboard",
@@ -1123,8 +1151,31 @@ function getSettings() {
     branding,
     snapshotRetentionDays: Math.min(Math.max(toNumber(statements.getSetting.get("snapshot_retention_days")?.value) || 365, 30), 3650),
     browserSnapshotsEnabled: false,
-    discord: publicDiscordSettings(),
   };
+}
+
+function validClaimId(value) {
+  return /^\d{8,}$/.test(String(value ?? "").trim());
+}
+
+function markTrackedClaimSelected(claimId) {
+  const selectedClaimId = String(claimId ?? "").trim();
+  if (!validClaimId(selectedClaimId)) return false;
+  statements.upsertTrackedClaimSelection.run(selectedClaimId, new Date().toISOString());
+  return true;
+}
+
+function markTrackedClaimRefreshRequested(claimId) {
+  const selectedClaimId = String(claimId ?? "").trim();
+  if (!validClaimId(selectedClaimId)) return false;
+  const requestedAt = new Date().toISOString();
+  statements.markTrackedClaimRefreshRequested.run(selectedClaimId, requestedAt, requestedAt);
+  return true;
+}
+
+function recentlyTrackedClaimIds() {
+  const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+  return statements.recentTrackedClaims.all(cutoff, 25).map((row) => String(row.claim_id)).filter(validClaimId);
 }
 
 const pollStatus = {
@@ -1204,6 +1255,7 @@ const loginAttempts = new Map();
 const upstreamCache = new Map();
 const upstreamInflight = new Map();
 const regionCache = new Map();
+let activeRegionCache = null;
 const claimDetailCache = new Map();
 const playerDetailCache = new Map();
 const craftContributionCache = new Map();
@@ -3770,6 +3822,120 @@ async function fetchAllRegionClaims(regionId) {
   };
 }
 
+async function fetchAllClaimsForSearch() {
+  const cached = regionCache.get("__all_claims_search__");
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const limit = 100;
+  const first = await fetchBitjita(`/claims?limit=${limit}&page=1&sort=tier&order=desc`);
+  const total = toNumber(first.count);
+  const totalPages = Math.max(Math.ceil(total / limit), 1);
+  const pages = totalPages > 1
+    ? await mapWithConcurrency(Array.from({ length: totalPages - 1 }, (_, index) => index + 2), 4, (page) => fetchBitjita(`/claims?limit=${limit}&page=${page}&sort=tier&order=desc`))
+    : [];
+  const value = [first, ...pages].flatMap((page) => unwrap(page, "claims", []));
+  regionCache.set("__all_claims_search__", { expiresAt: Date.now() + 10 * 60 * 1000, value });
+  return value;
+}
+
+async function searchClaims(query) {
+  const term = String(query ?? "").trim().toLowerCase();
+  if (term.length < 2) return { claims: [] };
+  const claims = await fetchAllClaimsForSearch();
+  const matches = claims
+    .filter((claim) => {
+      const haystack = [
+        claim.name,
+        claim.entityId,
+        claim.ownerPlayerUsername,
+        claim.ownerUsername,
+        claim.ownerName,
+        claim.regionName,
+        claim.empireName,
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(term);
+    })
+    .slice(0, 25)
+    .map((claim) => ({
+      entityId: String(claim.entityId ?? ""),
+      name: String(claim.name ?? ""),
+      owner: String(claim.ownerPlayerUsername ?? claim.ownerUsername ?? claim.ownerName ?? claim.owner ?? ""),
+      regionName: String(claim.regionName ?? ""),
+      regionId: claim.regionId != null ? String(claim.regionId) : "",
+      tier: claim.tier ?? "",
+    }));
+  return { claims: matches };
+}
+
+function regionIdFrom(value) {
+  const id = value?.regionId ?? value?.id ?? value?.entityId ?? value?.region_id;
+  return String(id ?? "").trim();
+}
+
+function regionNameFrom(value) {
+  return String(value?.name ?? value?.regionName ?? value?.region_name ?? value?.displayName ?? "").trim();
+}
+
+function normalizeManualActiveRegions(value) {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      return normalizeManualActiveRegions(JSON.parse(trimmed));
+    } catch {
+      return trimmed.split(",").map((part) => {
+        const [id, name] = part.split(":");
+        return { regionId: id?.trim(), name: name?.trim() };
+      });
+    }
+  }
+  const rows = Array.isArray(value) ? value : [];
+  return rows
+    .map((entry) => typeof entry === "string" ? { regionId: entry, name: "" } : entry)
+    .map((entry) => {
+      const regionId = regionIdFrom(entry);
+      if (!/^\d+$/.test(regionId)) return null;
+      return { regionId, name: regionNameFrom(entry), source: "manual", active: true };
+    })
+    .filter(Boolean);
+}
+
+function isActiveRegionStatus(region) {
+  const status = String(region?.status ?? region?.state ?? "").trim().toLowerCase();
+  if (["inactive", "offline", "disabled", "closed"].includes(status)) return false;
+  if (region?.active === false || region?.enabled === false) return false;
+  return region?.active === true || region?.syncing === true || status === "active" || status === "syncing" || status === "";
+}
+
+async function fetchActiveRegions() {
+  if (activeRegionCache && activeRegionCache.expiresAt > Date.now()) return activeRegionCache.value;
+  const [statusPayload, regionPayload] = await Promise.all([
+    fetchBitjita("/regions/status"),
+    fetchBitjita("/regions").catch(() => ({ regions: [] })),
+  ]);
+  const statusRows = unwrap(statusPayload, "regions", []);
+  const regionRows = unwrap(regionPayload, "regions", []);
+  const namesById = new Map(regionRows.map((region) => [regionIdFrom(region), regionNameFrom(region)]).filter(([id]) => id));
+  const manualRows = [
+    ...normalizeManualActiveRegions(statements.getSetting.get("manual_active_regions_json")?.value ?? "[]"),
+    ...normalizeManualActiveRegions(process.env.BITCRAFT_ACTIVE_REGIONS ?? process.env.ACTIVE_REGION_FALLBACKS ?? ""),
+  ];
+  const rows = new Map();
+  for (const region of statusRows) {
+    const regionId = regionIdFrom(region);
+    if (!/^\d+$/.test(regionId) || !isActiveRegionStatus(region)) continue;
+    const name = namesById.get(regionId) || regionNameFrom(region);
+    rows.set(regionId, { regionId, name, active: true, source: "bitjita" });
+  }
+  for (const region of manualRows) {
+    const name = region.name || namesById.get(region.regionId) || "";
+    rows.set(region.regionId, { ...region, name, active: true });
+  }
+  const regions = [...rows.values()].sort((a, b) => toNumber(a.regionId) - toNumber(b.regionId));
+  const value = { regions, updatedAt: new Date().toISOString() };
+  activeRegionCache = { expiresAt: Date.now() + 60 * 1000, value };
+  return value;
+}
+
 async function fetchCachedRegionClaims(regionId) {
   const key = String(regionId);
   const cached = regionCache.get(key);
@@ -4055,46 +4221,66 @@ function enqueueSnapshot(payload) {
   return queued;
 }
 
-async function collectServerSnapshot(force = false) {
+async function collectClaimSnapshot(claimId) {
+  const [claimPayload, membersPayload, buildingsPayload, inventoriesPayload, market, craftsPayload] = await Promise.all([
+    fetchBitjita(`/claims/${claimId}`),
+    fetchBitjita(`/claims/${claimId}/members`),
+    fetchBitjita(`/claims/${claimId}/buildings`),
+    fetchBitjita(`/claims/${claimId}/inventories`),
+    fetchAllClaimListings(claimId),
+    fetchBitjita(`/crafts?claimEntityId=${claimId}&completed=false`).catch(() => ({ craftResults: [] })),
+  ]);
+  const claim = claimPayload.claim ?? claimPayload;
+  const members = unwrap(membersPayload, "members", []);
+  const buildings = unwrap(buildingsPayload, "buildings", []);
+  await enqueueSnapshot({
+    claimId,
+    claim,
+    membersCount: members.length,
+    buildingsCount: buildings.length,
+    market,
+    crafts: craftsPayload,
+    source: "server_poll",
+  });
+  pollStatus.storageLastAttemptAt = new Date().toISOString();
+  const storageResult = await collectStorageActivity(claimId, inventoriesPayload);
+  pollStatus.storageRequests = storageResult.requested;
+  pollStatus.storageInserted = storageResult.inserted;
+  pollStatus.storageLastError = storageResult.failures.length ? storageResult.failures.join("; ") : null;
+  pollStatus.storageLastSuccessAt = new Date().toISOString();
+  await importMemberSellTrades(claimId, members);
+  const completedAt = new Date().toISOString();
+  statements.markTrackedClaimRefreshCompleted.run(completedAt, claimId);
+  return { claimId, completedAt };
+}
+
+async function collectServerSnapshot(force = false, claimIdOverride = "") {
   if ((!serverPollingEnabled && !force) || pollStatus.running) return;
+  const explicitClaimId = String(claimIdOverride ?? "").trim();
+  if (explicitClaimId && !validClaimId(explicitClaimId)) {
+    const error = new Error("Choose a valid BitCraft settlement ID before refreshing local history");
+    error.statusCode = 400;
+    throw error;
+  }
+  const claimIds = explicitClaimId ? [explicitClaimId] : recentlyTrackedClaimIds();
+  if (!claimIds.length) return;
   pollStatus.running = true;
   pollStatus.lastAttemptAt = new Date().toISOString();
   try {
-    const { claimId } = getSettings();
-    await processDiscordTempBans().catch((error) => console.warn(`Discord temporary ban processing failed: ${error instanceof Error ? error.message : String(error)}`));
-    const [claimPayload, membersPayload, buildingsPayload, inventoriesPayload, market, craftsPayload] = await Promise.all([
-      fetchBitjita(`/claims/${claimId}`),
-      fetchBitjita(`/claims/${claimId}/members`),
-      fetchBitjita(`/claims/${claimId}/buildings`),
-      fetchBitjita(`/claims/${claimId}/inventories`),
-      fetchAllClaimListings(claimId),
-      fetchBitjita(`/crafts?claimEntityId=${claimId}&completed=false`).catch(() => ({ craftResults: [] })),
-    ]);
-    const claim = claimPayload.claim ?? claimPayload;
-    const members = unwrap(membersPayload, "members", []);
-    const buildings = unwrap(buildingsPayload, "buildings", []);
-    await sendScheduledSupplyReportIfDue(claim).catch((error) => console.warn(`Discord supply report failed: ${error instanceof Error ? error.message : String(error)}`));
-    await enqueueSnapshot({
-      claimId,
-      claim,
-      membersCount: members.length,
-      buildingsCount: buildings.length,
-      market,
-      crafts: craftsPayload,
-      source: "server_poll",
-    });
-    pollStatus.storageLastAttemptAt = new Date().toISOString();
-    const storageResult = await collectStorageActivity(claimId, inventoriesPayload);
-    pollStatus.storageRequests = storageResult.requested;
-    pollStatus.storageInserted = storageResult.inserted;
-    pollStatus.storageLastError = storageResult.failures.length ? storageResult.failures.join("; ") : null;
-    pollStatus.storageLastSuccessAt = new Date().toISOString();
-    await importMemberSellTrades(claimId, members);
-    pollStatus.lastSuccessAt = new Date().toISOString();
-    pollStatus.lastError = null;
-  } catch (error) {
-    pollStatus.lastError = error instanceof Error ? error.message : String(error);
-    console.error(`BitCraft snapshot poll failed: ${pollStatus.lastError}`);
+    for (const claimId of claimIds) {
+      if (!markTrackedClaimRefreshRequested(claimId)) continue;
+      try {
+        await collectClaimSnapshot(claimId);
+        pollStatus.lastSuccessAt = new Date().toISOString();
+        pollStatus.lastError = null;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        statements.markTrackedClaimRefreshFailed.run(message, claimId);
+        pollStatus.lastError = message;
+        console.error(`BitCraft snapshot poll failed for ${claimId}: ${message}`);
+        if (explicitClaimId) throw error;
+      }
+    }
   } finally {
     pollStatus.running = false;
   }
@@ -5089,7 +5275,7 @@ function securityHeaders(headers = {}) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self' https://bitjita.com https://discord.com",
+      "connect-src 'self' https://bitjita.com",
       "frame-src https://bitcraftsync.app https://bitcraftmap.com https://bccodex.com",
       "object-src 'none'",
       "base-uri 'self'",
@@ -5227,7 +5413,16 @@ const server = createServer(async (req, res) => {
       return proxyBitjita(url, res);
     }
     if (req.method === "GET" && url.pathname === "/api/local/config") return send(res, 200, getSettings());
-    if (req.method === "GET" && url.pathname === "/api/local/auth/me") return send(res, 200, authStatus(req));
+    if (req.method === "GET" && url.pathname === "/api/local/auth/me") return send(res, 200, { user: null, discordLoginEnabled: false });
+    if (url.pathname.startsWith("/api/local/auth/") || url.pathname.startsWith("/api/local/admin/") || url.pathname === "/api/discord/interactions") {
+      return send(res, 404, { error: "This public build does not include login, admin or Discord features." });
+    }
+    if (req.method === "POST" && url.pathname === "/api/local/refresh") {
+      if (!sameOriginRequest(req)) return send(res, 403, { error: "Cross-origin refresh rejected" });
+      const body = await readJson(req).catch(() => ({}));
+      await collectServerSnapshot(true, body.claimId);
+      return send(res, 200, { ok: true, polling: pollStatus });
+    }
     if (req.method === "GET" && url.pathname === "/api/local/auth/discord/start") {
       if (!rateLimit(req, res, "auth", RATE_LIMITS.auth)) return;
       return handleDiscordOAuthStart(req, res, url);
@@ -5288,6 +5483,14 @@ const server = createServer(async (req, res) => {
       const regionId = String(url.searchParams.get("regionId") ?? "").trim();
       if (!/^\d+$/.test(regionId)) return send(res, 400, { error: "Region id is required" });
       return send(res, 200, await fetchCachedRegionClaims(regionId));
+    }
+    if (req.method === "GET" && url.pathname === "/api/local/regions/active") {
+      if (!rateLimit(req, res, "active-regions", RATE_LIMITS.expensiveLocal)) return;
+      return send(res, 200, await fetchActiveRegions());
+    }
+    if (req.method === "GET" && url.pathname === "/api/local/claims/search") {
+      if (!rateLimit(req, res, "claim-search", RATE_LIMITS.expensiveLocal)) return;
+      return send(res, 200, await searchClaims(url.searchParams.get("q")));
     }
     if (req.method === "GET" && url.pathname === "/api/local/map/catalog") {
       if (!rateLimit(req, res, "map-catalog", RATE_LIMITS.expensiveLocal)) return;
@@ -5809,10 +6012,6 @@ const port = Number(process.env.APP_PORT ?? process.env.LOCAL_API_PORT ?? 18430)
 const host = process.env.APP_HOST ?? "127.0.0.1";
 server.listen(port, host, () => {
   console.log(`BitCraft monitor server listening on http://${host}:${port}${serveFrontend ? " with production frontend" : ""}`);
-  startDiscordGateway();
-  setTimeout(() => {
-    void announceDiscordAppUpdateIfNeeded().catch((error) => console.warn(`Discord app update announcement failed: ${error instanceof Error ? error.message : String(error)}`));
-  }, 5000);
   if (serverPollingEnabled) {
     console.log(`Server snapshot polling enabled every ${snapshotIntervalMs / 1000} seconds`);
     collectServerSnapshot();

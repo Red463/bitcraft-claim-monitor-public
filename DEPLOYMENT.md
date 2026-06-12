@@ -7,7 +7,7 @@ This guide is for the Hostworld Ubuntu VPS configuration with no control panel. 
 - systemd to keep the app running after restarts
 - SQLite data stored outside the Git checkout at `/var/lib/bitcraft-claim-monitor`
 
-The app server now serves the compiled frontend, the local history/admin API, and the restricted BitJita API proxy. In production it records settlement, market, and activity snapshots from BitJita every 30 seconds, even when no browser is open. Caddy only exposes it securely through your domain.
+The app server serves the compiled frontend, shared local history API, and restricted BitJita API proxy. In production it records settlement, market, and activity snapshots for recently selected settlements, so visitors tracking the same settlement share the same SQLite records. Caddy only exposes it securely through your domain.
 
 ## Before You Begin
 
@@ -15,7 +15,7 @@ You need:
 
 - An Ubuntu 22.04 VPS with its public IP address
 - A domain or subdomain, for example `app.timbersteeltrade.com`, with an `A` DNS record pointing at that IP
-- Your GitHub repository URL: `https://github.com/Red463/bitcraft-claim-monitor.git`
+- Your GitHub repository URL: `https://github.com/Red463/bitcraft-claim-monitor-public.git`
 
 The server must run Node.js 24 or newer because the database uses Node's built-in SQLite support.
 
@@ -78,7 +78,7 @@ Create an unprivileged service account, clone the project, create the database d
 
 ```bash
 useradd --system --home /opt/bitcraft-claim-monitor --shell /usr/sbin/nologin bitcraft
-git clone https://github.com/Red463/bitcraft-claim-monitor.git /opt/bitcraft-claim-monitor
+git clone https://github.com/Red463/bitcraft-claim-monitor-public.git /opt/bitcraft-claim-monitor
 chown -R bitcraft:bitcraft /opt/bitcraft-claim-monitor
 install -d -o bitcraft -g bitcraft -m 700 /var/lib/bitcraft-claim-monitor
 cd /opt/bitcraft-claim-monitor
@@ -87,15 +87,6 @@ sudo -u bitcraft corepack pnpm --filter @workspace/bitcraft-local run build
 ```
 
 ## 5. Start the Application Service
-
-The first production admin account is protected by a one-time server setup key. Create one and keep the printed value ready for the first Admin page login:
-
-```bash
-SETUP_KEY=$(openssl rand -hex 32)
-printf 'ADMIN_SETUP_KEY=%s\n' "$SETUP_KEY" > /etc/bitcraft-claim-monitor.env
-chmod 600 /etc/bitcraft-claim-monitor.env
-echo "$SETUP_KEY"
-```
 
 Install the checked-in systemd service:
 
@@ -107,7 +98,7 @@ systemctl status bitcraft-claim-monitor
 curl http://127.0.0.1:18430/api/local/health
 ```
 
-The final command should return JSON containing `"ok":true` and polling status. Within about 30 seconds, `polling.lastSuccessAt` should contain a timestamp.
+The final command should return JSON containing `"ok":true` and polling status. `polling.lastSuccessAt` is populated after visitors select settlements and shared history refresh succeeds.
 
 ## 6. Publish the Website With HTTPS
 
@@ -122,14 +113,7 @@ systemctl reload caddy
 
 Open `https://app.timbersteeltrade.com/` in your browser. Caddy automatically obtains and renews the HTTPS certificate when DNS is pointing at the VPS and ports 80 and 443 are open.
 
-Go to the app's **Admin** page. Enter the server setup key printed above and create your admin password. Once this succeeds, remove the one-time setup key from the running service:
-
-```bash
-rm /etc/bitcraft-claim-monitor.env
-systemctl restart bitcraft-claim-monitor
-```
-
-On a production installation, market/activity history is collected by the server every 30 seconds. Visitors do not write snapshots, and manually resolving uncertain market events remains an admin-only action.
+On first visit, the app prompts each visitor to choose a settlement and optionally add a BitCraft Sync URL. Shared market/activity history is collected by the server for selected settlements; visitors do not submit raw browser snapshots.
 
 ## Updating the App
 
@@ -144,17 +128,15 @@ systemctl restart bitcraft-claim-monitor
 systemctl status bitcraft-claim-monitor
 ```
 
-Persistent application data is stored at `/var/lib/bitcraft-claim-monitor`, so updating application code does not replace history, admin configuration, uploaded branding or admin-created backups.
+Persistent application data is stored at `/var/lib/bitcraft-claim-monitor`, so updating application code does not replace shared settlement history.
 
 A new VPS begins with a new database. Activity history begins when it starts collecting snapshots, but Market Analytics now backfills available completed sell orders identified by BitJita as belonging to the monitored settlement market during the first successful collection.
-
-After upgrading to `0.3.1-beta.1`, existing browser admin sessions expire because the server session lookup hash was changed. Sign in again on the Admin page; stored accounts and data are unchanged.
 
 ## Database Backups
 
 Hostworld weekly VPS backups are useful, but keep a separate SQLite backup because this database records market and activity history.
 
-The Admin console can create and download timestamped SQLite backups. These are written to `/var/lib/bitcraft-claim-monitor/backups`. Uploaded logos and favicons are stored in `/var/lib/bitcraft-claim-monitor/branding`; include that directory in any full-server backup if you use custom branding.
+Create SQLite backups directly on the VPS. Generated backups can be stored under `/var/backups/bitcraft-claim-monitor`.
 
 Create a protected backup directory:
 
@@ -190,4 +172,4 @@ journalctl -u caddy -n 100 --no-pager
 curl http://127.0.0.1:18430/api/local/health
 ```
 
-Only Caddy should be exposed publicly. The Node app intentionally listens on `127.0.0.1`, so the SQLite/admin API is reachable through the HTTPS website but not directly through an open server port.
+Only Caddy should be exposed publicly. The Node app intentionally listens on `127.0.0.1`, so the local API is reachable through the HTTPS website but not directly through an open server port.
