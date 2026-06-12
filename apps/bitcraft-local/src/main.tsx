@@ -175,7 +175,7 @@ const NAV_GROUPS = [
     ["dashboard", "Dashboard", Home],
     ["leaderboard", "Leaderboard", Trophy],
   ] },
-  { id: "settlement", label: "Settlement", items: [
+  { id: "settlement", label: "Claim", items: [
     ["members", "Members", Users],
     ["skills", "Professions", GraduationCap],
     ["production", "Production", Factory],
@@ -419,7 +419,7 @@ function regionOptionLabel(regionId: string, regions: ActiveRegion[], settlement
   const region = regions.find((entry) => entry.regionId === regionId);
   const name = region?.name?.trim();
   const base = name ? `${name} (R${regionId})` : `R${regionId}`;
-  return String(regionId) === String(settlementRegionId) ? `${base} - Settlement Region` : base;
+  return String(regionId) === String(settlementRegionId) ? `${base} - Claim Region` : base;
 }
 
 function activeRegionOptions(activeRegions: ActiveRegion[], settlementRegionId = "", selectedRegionId = "") {
@@ -545,7 +545,7 @@ function trackAnalyticsEvent(eventName: string, properties?: Record<string, stri
 
 function craftDisplayName(job: AnyRecord, craftsPayload?: AnyRecord): string {
   const item = craftOutputItem(job, craftsPayload);
-  return String(item?.name ?? job.recipeName ?? `${job.buildingName ?? "Settlement"} craft`);
+  return String(item?.name ?? job.recipeName ?? `${job.buildingName ?? "Claim"} craft`);
 }
 
 function craftOutputItem(job: AnyRecord, craftsPayload?: AnyRecord): AnyRecord | null {
@@ -640,7 +640,7 @@ function Dashboard({ data, activity, snapshots, dashboardSummary, lastUpdated, o
   const regionSettlements = data.region;
   const regionWealth = regionSettlements.reduce((total, row) => total + toNumber(row.treasury), 0);
   const regionWealthDetail = regionSettlements.length
-    ? `${formatNumber(regionSettlements.length)} settlement${regionSettlements.length === 1 ? "" : "s"} in region`
+    ? `${formatNumber(regionSettlements.length)} claim${regionSettlements.length === 1 ? "" : "s"} in region`
     : "Region data loading";
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -703,14 +703,14 @@ function Dashboard({ data, activity, snapshots, dashboardSummary, lastUpdated, o
       <header className="dashboard-topbar">
         <div>
           <h2>Dashboard</h2>
-          <p>Real-time summary of {claim.name ?? "the monitored settlement"}</p>
+          <p>Real-time summary of {claim.name ?? "the monitored claim"}</p>
         </div>
         <div className="dashboard-top-meta">
           <div className="dashboard-meta-cluster">
             <span className="dashboard-region-line"><Globe2 size={15} /> {claim.regionName ?? "Unknown"} <span className="dashboard-region-badge">R{claim.regionId ?? "?"}</span></span>
             <span className="dashboard-refresh-line"><span className="online-dot is-online" /> Last updated {lastUpdated ? lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "waiting"}</span>
           </div>
-          <span className="dashboard-claim-link"><TierBadge tier={claim.tier} /> {claim.name ?? "Monitored Settlement"}</span>
+          <span className="dashboard-claim-link"><TierBadge tier={claim.tier} /> {claim.name ?? "Monitored Claim"}</span>
         </div>
       </header>
 
@@ -807,7 +807,7 @@ function Dashboard({ data, activity, snapshots, dashboardSummary, lastUpdated, o
                 <small>{item.body}</small>
                 <ArrowUp size={14} />
               </button>
-            )) : <div className="dashboard-empty">No urgent settlement issues detected.</div>}
+            )) : <div className="dashboard-empty">No urgent claim issues detected.</div>}
           </div>
         </article>
       </section>
@@ -1258,7 +1258,7 @@ function Market({ data, history, claimId }: { data: ReturnType<typeof normalizeD
           </div>
           <div className="dashboard-settlement-pill">
             <span className="status-pill">R{data.claim?.regionId ?? "?"}</span>
-            <span>{data.claim?.name ?? "Settlement market"}</span>
+            <span>{data.claim?.name ?? "Claim market"}</span>
           </div>
         </div>
       </header>
@@ -1271,7 +1271,7 @@ function Market({ data, history, claimId }: { data: ReturnType<typeof normalizeD
       <section className="production-command-panel market-command-panel">
         <div className="market-command-header">
           <span className="production-command-title"><CircleDollarSign size={15} /> Market tools</span>
-          <span className="market-command-note">{view === "pricing" ? "Use completed trade history to estimate listing prices." : view === "buyOrders" ? "Search current buy orders by item and region." : "Browse settlement market data by view and member."}</span>
+          <span className="market-command-note">{view === "pricing" ? "Use completed trade history to estimate listing prices." : view === "buyOrders" ? "Search current buy orders by item and region." : "Browse claim market data by view and member."}</span>
         </div>
         <div className="market-tool-row">
           <div className="tabs primary-tabs market-tabs">
@@ -1287,7 +1287,7 @@ function Market({ data, history, claimId }: { data: ReturnType<typeof normalizeD
                 <option>All</option>
                 {memberOptions.map((name) => <option key={name}>{name}</option>)}
               </select>
-            ) : <span className="market-member-placeholder">{view === "buyOrders" ? "All market buyers" : "All settlement history"}</span>}
+            ) : <span className="market-member-placeholder">{view === "buyOrders" ? "All market buyers" : "All claim history"}</span>}
           </label>
         </div>
       </section>
@@ -1297,7 +1297,7 @@ function Market({ data, history, claimId }: { data: ReturnType<typeof normalizeD
         <BuyOrderFinder monitoredRegionId={String(data.claim?.regionId ?? "19")} />
       ) : view === "analytics" ? (
         <>
-          <p className="legend market-legend">Completed sales for orders listed at this settlement market, confirmed from BitJita trade records.</p>
+          <p className="legend market-legend">Completed sales for orders listed at this claim market, confirmed from BitJita trade records.</p>
           <div className="metric-grid market-analytics-metrics">
             <MiniStat icon={<CheckCircle2 />} label="Confirmed Sales" value={formatNumber(confirmedSales)} />
             <MiniStat icon={<Package />} label="Units Sold" value={formatNumber(unitsSold)} />
@@ -1334,7 +1334,7 @@ function Market({ data, history, claimId }: { data: ReturnType<typeof normalizeD
           </div>
           <section className="market-section">
             <h3><CheckCircle2 size={17} /> Recent Confirmed Sales</h3>
-            <p className="legend">Imported completed sales retained in this monitor's history for the selected current settlement member(s).</p>
+            <p className="legend">Imported completed sales retained in this monitor's history for the selected current claim member(s).</p>
             <DataTable rows={apiTrades} columns={[
               ["When", r => dateLabel(r.timestamp ?? r.createdAt)],
               ["Item", r => <ItemLabel item={r} name={r.itemName ?? "-"} />],
@@ -1707,7 +1707,7 @@ function BuyOrderFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
             <h3><ShoppingBag size={17} /> Active Buy Orders <small>{formatNumber(orders.length)} order{orders.length === 1 ? "" : "s"}</small></h3>
             {orders.length ? (
               <DataTable rows={orders} columns={[
-                ["Settlement", row => <div><strong>{row.claimName}</strong><small className="table-subline">{row.regionName || (row.regionId ? `R${row.regionId}` : "")}</small></div>],
+                ["Claim", row => <div><strong>{row.claimName}</strong><small className="table-subline">{row.regionName || (row.regionId ? `R${row.regionId}` : "")}</small></div>],
                 ["Buyer", row => row.ownerUsername],
                 ["Qty", row => formatNumber(row.quantity)],
                 ["Unit Price", row => `${formatNumber(row.unitPrice)}g`],
@@ -1854,7 +1854,7 @@ function PublicCraftFinder({ refreshToken, monitoredRegionId, monitoredOwnerName
   const columns: Array<[string, PublicCraftSortKey, (job: AnyRecord) => React.ReactNode]> = [
     ["Craft", "output", (job) => <><strong>{job.output}</strong><small className="muted-line">{job.buildingName}</small></>],
     ["Tier", "tier", (job) => job.tier ? <TierBadge tier={job.tier} /> : "-"],
-    ["Settlement", "settlement", (job) => <><strong>{job.claimName ?? "Unknown"}</strong>{job.claimLocationX != null && job.claimLocationZ != null ? <button className="map-location-link" onClick={() => { trackAnalyticsEvent("public_craft_map_opened"); onShowMap({ name: `${job.claimName ?? "Public craft"} - ${job.output}`, locationX: toNumber(job.claimLocationX), locationZ: toNumber(job.claimLocationZ) }); }}><MapPin size={12} />R{job.regionId} - {job.claimLocationX}, {job.claimLocationZ}</button> : null}</>],
+    ["Claim", "settlement", (job) => <><strong>{job.claimName ?? "Unknown"}</strong>{job.claimLocationX != null && job.claimLocationZ != null ? <button className="map-location-link" onClick={() => { trackAnalyticsEvent("public_craft_map_opened"); onShowMap({ name: `${job.claimName ?? "Public craft"} - ${job.output}`, locationX: toNumber(job.claimLocationX), locationZ: toNumber(job.claimLocationZ) }); }}><MapPin size={12} />R{job.regionId} - {job.claimLocationX}, {job.claimLocationZ}</button> : null}</>],
     ["Required", "required", (job) => `${job.requiredSkillName} Lv ${job.minimumLevel}+`],
     ["Effort to Craft", "remaining", (job) => formatNumber(job.remaining)],
     ["XP Available", "availableXp", (job) => formatNumber(job.availableXp)],
@@ -1880,7 +1880,7 @@ function PublicCraftFinder({ refreshToken, monitoredRegionId, monitoredOwnerName
       </header>
       <div className="summary-grid public-craft-summary">
         <MiniStat icon={<Factory />} label="Public Jobs" value={formatNumber(filteredJobs.length)} />
-        <MiniStat icon={<Globe2 />} label="Settlements" value={formatNumber(activeSettlements)} />
+        <MiniStat icon={<Globe2 />} label="Claims" value={formatNumber(activeSettlements)} />
         <MiniStat icon={<GraduationCap />} label="Skill Filter" value={skillName} />
         <MiniStat icon={<TrendingUp />} label="XP Available" value={formatNumber(totalAvailableXp)} />
       </div>
@@ -1901,7 +1901,7 @@ function PublicCraftFinder({ refreshToken, monitoredRegionId, monitoredOwnerName
         </div>
         <div className="public-craft-hint">
           <MapPin size={13} />
-          <span>Click a settlement location to open it on the map. Column headings sort the results.</span>
+          <span>Click a claim location to open it on the map. Column headings sort the results.</span>
         </div>
       </div>
       {state.error ? <div className="error">Failed to load public crafts: {state.error}</div> : null}
@@ -1976,13 +1976,13 @@ function MemberPassiveCrafts({ members, refreshToken }: { members: AnyRecord[]; 
       <div className="split-header">
         <div className="dashboard-section-heading">
           <h3><Factory size={15} /> Member Passive Crafts</h3>
-          <p>Recent public passive output for current settlement members. BitJita does not report craft location, so entries may have been performed elsewhere.</p>
+          <p>Recent public passive output for current claim members. BitJita does not report craft location, so entries may have been performed elsewhere.</p>
         </div>
         {state.loading && rows.length ? <span className="refreshing-label">Updating...</span> : null}
       </div>
       {state.error ? <p className="legend">{state.error}</p> : null}
       {state.loading && !state.data ? <p className="legend">Loading passive craft history...</p> : null}
-      {!state.loading && rows.length === 0 ? <div className="empty-state"><Factory />No passive craft history reported for settlement members.</div> : null}
+      {!state.loading && rows.length === 0 ? <div className="empty-state"><Factory />No passive craft history reported for claim members.</div> : null}
       {rows.length ? <DataTable rows={rows} columns={[
         ["Output", (row) => <strong>{row.recipe}</strong>],
         ["Tier", (row) => row.tier ? <TierBadge tier={row.tier} /> : "-"],
@@ -2261,7 +2261,7 @@ function Leaderboard({ claimId, refreshToken }: { claimId: string; refreshToken:
       <header className="members-topbar leaderboard-topbar">
         <div>
           <h2>Contribution Leaderboard</h2>
-          <p>Recorded craft contribution totals for the monitored settlement, grouped by member and profession.</p>
+          <p>Recorded craft contribution totals for the monitored claim, grouped by member and profession.</p>
         </div>
         <div className="dashboard-top-meta">
           <div className="dashboard-meta-cluster">
@@ -2290,7 +2290,7 @@ function Leaderboard({ claimId, refreshToken }: { claimId: string; refreshToken:
         {state.loading ? <div className="empty-state"><RefreshCw /> Loading contribution history...</div> : null}
         {state.error ? <div className="error">Failed to load leaderboard: {state.error}</div> : null}
         {!state.loading && !state.error && !contributors.length ? (
-          <div className="empty-state"><Trophy />No craft contributions have been recorded yet. The leaderboard starts filling as settlement craft contribution data is observed during refreshes.</div>
+          <div className="empty-state"><Trophy />No craft contributions have been recorded yet. The leaderboard starts filling as claim craft contribution data is observed during refreshes.</div>
         ) : null}
         {filteredContributors.length ? (
           <DataTable
@@ -2433,7 +2433,7 @@ function MapPanel({ data, focus, onClearFocus }: { data: ReturnType<typeof norma
   }, [roster]);
   const current = React.useMemo(() => selectedIds === null ? defaultSelection : new Set(selectedIds), [defaultSelection, selectedIds]);
   const defaultFocus = data.claim.locationX != null && data.claim.locationZ != null ? {
-    name: data.claim.name ?? "Monitored settlement",
+    name: data.claim.name ?? "Monitored claim",
     locationX: toNumber(data.claim.locationX),
     locationZ: toNumber(data.claim.locationZ),
   } : null;
@@ -2676,13 +2676,13 @@ function ActivityPanel({ activity, activityTotal, claimId, error }: { activity: 
   const storageMoves = memberActivity.filter((item) => item.event_type === "storage").length;
   const settlementChanges = memberActivity.length - storageMoves;
   const latestEvent = memberActivity[0]?.occurred_at ?? memberActivity[0]?.occurredAt;
-  const scopeLabel = memberFilter === "All" ? "settlement" : memberFilter;
+  const scopeLabel = memberFilter === "All" ? "claim" : memberFilter;
   return (
     <div className="panel activity-panel">
       <header className="members-topbar activity-topbar">
         <div>
           <h2>Activity</h2>
-          <p>A live audit trail of settlement updates and owned-storage movements.</p>
+          <p>A live audit trail of claim updates and owned-storage movements.</p>
         </div>
         <div className="dashboard-top-meta" aria-label="Activity status">
           <div className="dashboard-meta-cluster">
@@ -2698,7 +2698,7 @@ function ActivityPanel({ activity, activityTotal, claimId, error }: { activity: 
       {error ? <div className="error">Local history unavailable: {error}</div> : null}
       <div className="activity-overview">
         <MiniStat icon={<Activity />} label={memberFilter === "All" ? "Total History" : "Member Events"} value={formatNumber(memberFilter === "All" ? activityTotal : memberActivity.length)} title={memberFilter === "All" ? `${formatNumber(combined.length)} recent events loaded` : `Attributed to ${memberFilter}`} />
-        <MiniStat icon={<Box />} label="Storage Moves" value={formatNumber(storageMoves)} title="Settlement containers only" />
+        <MiniStat icon={<Box />} label="Storage Moves" value={formatNumber(storageMoves)} title="Claim containers only" />
         <MiniStat icon={<Building2 />} label={memberFilter === "All" ? "System Changes" : "Other Changes"} value={formatNumber(settlementChanges)} title={memberFilter === "All" ? "Within loaded history" : "Not attributed to members"} />
         <MiniStat icon={<RefreshCw />} label="Latest Event" value={latestEvent ? timeAgo(latestEvent) : "-"} title={latestEvent ? dateLabel(latestEvent) : "Awaiting activity"} />
       </div>
@@ -2726,7 +2726,7 @@ function ActivityPanel({ activity, activityTotal, claimId, error }: { activity: 
         </div>
         <div className="activity-options">
           <label className="check-control"><input type="checkbox" checked={compact} onChange={(event) => setCompact(event.target.checked)} /> Combine repeated treasury changes</label>
-          <span>{memberFilter !== "All" ? "Member filtering only includes attributed storage and market events." : "Activity is limited to monitored settlement history."}</span>
+          <span>{memberFilter !== "All" ? "Member filtering only includes attributed storage and market events." : "Activity is limited to monitored claim history."}</span>
         </div>
       </section>
       <div className="activity-timeline">
@@ -2942,7 +2942,7 @@ function HelpCenter({ version, onClose, onPrivacy, onTerms }: { version: string;
           <button onClick={onClose} aria-label="Close help"><X size={16} /></button>
         </header>
         <div className="beta-notice"><strong>Beta - Work in progress</strong><span>This application is actively being developed. Data display and features may change as accuracy and coverage improve.</span></div>
-        <p className="help-intro">Track settlement operations, production opportunities, member professions and skills, storage, regional context, and market history using public BitCraft data.</p>
+        <p className="help-intro">Track claim operations, production opportunities, member professions and skills, storage, regional context, and market history using public BitCraft data.</p>
         <div className="help-links">
           <a href={`${GITHUB_REPOSITORY}#readme`} target="_blank" rel="noreferrer">
             <strong>Application Guide</strong>
@@ -2966,7 +2966,7 @@ function HelpCenter({ version, onClose, onPrivacy, onTerms }: { version: string;
           </button>
           <button className="help-link-button" onClick={() => { onClose(); onTerms(); }}>
             <strong>Legal Terms</strong>
-            <span>Read usage terms for the public settlement monitor</span>
+            <span>Read usage terms for the public claim monitor</span>
             <FileText size={14} />
           </button>
         </div>
@@ -2980,13 +2980,13 @@ function TermsContent({ compact = false }: { compact?: boolean }) {
     <>
       <section className="terms-section">
         <h3>Application Terms</h3>
-        <p>This is an unofficial fan-made settlement tool for BitCraft players. It is provided as-is for community use, testing and development. Data may be delayed, incomplete, unavailable or inaccurate, so do not rely on it as the only source for important settlement decisions.</p>
+        <p>This is an unofficial fan-made claim tool for BitCraft players. It is provided as-is for community use, testing and development. Data may be delayed, incomplete, unavailable or inaccurate, so do not rely on it as the only source for important claim decisions.</p>
         <p>The app is not affiliated with Clockwork Labs. BitCraft&trade; is a trademark of Clockwork Labs, Inc. Data is provided by the BitJita API.</p>
       </section>
       <section className="terms-section">
         <h3>Public Data</h3>
-        <p>The selected settlement, dashboard history and market activity are based on public BitJita API data. Visitors tracking the same settlement use the same server-side history records so the app does not create per-user duplicate settlement data.</p>
-        <p>Browser preferences, including the selected settlement and optional BitCraft Sync URL, are stored in this browser. The Sync URL is not required to use the app.</p>
+        <p>The selected claim, dashboard history and market activity are based on public BitJita API data. Visitors tracking the same claim use the same server-side history records so the app does not create per-user duplicate claim data.</p>
+        <p>Browser preferences, including the selected claim and optional BitCraft Sync URL, are stored in this browser. The Sync URL is not required to use the app.</p>
       </section>
       {!compact ? <p className="help-intro">Questions, bug reports and feature requests can be raised through the GitHub Issues link in this app.</p> : null}
     </>
@@ -2998,7 +2998,7 @@ function PrivacyContent() {
     <>
       <p className="help-intro">With your permission, this site uses first-party analytics cookies to understand which pages and tools are valuable and how long sections are used. This information is genuinely helpful while the app is being developed.</p>
       <p className="help-intro">Analytics record a random browser identifier, visits to app sections and high-level feature actions. They do not record typed search text, private credentials, the optional BitCraft Sync URL, or database contents.</p>
-      <p className="help-intro">The settlement you choose is stored in this browser and may be sent to the server to refresh shared public history for that settlement.</p>
+      <p className="help-intro">The claim you choose is stored in this browser and may be sent to the server to refresh shared public history for that claim.</p>
       <p className="help-intro">Consent and analytics cookies last for up to 180 days. Raw usage events are retained for up to 90 days. You can change your preference in the app at any time; declining removes the analytics identifier from this browser.</p>
     </>
   );
@@ -3303,7 +3303,7 @@ function UserSettingsDialog({
           </section> : null}
           {settingsSection === "data" ? <section>
             <h3>Reset</h3>
-            <p className="legend">Reset this browser's local app preferences. Admin settings and settlement data are not affected.</p>
+            <p className="legend">Reset this browser's local app preferences. Admin settings and claim data are not affected.</p>
             <button className="toolbar-button" onClick={onResetSettings}><RefreshCw size={14} /> Reset my settings</button>
           </section> : null}
           </div>
@@ -3399,7 +3399,7 @@ function SettlementSetupDialog({
       try {
         const response = await fetch(`${LOCAL_API}/claims/search?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal });
         const body = await response.json();
-        if (!response.ok) throw new Error(body.error ?? "Settlement search failed");
+        if (!response.ok) throw new Error(body.error ?? "Claim search failed");
         setResults(Array.isArray(body.claims) ? body.claims : []);
       } catch (err) {
         if (!controller.signal.aborted) setError(err instanceof Error ? err.message : String(err));
@@ -3419,16 +3419,16 @@ function SettlementSetupDialog({
   const chooseSettlement = (settlement: SettlementSearchResult) => {
     const id = String(settlement.entityId ?? "").trim();
     if (!id) return;
-    onSave(id, syncUrlDraft.trim());
+    setManualClaimId(id);
   };
   const content = (
     <section className="help-dialog settlement-setup-dialog onboarding-dialog" role={mode === "dialog" ? "dialog" : "region"} aria-modal={mode === "dialog" ? "true" : undefined} aria-labelledby="settlement-setup-title" onClick={(event) => event.stopPropagation()}>
       <div className="onboarding-hero">
         <span className="onboarding-mark"><Shield size={23} /></span>
         <div>
-          <p>Public Settlement Monitor</p>
-          <h2 id="settlement-setup-title">Track any BitCraft settlement</h2>
-          <span>Created by Timbersteel Trade. Choose a settlement once and this browser will open straight into its live operations view.</span>
+            <p>Public Claim Monitor</p>
+          <h2 id="settlement-setup-title">Track any BitCraft claim</h2>
+          <span>Created by Timbersteel Trade. Choose a claim once and this browser will open straight into its live operations view.</span>
         </div>
       </div>
       <div className="settlement-setup-body">
@@ -3436,17 +3436,17 @@ function SettlementSetupDialog({
           <article>
             <Database size={17} />
             <strong>Shared public history</strong>
-            <span>Market, activity and production snapshots are collected server-side for selected settlements, so people watching the same settlement share the same records.</span>
+            <span>Market, activity and production snapshots are collected server-side for selected claims, so people watching the same claim share the same records.</span>
           </article>
           <article>
             <HardDrive size={17} />
             <strong>Browser-local setup</strong>
-            <span>Your chosen settlement and optional BitCraft Sync link are saved only in this browser. No login or admin account is needed.</span>
+            <span>Your chosen claim and optional BitCraft Sync link are saved only in this browser. No login or admin account is needed.</span>
           </article>
           <article>
             <Search size={17} />
-            <strong>Start with a settlement</strong>
-            <span>Search by name, pick the right result, or paste a settlement ID if the search API cannot find it.</span>
+            <strong>Start with a claim</strong>
+            <span>Search by name, pick the right result, or paste a claim ID if the search API cannot find it.</span>
           </article>
         </div>
         <div className="onboarding-discord">
@@ -3463,33 +3463,33 @@ function SettlementSetupDialog({
         </div>
         <div className="onboarding-beta-note">
           <AlertTriangle size={16} />
-          <span>This public monitor is in beta and may contain mistakes, missing data or temporary errors. Please report problems through the GitHub link in the footer.</span>
+          <span>This public monitor is in beta and may contain mistakes, missing data or temporary errors. Please report problems through <a href={`${GITHUB_REPOSITORY}/issues`} target="_blank" rel="noreferrer">GitHub Issues</a>.</span>
         </div>
         <div className="onboarding-setup-grid">
           <div className="onboarding-card onboarding-card-primary">
             <div className="onboarding-card-heading">
               <span>Step 1</span>
-              <h3>Find your settlement</h3>
+              <h3>Find your claim</h3>
             </div>
             <label className="field">
-              <span>Search settlements</span>
+              <span>Search claims</span>
               <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Type at least 2 characters" />
             </label>
             <div className={`settlement-search-results ${!hasSearch ? "is-empty" : ""}`}>
               {!hasSearch ? <p className="legend">Results from BitJita will appear here.</p> : null}
-              {loading ? <p className="legend">Searching settlements...</p> : null}
+              {loading ? <p className="legend">Searching claims...</p> : null}
               {error ? <p className="error">{error}</p> : null}
-              {!loading && hasSearch && !results.length && !error ? <p className="legend">No settlements found. Paste a settlement ID below if you know it.</p> : null}
+              {!loading && hasSearch && !results.length && !error ? <p className="legend">No claims found. Paste a claim ID below if you know it.</p> : null}
               {results.map((settlement) => (
-                <button type="button" key={settlement.entityId} onClick={() => chooseSettlement(settlement)}>
-                  <strong>{settlement.name || `Settlement ${settlement.entityId}`}</strong>
+                <button type="button" key={settlement.entityId} className={String(settlement.entityId) === manualClaimId.trim() ? "selected" : ""} onClick={() => chooseSettlement(settlement)}>
+                  <strong>{settlement.name || `Claim ${settlement.entityId}`}</strong>
                   <span>{[settlement.owner ? `Owner ${settlement.owner}` : "", settlement.regionName || (settlement.regionId ? `Region ${settlement.regionId}` : ""), settlement.tier ? `T${settlement.tier}` : ""].filter(Boolean).join(" | ")}</span>
                 </button>
               ))}
             </div>
             <label className="field">
-              <span>Settlement ID fallback</span>
-              <input value={manualClaimId} onChange={(event) => setManualClaimId(event.target.value)} placeholder="Paste a claim or settlement ID" />
+              <span>Claim ID fallback</span>
+              <input value={manualClaimId} onChange={(event) => setManualClaimId(event.target.value)} placeholder="Paste a claim ID" />
             </label>
           </div>
           <div className="onboarding-card">
@@ -3511,7 +3511,7 @@ function SettlementSetupDialog({
         </div>
       </div>
       <div className="help-actions onboarding-actions">
-        <span>{canSaveManual ? "Ready to open the dashboard." : "Choose a search result or enter a valid settlement ID to continue."}</span>
+        <span>{canSaveManual ? "Ready to open the dashboard." : "Choose a search result or enter a valid claim ID to continue."}</span>
         <button className="toolbar-button primary" disabled={!canSaveManual} onClick={() => onSave(manualClaimId.trim(), syncUrlDraft.trim())}><Save size={14} /> Start Monitoring</button>
       </div>
     </section>
@@ -3786,10 +3786,10 @@ function DashboardApp() {
     const started = [...current.entries()].filter(([id]) => !previous.jobs.has(id)).slice(0, 2);
     const completed = [...previous.jobs.entries()].filter(([id]) => !current.has(id)).slice(0, 2);
     for (const [, job] of started) {
-      pushToast("Craft started", `${craftDisplayName(job, data.raw?.crafts)} - ${job.buildingName ?? "Settlement production"}`, "production", craftOutputItem(job, data.raw?.crafts));
+      pushToast("Craft started", `${craftDisplayName(job, data.raw?.crafts)} - ${job.buildingName ?? "Claim production"}`, "production", craftOutputItem(job, data.raw?.crafts));
     }
     for (const [, job] of completed) {
-      pushToast("Craft completed", `${craftDisplayName(job, state.data?.crafts)} - ${job.buildingName ?? "Settlement production"}`, "production", craftOutputItem(job, state.data?.crafts));
+      pushToast("Craft completed", `${craftDisplayName(job, state.data?.crafts)} - ${job.buildingName ?? "Claim production"}`, "production", craftOutputItem(job, state.data?.crafts));
     }
     craftQueueRef.current = { claimId, jobs: current };
   }, [appSettings.toastSettings.production, claimId, data.crafts, data.raw?.crafts, pushToast, state.data, userToastSettings.production]);
@@ -3846,7 +3846,7 @@ function DashboardApp() {
       <aside className="app-sidebar">
         <div className="brand">
           {appSettings.branding.logo ? <img src={`${appSettings.branding.logo.url}?v=${encodeURIComponent(appSettings.branding.logo.updatedAt)}`} alt="" /> : <Shield />}
-          <div title={data.claim.name ?? "Settlement"}><h1>{data.claim.name ?? "Settlement"}</h1><span>Claim Monitor</span></div>
+          <div title={data.claim.name ?? "Claim"}><h1>{data.claim.name ?? "Claim"}</h1><span>Claim Monitor</span></div>
           <button className="sidebar-toggle" type="button" onClick={() => setSidebarCollapsed((current) => !current)} title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
             {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
@@ -3915,7 +3915,7 @@ function DashboardApp() {
             </span>
             <a href="https://bitjita.com/docs/api" target="_blank" rel="noreferrer">Data: BitJita API</a>
             <a href={GITHUB_REPOSITORY} target="_blank" rel="noreferrer"><ExternalLink size={13} /> GitHub</a>
-            <a href={`${GITHUB_REPOSITORY}/issues`} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Feature Requests</a>
+            <a href={`${GITHUB_REPOSITORY}/issues`} target="_blank" rel="noreferrer"><ExternalLink size={13} /> GitHub Issues</a>
             <BuyMeCoffeeButton />
             <button className="footer-link" onClick={() => setPrivacyOpen(true)}><Shield size={13} /> Privacy & Analytics</button>
             <button className="footer-link" onClick={() => setTermsOpen(true)}><FileText size={13} /> Terms</button>
@@ -3924,7 +3924,7 @@ function DashboardApp() {
         </footer>
       </main>
       <div className="floating-actions" aria-label="Application tools">
-        <button onClick={() => setSettlementSetupOpen(true)} aria-label="Change settlement" title="Change settlement"><MapPin size={18} /></button>
+        <button onClick={() => setSettlementSetupOpen(true)} aria-label="Change claim" title="Change claim"><MapPin size={18} /></button>
         <button onClick={() => setUserSettingsOpen(true)} aria-label="Browser settings" title="Browser settings"><Settings size={18} /></button>
         <button className="notification-button" onClick={() => { setNoticeOpen(true); setNotificationLog((current) => current.map((notice) => ({ ...notice, read: true }))); }} aria-label="Updates" title="Updates"><Bell size={18} />{notificationLog.some((notice) => !notice.read) ? <b>{notificationLog.filter((notice) => !notice.read).length}</b> : null}</button>
         <button className="floating-help" onClick={() => setHelpOpen(true)} aria-label="Help and application information" title="Help and application information">?</button>
@@ -3948,4 +3948,7 @@ function App() {
   return <DashboardApp />;
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+const rootElement = document.getElementById("root")!;
+const rootHost = rootElement as HTMLElement & { __bitcraftRoot?: ReturnType<typeof createRoot> };
+rootHost.__bitcraftRoot ??= createRoot(rootElement);
+rootHost.__bitcraftRoot.render(<App />);

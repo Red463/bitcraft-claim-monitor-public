@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.6-beta.1] - 2026-06-12
+
+### Changed
+
+- Renamed public-facing settlement terminology to Claim across the app.
+- Reduced large-claim Production refresh noise by stopping browser-side per-craft contribution requests; contribution history remains server/API sourced.
+- Raised the browser-facing BitJita proxy limit to better support large claims.
+- Batched member market-history importing during shared refreshes to avoid upstream 429s on large claims.
+
+### Fixed
+
+- Kept onboarding open after choosing a claim so visitors can add the optional BitCraft Sync URL before starting.
+
 ## [1.0.5-beta.1] - 2026-06-12
 
 ### Changed

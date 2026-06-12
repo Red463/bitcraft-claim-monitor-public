@@ -91,7 +91,7 @@ export function Members({
     <div className="panel members-page">
       <header className="members-topbar">
         <div>
-          <h2>Settlement Roster</h2>
+          <h2>Claim Roster</h2>
           <p>Member permissions and online status</p>
         </div>
         <div className="dashboard-top-meta">
@@ -99,7 +99,7 @@ export function Members({
             <span className="dashboard-region-line"><Globe2 size={15} /> {data.claim.regionName ?? "Unknown"} <span className="dashboard-region-badge">R{data.claim.regionId ?? "?"}</span></span>
             <span className="dashboard-refresh-line"><span className="online-dot is-online" /> {onlineCount} online / {merged.length} members</span>
           </div>
-          <span className="dashboard-claim-link"><TierBadge tier={data.claim.tier} /> {data.claim.name ?? "Monitored Settlement"}</span>
+          <span className="dashboard-claim-link"><TierBadge tier={data.claim.tier} /> {data.claim.name ?? "Monitored Claim"}</span>
         </div>
       </header>
       <div className="members-summary-grid">

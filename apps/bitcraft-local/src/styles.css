@@ -279,6 +279,16 @@ nav a.active svg, nav button.active svg { color: var(--active-color); }
   color: var(--active-color);
   flex: 0 0 auto;
 }
+.onboarding-beta-note a {
+  color: var(--active-color);
+  font-weight: 800;
+  text-decoration: none;
+}
+.onboarding-beta-note a:hover,
+.onboarding-beta-note a:focus-visible {
+  color: #fff;
+  text-decoration: underline;
+}
 .onboarding-setup-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.18fr) minmax(290px, .82fr);
@@ -321,7 +331,14 @@ nav a.active svg, nav button.active svg { color: var(--active-color); }
   text-align: left;
   cursor: pointer;
 }
-.settlement-search-results button:hover { border-color: var(--active-border); background: color-mix(in srgb, var(--active-bg) 36%, var(--card-bottom)); }
+.settlement-search-results button:hover,
+.settlement-search-results button.selected {
+  border-color: var(--active-border);
+  background: color-mix(in srgb, var(--active-bg) 36%, var(--card-bottom));
+}
+.settlement-search-results button.selected {
+  box-shadow: inset 3px 0 0 var(--active-color);
+}
 .settlement-search-results button span { color: var(--muted); font-size: 12px; }
 .onboarding-note {
   border: 1px solid rgba(99,235,165,.2);

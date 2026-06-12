@@ -23,7 +23,7 @@ function dataAreaLabel(path: string) {
   if (path.includes("/research")) return "research data";
   if (path.includes("/regions")) return "region data";
   if (path.includes("/skills")) return "profession reference data";
-  if (path.includes("/claims/")) return "settlement data";
+  if (path.includes("/claims/")) return "claim data";
   return "BitJita data";
 }
 
@@ -53,7 +53,9 @@ function endpointMap(claimId: string, activePanel?: ActivePanel): Record<string,
   if (!activePanel) return endpoints;
   if (activePanel === "activity") return {};
 
-  const keys = new Set<keyof typeof endpoints>(["claim", "members", "crafts"]);
+  const keys = new Set<keyof typeof endpoints>(activePanel === "production"
+    ? ["claim", "members"]
+    : ["claim", "members", "crafts"]);
   const add = (...nextKeys: Array<keyof typeof endpoints>) => nextKeys.forEach((key) => keys.add(key));
 
   switch (activePanel) {
@@ -152,11 +154,9 @@ export function useBitjitaData(refreshToken: number, claimId: string, activePane
             }
           }
         }
-        const crafts = unwrap<AnyRecord[]>(raw.crafts, "craftResults", []);
         const readsPlayerDetail = activePanel === "members" || activePanel === "map";
-        const readsProductionDetail = activePanel === "production";
         const readsRegionDetail = activePanel === "empire";
-        const [playerResults, contributionResults, regionPayload, tradeVolumePayload] = await Promise.all([
+        const [playerResults, regionPayload, tradeVolumePayload] = await Promise.all([
           readsPlayerDetail ? fetch(`${LOCAL_API}/player-details`, {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -166,19 +166,6 @@ export function useBitjitaData(refreshToken: number, claimId: string, activePane
             .then((response) => response.ok ? response.json() : Promise.reject(new Error(`player details HTTP ${response.status}`)))
             .then((payload) => unwrap<AnyRecord[]>(payload, "players", []).map((player) => ({ status: "fulfilled", value: player }) as PromiseFulfilledResult<AnyRecord>))
             .catch((): Array<PromiseFulfilledResult<AnyRecord>> => []) : Promise.resolve([] as Array<PromiseFulfilledResult<AnyRecord>>),
-          readsProductionDetail ? mapWithBrowserConcurrency(crafts.filter((craft) => craft.entityId), 4, async (craft) => {
-            try {
-              return {
-                status: "fulfilled",
-                value: {
-                  craftId: String(craft.entityId),
-                  payload: await request(`/crafts/${craft.entityId}/contributions`),
-                },
-              } as PromiseFulfilledResult<{ craftId: string; payload: AnyRecord }>;
-            } catch (reason) {
-              return { status: "rejected", reason } as PromiseRejectedResult;
-            }
-          }) : Promise.resolve([]),
           readsRegionDetail ? request("/regions/status").catch(() => ({ regions: [] })) : Promise.resolve({ regions: [] }),
           readsRegionDetail ? request(`/stats/trade-volume?bucket=1%20day&limit=30&regionId=${encodeURIComponent(String(claim?.regionId ?? ""))}`).catch(() => ({ buckets: [], items: [], regions: [] })) : Promise.resolve({ buckets: [], items: [], regions: [] }),
         ]);
@@ -191,13 +178,7 @@ export function useBitjitaData(refreshToken: number, claimId: string, activePane
           .filter((result): result is PromiseFulfilledResult<AnyRecord> => result.status === "fulfilled")
           .map((result) => normalizePlayer(result.value));
         raw.marketApi = { histories: [], trades: [] };
-        const failedContributionCount = contributionResults.filter((result) => result.status === "rejected").length;
-        if (failedContributionCount) {
-          appendPartialError(raw, `${failedContributionCount} production contribution request${failedContributionCount === 1 ? "" : "s"} failed. Some contributor totals may be incomplete.`);
-        }
-        raw.contributions = Object.fromEntries(contributionResults
-          .filter((result): result is PromiseFulfilledResult<{ craftId: string; payload: AnyRecord }> => result.status === "fulfilled")
-          .map((result) => [result.value.craftId, result.value.payload.contributions ?? []]));
+        raw.contributions = {};
         raw.regionStatus = regionPayload;
         raw.tradeVolume = tradeVolumePayload;
         React.startTransition(() => setState({ loading: false, error: null, data: raw }));

@@ -685,7 +685,7 @@ function craftOutputItem(job, craftsPayload = {}) {
 
 function craftDisplayName(job, craftsPayload = {}) {
   const item = craftOutputItem(job, craftsPayload);
-  return String(item?.name ?? job.recipeName ?? job.name ?? `${job.buildingName ?? "Settlement"} craft`);
+  return String(item?.name ?? job.recipeName ?? job.name ?? `${job.buildingName ?? "Claim"} craft`);
 }
 
 function normalizeProductionJob(job, craftsPayload = {}) {
@@ -693,7 +693,7 @@ function normalizeProductionJob(job, craftsPayload = {}) {
   const item = craftOutputItem(job, craftsPayload);
   return {
     key: craftJobKey(job),
-    label: String(item?.name ?? job.recipeName ?? job.name ?? `${job.buildingName ?? "Settlement"} craft`),
+    label: String(item?.name ?? job.recipeName ?? job.name ?? `${job.buildingName ?? "Claim"} craft`),
     tier: toNumber(item?.tier ?? job.tier ?? job.itemTier),
     buildingName: job.buildingName ?? job.structureName ?? job.buildingNickname ?? null,
     crafterName: job.crafterUsername ?? job.ownerUsername ?? job.playerUsername ?? job.userName ?? null,
@@ -1299,9 +1299,13 @@ const RATE_LIMITS = {
   auth: { windowMs: 15 * 60 * 1000, max: 30 },
   analytics: { windowMs: 60 * 1000, max: 120 },
   discordInteraction: { windowMs: 60 * 1000, max: 120 },
-  proxy: { windowMs: 60 * 1000, max: 240 },
+  proxy: { windowMs: 60 * 1000, max: 600 },
   expensiveLocal: { windowMs: 60 * 1000, max: 60 },
 };
+const MARKET_TRADE_IMPORT_MEMBERS_PER_REFRESH = Math.min(Math.max(toNumber(process.env.MARKET_TRADE_IMPORT_MEMBERS_PER_REFRESH) || 12, 0), 100);
+const MARKET_TRADE_IMPORT_CONCURRENCY = Math.min(Math.max(toNumber(process.env.MARKET_TRADE_IMPORT_CONCURRENCY) || 1, 1), 5);
+const MARKET_TRADE_IMPORT_RETRY_MS = Math.max(60_000, toNumber(process.env.MARKET_TRADE_IMPORT_RETRY_MS) || 10 * 60_000);
+const MARKET_TRADE_IMPORT_429_BACKOFF_MS = Math.max(60_000, toNumber(process.env.MARKET_TRADE_IMPORT_429_BACKOFF_MS) || 30 * 60_000);
 
 function requestAddress(req) {
   return String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "").split(",")[0].trim();
@@ -2158,7 +2162,7 @@ function discordEmbedForActivity(eventType, summary, occurredAt, metadata = {}) 
     : eventType === "production_completed" ? "Craft Completed"
     : eventType === "supplies" ? "Supply Watch"
     : eventType === "app_update" ? "App Update"
-    : "Settlement Update";
+    : "Claim Update";
   return {
     author: { name: "Timbersteel Trade" },
     title,
@@ -2167,7 +2171,7 @@ function discordEmbedForActivity(eventType, summary, occurredAt, metadata = {}) 
     color,
     fields: fields.slice(0, 8),
     timestamp: occurredAt,
-    footer: { text: "BitCraft settlement monitor" },
+    footer: { text: "BitCraft claim monitor" },
   };
 }
 
@@ -3213,7 +3217,7 @@ async function announceDiscordAppUpdateIfNeeded() {
 function discordSupplyEmbed(claim) {
   const supplies = toNumber(claim.supplies);
   const supplyMeta = supplyRunwayMetadata(claim, supplies);
-  return discordCommandEmbed("Settlement Supplies", `**${claim.name ?? "Monitored settlement"}** supply status`, [
+  return discordCommandEmbed("Claim Supplies", `**${claim.name ?? "Monitored claim"}** supply status`, [
     { name: "Current stock", value: supplies.toLocaleString(), inline: true },
     { name: "Upkeep", value: supplyMeta.upkeep, inline: true },
     { name: "Runway", value: supplyMeta.runway, inline: true },
@@ -3625,7 +3629,11 @@ async function recordSnapshot(payload) {
 async function fetchBitjita(pathname) {
   const url = new URL(`${process.env.BITJITA_API_ORIGIN ?? "https://bitjita.com"}/api${pathname}`);
   const response = await fetch(url, { headers: { accept: "application/json", "x-app-identifier": appIdentifier } });
-  if (!response.ok) throw new Error(`${pathname}: HTTP ${response.status}`);
+  if (!response.ok) {
+    const error = new Error(`${pathname}: HTTP ${response.status}`);
+    error.statusCode = response.status;
+    throw error;
+  }
   return response.json();
 }
 
@@ -3641,6 +3649,40 @@ async function fetchAllClaimListings(claimId) {
 
 function marketTradeBackfillKey(claimId, playerId) {
   return `market_trade_backfill:${claimId}:${playerId}`;
+}
+
+function marketTradeAttemptKey(claimId, playerId) {
+  return `market_trade_attempt:${claimId}:${playerId}`;
+}
+
+function marketTradeBackoffKey(claimId, playerId) {
+  return `market_trade_backoff:${claimId}:${playerId}`;
+}
+
+function settingTimeMs(key) {
+  const value = statements.getSetting.get(key)?.value;
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function memberTradeImportState(claimId, member, nowMs = Date.now()) {
+  const playerId = String(member.playerEntityId ?? member.entityId ?? "").trim();
+  if (!playerId) return { playerId: "", eligible: false, reason: "missing-player" };
+  const backfillKey = marketTradeBackfillKey(claimId, playerId);
+  const attemptKey = marketTradeAttemptKey(claimId, playerId);
+  const backoffKey = marketTradeBackoffKey(claimId, playerId);
+  const isComplete = statements.getSetting.get(backfillKey)?.value === "complete";
+  if (isComplete) return { playerId, eligible: false, reason: "complete", backfillKey, attemptKey, backoffKey };
+  const backoffAt = settingTimeMs(backoffKey);
+  if (backoffAt && nowMs - backoffAt < MARKET_TRADE_IMPORT_429_BACKOFF_MS) {
+    return { playerId, eligible: false, reason: "backoff", backfillKey, attemptKey, backoffKey };
+  }
+  const attemptedAt = settingTimeMs(attemptKey);
+  if (attemptedAt && nowMs - attemptedAt < MARKET_TRADE_IMPORT_RETRY_MS) {
+    return { playerId, eligible: false, reason: "cooldown", backfillKey, attemptKey, backoffKey, attemptedAt };
+  }
+  return { playerId, eligible: true, reason: "eligible", backfillKey, attemptKey, backoffKey, attemptedAt };
 }
 
 async function fetchOrderTrades(playerId, orderEntityId) {
@@ -3680,14 +3722,31 @@ function tradeOccurredAt(trade, importedAt) {
 }
 
 async function importMemberSellTrades(claimId, members) {
+  if (MARKET_TRADE_IMPORT_MEMBERS_PER_REFRESH <= 0) {
+    return { inserted: 0, attempted: 0, skipped: members.length, failed: 0 };
+  }
   const uniqueMembers = [...new Map(members
     .filter((member) => member.playerEntityId ?? member.entityId)
     .map((member) => [String(member.playerEntityId ?? member.entityId), member])).values()];
-  const imports = await mapWithConcurrency(uniqueMembers, 3, async (member) => {
+  const nowMs = Date.now();
+  const candidates = uniqueMembers
+    .map((member) => ({ member, state: memberTradeImportState(claimId, member, nowMs) }))
+    .filter((entry) => entry.state.eligible)
+    .sort((a, b) => toNumber(a.state.attemptedAt) - toNumber(b.state.attemptedAt))
+    .slice(0, MARKET_TRADE_IMPORT_MEMBERS_PER_REFRESH);
+  const attemptedAt = new Date().toISOString();
+  for (const { state } of candidates) {
+    statements.upsertSetting.run(state.attemptKey, attemptedAt, attemptedAt);
+  }
+  const imports = await mapWithConcurrency(candidates, MARKET_TRADE_IMPORT_CONCURRENCY, async ({ member, state }) => {
     try {
       return await fetchMemberSettlementSellTrades(claimId, member);
     } catch (error) {
       console.warn(`BitCraft market trade import failed for ${member.userName ?? member.playerEntityId}: ${error instanceof Error ? error.message : String(error)}`);
+      if (error?.statusCode === 429 || String(error?.message ?? "").includes("HTTP 429")) {
+        const backoffAt = new Date().toISOString();
+        statements.upsertSetting.run(state.backoffKey, backoffAt, backoffAt);
+      }
       return null;
     }
   });
@@ -3706,7 +3765,12 @@ async function importMemberSellTrades(claimId, members) {
     db.exec("ROLLBACK");
     throw error;
   }
-  return inserted;
+  return {
+    inserted,
+    attempted: candidates.length,
+    skipped: Math.max(0, uniqueMembers.length - candidates.length),
+    failed: imports.filter((result) => !result).length,
+  };
 }
 
 async function mapWithConcurrency(values, concurrency, mapper) {
@@ -4171,7 +4235,7 @@ async function settlementProductionCrafts(body) {
 async function dashboardData(claimId) {
   const id = String(claimId ?? "").trim();
   if (!/^\d{8,}$/.test(id)) {
-    const error = new Error("Choose a valid BitCraft settlement ID");
+    const error = new Error("Choose a valid BitCraft claim ID");
     error.statusCode = 400;
     throw error;
   }
@@ -4263,7 +4327,7 @@ async function collectServerSnapshot(force = false, claimIdOverride = "") {
   if ((!serverPollingEnabled && !force) || pollStatus.running) return;
   const explicitClaimId = String(claimIdOverride ?? "").trim();
   if (explicitClaimId && !validClaimId(explicitClaimId)) {
-    const error = new Error("Choose a valid BitCraft settlement ID before refreshing local history");
+    const error = new Error("Choose a valid BitCraft claim ID before refreshing local history");
     error.statusCode = 400;
     throw error;
   }
@@ -4571,7 +4635,7 @@ function databaseStatus() {
 async function apiDiagnostics() {
   const { claimId } = getSettings();
   const checks = [
-    ["Settlement", `/claims/${claimId}`],
+    ["Claim", `/claims/${claimId}`],
     ["Members", `/claims/${claimId}/members`],
     ["Structures", `/claims/${claimId}/buildings`],
     ["Inventory", `/claims/${claimId}/inventories`],
@@ -4687,11 +4751,11 @@ async function readJson(req, limit = BODY_LIMITS.json) {
 
 const discordCommands = [
   { name: "help", description: "Show Timbersteel Trade bot commands and app links." },
-  { name: "supplies", description: "Show settlement supplies, upkeep and runway." },
-  { name: "online", description: "Show which settlement members are online." },
+  { name: "supplies", description: "Show claim supplies, upkeep and runway." },
+  { name: "online", description: "Show which claim members are online." },
   {
     name: "crafts",
-    description: "List current settlement crafts.",
+    description: "List current claim crafts.",
     options: [{ type: 3, name: "skill", description: "Optional profession/skill filter", required: false }],
   },
   {
@@ -4699,7 +4763,7 @@ const discordCommands = [
     description: "Look up recent BitJita sale pricing for an item.",
     options: [
       { type: 3, name: "item", description: "Item name", required: true, autocomplete: true },
-      { type: 4, name: "region", description: "Region number, defaults to settlement region", required: false },
+      { type: 4, name: "region", description: "Region number, defaults to claim region", required: false },
     ],
   },
   {
@@ -4774,7 +4838,7 @@ function discordCommandEmbed(title, description, fields = [], color = 0xf0c64f) 
     color,
     fields: fields.slice(0, 10),
     timestamp: new Date().toISOString(),
-    footer: { text: "BitCraft settlement monitor" },
+    footer: { text: "BitCraft claim monitor" },
   };
 }
 
@@ -4914,10 +4978,10 @@ async function discordAutocomplete(interaction) {
 
 function discordHelpCommand() {
   const appUrl = publicAppUrl;
-  return discordCommandEmbed("Timbersteel Trade Help", `[Open the dashboard](${appUrl}) for settlement monitoring, market analytics, public craft finding and bot settings.`, [
-    { name: "/supplies", value: "Current settlement supplies, upkeep and runway.", inline: false },
-    { name: "/online", value: "Shows which settlement members are currently online.", inline: false },
-    { name: "/crafts", value: "Lists current settlement crafts. Optional skill filter supported.", inline: false },
+  return discordCommandEmbed("Timbersteel Trade Help", `[Open the dashboard](${appUrl}) for claim monitoring, market analytics, public craft finding and bot settings.`, [
+    { name: "/supplies", value: "Current claim supplies, upkeep and runway.", inline: false },
+    { name: "/online", value: "Shows which claim members are currently online.", inline: false },
+    { name: "/crafts", value: "Lists current claim crafts. Optional skill filter supported.", inline: false },
     { name: "/price", value: "Looks up recent BitJita sale prices for an item.", inline: false },
     { name: "/craftwatch", value: "Shows and clears your profession notification roles.", inline: false },
     { name: "Links", value: `[App](${appUrl}) | [Feature requests](https://github.com/Red463/bitcraft-claim-monitor-public/issues)`, inline: false },
@@ -5200,7 +5264,7 @@ async function discordOnlineCommand() {
     }
   });
   const online = details.filter((entry) => entry?.online);
-  return discordCommandEmbed("Members Online", online.length ? `**${online.length}/${members.length}** settlement members are online.` : `No settlement members appear online right now.`, [
+  return discordCommandEmbed("Members Online", online.length ? `**${online.length}/${members.length}** claim members are online.` : `No claim members appear online right now.`, [
     { name: "Online", value: online.length ? online.map((entry) => entry.name).join(", ").slice(0, 1024) : "None", inline: false },
     { name: "Tracked members", value: String(members.length), inline: true },
   ], online.length ? 0x4ee28a : 0x838e9e);
@@ -5213,7 +5277,7 @@ async function discordCraftsCommand(skillFilter = "") {
   const jobs = unwrap(payload, "craftResults", [])
     .filter((job) => !filter || JSON.stringify(job.levelRequirements ?? job.experiencePerProgress ?? "").toLowerCase().includes(filter) || String(job.recipeName ?? "").toLowerCase().includes(filter))
     .slice(0, 8);
-  if (!jobs.length) return discordCommandEmbed("Active Crafts", filter ? `No active settlement crafts matched **${skillFilter}**.` : "No active settlement crafts found.", [], 0x838e9e);
+  if (!jobs.length) return discordCommandEmbed("Active Crafts", filter ? `No active claim crafts matched **${skillFilter}**.` : "No active claim crafts found.", [], 0x838e9e);
   return discordCommandEmbed("Active Crafts", `${jobs.length} craft${jobs.length === 1 ? "" : "s"}${filter ? ` matching **${skillFilter}**` : ""}`, jobs.map((job) => {
     const remaining = toNumber(job.remainingCraftWork ?? job.actionsRemaining ?? job.effortRemaining ?? job.remainingEffort);
     return {
@@ -5749,7 +5813,7 @@ const server = createServer(async (req, res) => {
         const body = await readJson(req, BODY_LIMITS.settings);
         const nextClaimId = String(body.claimId ?? "").trim();
         const nextSyncUrl = String(body.syncUrl ?? defaultSyncUrl).trim();
-        if (!/^\d{8,}$/.test(nextClaimId)) return send(res, 400, { error: "Settlement ID must be a numeric BitCraft claim id" });
+        if (!/^\d{8,}$/.test(nextClaimId)) return send(res, 400, { error: "Claim ID must be a numeric BitCraft claim id" });
         if (!validSyncUrl(nextSyncUrl)) return send(res, 400, { error: "BitCraft Sync URL must be a https://bitcraftsync.app link" });
         const refreshSeconds = Number(body.refreshSeconds ?? 30);
         if (!Number.isInteger(refreshSeconds) || refreshSeconds < 15 || refreshSeconds > 300) return send(res, 400, { error: "Refresh interval must be between 15 and 300 seconds" });

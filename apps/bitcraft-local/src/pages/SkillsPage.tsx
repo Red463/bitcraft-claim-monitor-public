@@ -151,7 +151,7 @@ export function Skills({ data }: { data: ReturnType<typeof normalizeData> }) {
             <article key={skill.id}>
               <span>{skill.name}</span>
               <b>{skill.tier ? <TierBadge tier={skill.tier} /> : "-"} <small>Best Lv {skill.max}</small></b>
-              <em>Settlement average {formatNumber(skill.avg, 1)}</em>
+              <em>Claim average {formatNumber(skill.avg, 1)}</em>
             </article>
           ))}
         </div>
@@ -192,7 +192,7 @@ export function Skills({ data }: { data: ReturnType<typeof normalizeData> }) {
           </tbody>
           <tfoot>
             <tr>
-              <td className="sticky-col member-cell">Settlement Max</td>
+              <td className="sticky-col member-cell">Claim Max</td>
               <td className="numeric">-</td>
               <td className="numeric best">{settlementBest}</td>
               {professionIds.map((id) => {

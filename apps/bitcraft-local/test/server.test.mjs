@@ -60,6 +60,8 @@ test("server collection paginates listings and protects production mutations", a
   const historicalTrade = { id: "historic-1", orderEntityId: "historic-order", itemId: 30, itemType: "0", itemName: "Leather", sellerEntityId: "player-1", sellerUsername: "Tester", purchaserUsername: "Buyer", quantity: 5, unitPrice: 10, totalPrice: 50, createdAt: "2026-05-20T12:00:00.000Z" };
   const foreignTrade = { ...historicalTrade, id: "foreign-1", orderEntityId: "foreign-order", totalPrice: 999, unitPrice: 999 };
   let trades = [historicalTrade];
+  let claimMembers = [{ playerEntityId: "player-1", userName: "Tester" }];
+  const marketHistoryRequests = [];
   let proxyCacheRequests = 0;
   let resourceCatalogRequests = 0;
   let creatureCatalogRequests = 0;
@@ -90,7 +92,7 @@ test("server collection paginates listings and protects production mutations", a
       return json(res, { claims: regionId === "19" ? [{ entityId: claimId, name: "Timbersteel Trade", regionId: "19", treasury: 300 }] : [], count: regionId === "19" ? 1 : 0 });
     }
     if (url.pathname === `/api/claims/${claimId}`) return json(res, { claim: { entityId: claimId, supplies: 500, treasury: 300 } });
-    if (url.pathname === `/api/claims/${claimId}/members`) return json(res, { members: [{ playerEntityId: "player-1", userName: "Tester" }] });
+    if (url.pathname === `/api/claims/${claimId}/members`) return json(res, { members: claimMembers });
     if (url.pathname === `/api/claims/${claimId}/citizens`) return json(res, { citizens: [] });
     if (url.pathname === `/api/claims/${claimId}/buildings`) return json(res, { buildings: [] });
     if (url.pathname === `/api/claims/${claimId}/inventories`) return json(res, { buildings: [{ entityId: "storage-1", buildingName: "Basic Storage Chest", buildingNickname: "Ingots" }] });
@@ -126,13 +128,18 @@ test("server collection paginates listings and protects production mutations", a
       requestedPages.push(page);
       return json(res, { listings: [currentListings[page - 1]], totalPages: 2, page });
     }
-    if (url.pathname === "/api/market/player/player-1/history") return json(res, {
+    if (url.pathname.startsWith("/api/market/player/") && url.pathname.endsWith("/history")) {
+      const playerId = url.pathname.split("/")[4];
+      marketHistoryRequests.push(playerId);
+      if (playerId !== "player-1") return json(res, { sellOrderHistory: [], totalSellOrders: 0 });
+      return json(res, {
       sellOrderHistory: [
         { entityId: "historic-order", claimEntityId: claimId, status: "COMPLETED" },
         { entityId: "foreign-order", claimEntityId: "other-claim", status: "COMPLETED" },
       ],
       totalSellOrders: 2,
-    });
+      });
+    }
     if (url.pathname === "/api/market/player/player-1/trades") {
       const orderId = url.searchParams.get("orderEntityId");
       if (orderId === "historic-order") return json(res, { trades: [historicalTrade] });
@@ -201,6 +208,9 @@ test("server collection paginates listings and protects production mutations", a
       BITCRAFT_ACTIVE_REGIONS: "27:Festival Grounds",
       DISCORD_OAUTH_CLIENT_ID: "1511277824525471826",
       DISCORD_OAUTH_CLIENT_SECRET: "test-discord-oauth-secret",
+      MARKET_TRADE_IMPORT_MEMBERS_PER_REFRESH: "2",
+      MARKET_TRADE_IMPORT_CONCURRENCY: "1",
+      MARKET_TRADE_IMPORT_RETRY_MS: "600000",
     },
     stdio: "ignore",
   });
@@ -233,6 +243,14 @@ test("server collection paginates listings and protects production mutations", a
   assert.equal(proxiedResourcesOne.headers.get("cache-control"), "public, max-age=3600");
   assert.equal(proxiedResourcesOne.headers.get("x-bitjita-cache"), "miss");
   assert.equal(proxiedResourcesTwo.headers.get("x-bitjita-cache"), "hit");
+  const cachedResourceBurst = await Promise.all(Array.from({ length: 610 }, async () => {
+    const response = await fetch(`${origin}/api/bitjita/resources`);
+    await response.arrayBuffer();
+    return { status: response.status, cache: response.headers.get("x-bitjita-cache") };
+  }));
+  assert.equal(cachedResourceBurst.every((response) => response.status === 200), true);
+  assert.equal(cachedResourceBurst.every((response) => response.cache === "hit"), true);
+  assert.equal(resourceCatalogRequests, 1);
   const mapCatalogOne = await fetch(`${origin}/api/local/map/catalog`).then((response) => response.json());
   const mapCatalogTwo = await fetch(`${origin}/api/local/map/catalog`).then((response) => response.json());
   assert.deepEqual(mapCatalogOne.resources, [{ id: 21, name: "Oak Tree", tier: 2 }]);
@@ -444,6 +462,22 @@ test("server collection paginates listings and protects production mutations", a
   const secondActivity = await fetch(`${origin}/api/local/activity?claimId=${claimId}&limit=20`).then((response) => response.json());
   assert.equal(secondActivity.events.filter((event) => event.event_type === "storage").length, 1);
   assert.equal(secondActivity.events.filter((event) => event.event_type === "production_started").length, 0);
+
+  marketHistoryRequests.length = 0;
+  claimMembers = [
+    { playerEntityId: "player-1", userName: "Tester" },
+    ...Array.from({ length: 5 }, (_, index) => ({
+      playerEntityId: `batch-player-${index + 1}`,
+      userName: `Batch Player ${index + 1}`,
+    })),
+  ];
+  const batchedTradeImportPoll = await fetch(`${origin}/api/local/refresh`, {
+    method: "POST",
+    headers: { origin, "content-type": "application/json" },
+    body: JSON.stringify({ claimId }),
+  });
+  assert.equal(batchedTradeImportPoll.status, 200);
+  assert.deepEqual(marketHistoryRequests, ["batch-player-1", "batch-player-2"]);
 
   currentListings = [{ ...listings[0], quantity: 8 }, listings[1]];
   craftEntityRevision = 2;

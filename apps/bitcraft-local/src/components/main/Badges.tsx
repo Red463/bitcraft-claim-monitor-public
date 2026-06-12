@@ -37,7 +37,7 @@ export function TrackedOwnerName({ name, claim }: { name: unknown; claim: AnyRec
   return (
     <span className={isOwner ? "tracked-owner-name" : undefined}>
       {label}
-      {isOwner ? <Crown size={13} aria-label="Tracked settlement owner" /> : null}
+      {isOwner ? <Crown size={13} aria-label="Tracked claim owner" /> : null}
     </span>
   );
 }
