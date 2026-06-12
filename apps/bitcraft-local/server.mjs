@@ -1270,6 +1270,7 @@ const BITJITA_PROXY_CACHE_POLICIES = [
   { pattern: /^\/api\/(?:resources|creatures|skills|items|cargos|recipes|crafting-recipes)(?:\/|$)/, ttlMs: 60 * 60 * 1000 },
   { pattern: /^\/api\/market$/, ttlMs: 5 * 60 * 1000 },
   { pattern: /^\/api\/players\/[^/]+$/, ttlMs: 60 * 1000 },
+  { pattern: /^\/api\/claims\/[^/]+$/, ttlMs: 30 * 1000 },
   { pattern: /^\/api\/claims\/[^/]+\/(?:members|citizens)$/, ttlMs: 30 * 1000 },
   { pattern: /^\/api\/claims\/[^/]+\/(?:market\/listings|buildings|inventories|construction|research|layout)$/, ttlMs: 15 * 1000 },
   { pattern: /^\/api\/crafts(?:\/|$)/, ttlMs: 15 * 1000 },
@@ -5358,7 +5359,7 @@ function bitjitaProxyCacheTtl(upstream) {
   return policy?.ttlMs ?? UPSTREAM_CACHE_TTL_MS;
 }
 
-async function fetchUpstreamCached(upstream) {
+async function fetchUpstreamCached(upstream, beforeMiss) {
   const key = upstream.toString();
   const now = Date.now();
   const ttlMs = bitjitaProxyCacheTtl(upstream);
@@ -5372,6 +5373,7 @@ async function fetchUpstreamCached(upstream) {
     return { ...value, cacheState: "deduped" };
   }
 
+  if (beforeMiss && beforeMiss() === false) return null;
   const request = (async () => {
     const response = await fetch(upstream, {
       headers: { accept: "application/json", "x-app-identifier": appIdentifier },
@@ -5398,11 +5400,12 @@ async function fetchUpstreamCached(upstream) {
   }
 }
 
-async function proxyBitjita(url, res) {
+async function proxyBitjita(req, url, res) {
   const upstream = new URL(process.env.BITJITA_API_ORIGIN ?? "https://bitjita.com");
   upstream.pathname = `/api/${url.pathname.slice("/api/bitjita/".length)}`;
   upstream.search = url.search;
-  const response = await fetchUpstreamCached(upstream);
+  const response = await fetchUpstreamCached(upstream, () => rateLimit(req, res, "proxy", RATE_LIMITS.proxy));
+  if (!response) return;
   res.writeHead(response.status, securityHeaders({ ...response.headers, "x-bitjita-cache": response.cacheState }));
   res.end(response.body);
 }
@@ -5413,8 +5416,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "OPTIONS") return send(res, 204, {});
     if (req.method === "GET" && url.pathname === "/api/local/health") return send(res, 200, { ok: true, polling: pollStatus });
     if (req.method === "GET" && url.pathname.startsWith("/api/bitjita/")) {
-      if (!rateLimit(req, res, "proxy", RATE_LIMITS.proxy)) return;
-      return proxyBitjita(url, res);
+      return proxyBitjita(req, url, res);
     }
     if (req.method === "GET" && url.pathname === "/api/local/config") return send(res, 200, getSettings());
     if (req.method === "GET" && url.pathname === "/api/local/auth/me") return send(res, 200, { user: null, discordLoginEnabled: false });

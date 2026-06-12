@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.3-beta.1] - 2026-06-12
+
+### Fixed
+
+- Reduced false 429 refresh warnings by letting cached and deduplicated BitJita proxy responses bypass the local proxy rate limit.
+
 ## [1.0.2-beta.1] - 2026-06-12
 
 ### Added
