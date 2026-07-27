@@ -56,6 +56,22 @@ test("directory refresh keeps the last successful cache when an upstream refresh
   db.close();
 });
 
+test("directory refresh keeps the last successful cache when BitJita returns an empty regions payload", async () => {
+  const db = openDatabase();
+  const repository = createClaimDirectoryRepository({
+    db,
+    now: () => "2026-07-27T12:00:00.000Z",
+  });
+  repository.replaceAll([{ claimId: "101", name: "Cached Claim", regionId: "19" }]);
+  await assert.rejects(
+    refreshClaimDirectory({ repository, fetchJson: async () => ({ regions: [] }) }),
+    /cached claim directory retained/i,
+  );
+  assert.equal(repository.get("101")?.name, "Cached Claim");
+  assert.match(repository.status().lastError, /no regions/i);
+  db.close();
+});
+
 test("directory refresh walks every region and replaces stale rows atomically", async () => {
   const db = openDatabase();
   const repository = createClaimDirectoryRepository({

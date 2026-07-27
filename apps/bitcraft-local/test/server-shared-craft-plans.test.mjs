@@ -126,3 +126,16 @@ test("administrators can resolve or dismiss public plan reports", () => {
   assert.deepEqual(repository.reports(), []);
   db.close();
 });
+
+test("report moderation rejects invalid or already-resolved reports with a public validation error", () => {
+  const { db, repository } = openRepository();
+  assert.throws(
+    () => repository.resolveReport("invalid", { adminId: 1 }),
+    (error) => error?.name === "CraftPlanValidationError" && error?.statusCode === 400,
+  );
+  assert.throws(
+    () => repository.resolveReport(999, { adminId: 1 }),
+    (error) => error?.name === "CraftPlanValidationError" && error?.statusCode === 400,
+  );
+  db.close();
+});

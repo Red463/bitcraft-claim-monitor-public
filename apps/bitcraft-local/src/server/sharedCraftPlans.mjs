@@ -29,6 +29,14 @@ export class CraftPlanLimitError extends Error {
   }
 }
 
+export class CraftPlanValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "CraftPlanValidationError";
+    this.statusCode = 400;
+  }
+}
+
 function token(prefix) {
   return `${prefix}_${randomBytes(32).toString("base64url")}`;
 }

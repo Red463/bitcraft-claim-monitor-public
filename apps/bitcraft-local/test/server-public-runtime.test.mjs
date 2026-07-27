@@ -112,6 +112,21 @@ test("public runtime boots with anonymous settlement APIs and no removed routes"
   const coverage = await fetch(`${origin}/api/local/claims/1369094286777412590/coverage`).then((response) => response.json());
   assert.equal(coverage.claimId, "1369094286777412590");
 
+  const claimRequiredRoutes = [
+    "/api/local/craft-plans",
+    "/api/local/craft-plan",
+    "/api/local/craft-plan/detail?keys=items:1",
+    "/api/local/market/history",
+    "/api/local/leaderboard",
+    "/api/local/history",
+    "/api/local/activity",
+    "/api/local/notification-activity",
+  ];
+  for (const route of claimRequiredRoutes) {
+    const response = await fetch(`${origin}${route}`);
+    assert.equal(response.status, 400, `${route} should require an explicit valid claimId`);
+  }
+
   const adminStatusResponse = await fetch(`${origin}/api/local/admin/me`);
   const adminStatus = await adminStatusResponse.json();
   assert.equal(adminStatusResponse.status, 200, JSON.stringify(adminStatus));

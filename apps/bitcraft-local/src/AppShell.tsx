@@ -177,7 +177,10 @@ function browserInitialSettlementId(): string {
   const shared = validSettlementId(new URLSearchParams(window.location.search).get("claimId"));
   if (shared && saved && shared !== saved) {
     const accepted = window.confirm(`This link monitors settlement #${shared}. Switch from your saved settlement #${saved}?`);
-    if (!accepted) return saved;
+    if (!accepted) {
+      window.history.replaceState(window.history.state, "", settlementShareHref(window.location.href, saved));
+      return saved;
+    }
   }
   return initialSettlementId({
     search: window.location.search,

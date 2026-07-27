@@ -296,7 +296,7 @@ export function AdminPanel({
           </div>
           <DataPairs value={data?.directory ?? null} />
           <div className="table-wrap"><table><thead><tr><th>Settlement</th><th>Last interest</th><th>Last success</th><th>Lag</th><th>Gaps</th></tr></thead><tbody>
-            {activeClaims.map((claim) => <tr key={claim.claimId}><td>{claim.claimName ?? `Claim ${claim.claimId}`} <small>#{claim.claimId}</small></td><td>{timeAgo(claim.lastInterestAt)}</td><td>{timeAgo(claim.coverage?.lastSuccessAt)}</td><td>{valueLabel(claim.coverage?.lagSeconds)}</td><td>{valueLabel(claim.coverage?.gaps)}</td></tr>)}
+            {activeClaims.map((claim) => <tr key={claim.claimId}><td>{claim.claimName ?? `Claim ${claim.claimId}`} <small>#{claim.claimId}</small></td><td>{timeAgo(claim.lastInterestAt)}</td><td>{timeAgo(claim.coverage?.lastSuccessAt)}</td><td>{valueLabel(claim.coverage?.lagSeconds)}</td><td>{valueLabel(claim.coverage?.dataGaps)}</td></tr>)}
           </tbody></table></div>
         </div>
       ) : null}

@@ -10138,8 +10138,10 @@ const server = createServer(async (req, res) => {
       }
     }
     if (req.method === "GET" && url.pathname === "/api/local/craft-plans") {
+      const claimId = String(url.searchParams.get("claimId") ?? "").trim();
+      if (!validClaimId(claimId)) return send(res, 400, { error: "Valid claimId is required" });
       try {
-        return send(res, 200, { plans: sharedCraftPlans.list(String(url.searchParams.get("claimId") ?? "")) });
+        return send(res, 200, { plans: sharedCraftPlans.list(claimId) });
       } catch (error) {
         return sendPlanError(res, error);
       }
@@ -10238,13 +10240,14 @@ const server = createServer(async (req, res) => {
       }
     }
     if (req.method === "GET" && url.pathname === "/api/local/craft-plan/detail") {
+      const requestClaimId = String(url.searchParams.get("claimId") ?? "").trim();
+      if (!validClaimId(requestClaimId)) return send(res, 400, { error: "Valid claimId is required" });
       try {
         const refresh = manualRefreshAccess(req, res);
         if (!refresh) return;
         const { forceRefresh, refreshId } = refresh;
         const keys = String(url.searchParams.get("keys") ?? "").split(",").map((key) => key.trim()).filter(Boolean).slice(0, 20);
         if (!keys.length) return send(res, 400, { error: "At least one craft plan item key is required" });
-        const requestClaimId = String(url.searchParams.get("claimId") ?? "");
         const sharedPlan = sharedPlanForClaim(requestClaimId, url.searchParams.get("planId"));
         if (!sharedPlan) return send(res, 400, { error: "Choose a shared plan first" });
         return send(res, 200, craftPlanDetailResponse(await computedCraftPlanResponse(requestClaimId, {
@@ -10259,11 +10262,12 @@ const server = createServer(async (req, res) => {
       }
     }
     if (req.method === "GET" && url.pathname === "/api/local/craft-plan") {
+      const requestClaimId = String(url.searchParams.get("claimId") ?? "").trim();
+      if (!validClaimId(requestClaimId)) return send(res, 400, { error: "Valid claimId is required" });
       try {
         const refresh = manualRefreshAccess(req, res);
         if (!refresh) return;
         const { forceRefresh, refreshId } = refresh;
-        const requestClaimId = String(url.searchParams.get("claimId") ?? "");
         const sharedPlan = sharedPlanForClaim(requestClaimId, url.searchParams.get("planId"));
         if (!sharedPlan) return send(res, 200, { noPlanSelected: true, claimId: requestClaimId });
         const compactPlan = await computedCompactCraftPlanResponse(requestClaimId, {
@@ -11604,7 +11608,9 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/local/market/history") {
       const refresh = manualRefreshAccess(req, res);
       if (!refresh) return;
-      return send(res, 200, marketHistory(url.searchParams.get("claimId") ?? "", Number(url.searchParams.get("limit") ?? 100), url.searchParams.get("owner") ?? ""));
+      const claimId = String(url.searchParams.get("claimId") ?? "").trim();
+      if (!validClaimId(claimId)) return send(res, 400, { error: "Valid claimId is required" });
+      return send(res, 200, marketHistory(claimId, Number(url.searchParams.get("limit") ?? 100), url.searchParams.get("owner") ?? ""));
     }
     if (req.method === "GET" && url.pathname === "/api/local/market/buy-orders") {
       const claimId = String(url.searchParams.get("claimId") ?? "").trim();
@@ -11614,7 +11620,9 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/local/leaderboard") {
       const refresh = manualRefreshAccess(req, res);
       if (!refresh) return;
-      return send(res, 200, contributionLeaderboard(url.searchParams.get("claimId") ?? ""));
+      const claimId = String(url.searchParams.get("claimId") ?? "").trim();
+      if (!validClaimId(claimId)) return send(res, 400, { error: "Valid claimId is required" });
+      return send(res, 200, contributionLeaderboard(claimId));
     }
     if (req.method === "POST" && url.pathname === "/api/local/passive-crafts") {
       if (!rateLimit(req, res, "passive-crafts", RATE_LIMITS.expensiveLocal)) return;
@@ -11654,10 +11662,12 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/local/history") {
       const refresh = manualRefreshAccess(req, res);
       if (!refresh) return;
+      const claimId = String(url.searchParams.get("claimId") ?? "").trim();
+      if (!validClaimId(claimId)) return send(res, 400, { error: "Valid claimId is required" });
       const include = String(url.searchParams.get("include") ?? "").split(",").map((part) => part.trim()).filter(Boolean);
       const allowed = new Set(["market", "activity", "dashboard"]);
       const sections = include.length ? new Set(include.filter((part) => allowed.has(part))) : null;
-      return send(res, 200, localHistory(url.searchParams.get("claimId") ?? "", sections, {
+      return send(res, 200, localHistory(claimId, sections, {
         activityLimit: Number(url.searchParams.get("activityLimit") ?? 2000),
       }));
     }
@@ -11669,14 +11679,16 @@ const server = createServer(async (req, res) => {
       return send(res, 200, resolveMarketEvent(await readJson(req, BODY_LIMITS.json)));
     }
     if (req.method === "GET" && url.pathname === "/api/local/activity") {
-      const claimId = url.searchParams.get("claimId") ?? "";
+      const claimId = String(url.searchParams.get("claimId") ?? "").trim();
+      if (!validClaimId(claimId)) return send(res, 400, { error: "Valid claimId is required" });
       const query = url.searchParams.get("q") ?? "";
       return send(res, 200, query.trim()
         ? activitySearch(claimId, query, Number(url.searchParams.get("limit") ?? 500))
         : activityHistory(claimId, Number(url.searchParams.get("limit") ?? 500)));
     }
     if (req.method === "GET" && url.pathname === "/api/local/notification-activity") {
-      const claimId = url.searchParams.get("claimId") ?? "";
+      const claimId = String(url.searchParams.get("claimId") ?? "").trim();
+      if (!validClaimId(claimId)) return send(res, 400, { error: "Valid claimId is required" });
       return send(res, 200, notificationActivity(claimId, Number(url.searchParams.get("limit") ?? 120)));
     }
     if (!url.pathname.startsWith("/api/") && await serveBuiltFrontend(url, req.method, res)) return;

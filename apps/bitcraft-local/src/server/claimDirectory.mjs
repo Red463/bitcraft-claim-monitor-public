@@ -176,6 +176,7 @@ export async function refreshClaimDirectory({
   try {
     const regionPayload = await fetchJson("/regions");
     const regions = rowsFrom(regionPayload, "regions");
+    if (!regions.length) throw new Error("BitJita returned no regions; cached claim directory retained");
     const claims = [];
     for (const region of regions) {
       const regionId = text(region?.regionId ?? region?.id ?? region?.entityId);
@@ -188,6 +189,7 @@ export async function refreshClaimDirectory({
       }
     }
     const validClaims = claims.filter((claim) => claim?.claimId);
+    if (!validClaims.length) throw new Error("BitJita returned no claims; cached claim directory retained");
     repository.replaceAll(validClaims);
     return repository.status();
   } catch (error) {
