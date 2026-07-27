@@ -1,0 +1,14 @@
+[Unit]
+Description=Create a BitCraft Settlement Monitor public database backup
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Environment=BACKUP_ENCRYPTION_KEY_FILE=/etc/bitcraft-claim-monitor-public-backup.key
+Environment=BACKUP_CRYPTO_HELPER=/opt/bitcraft-claim-monitor-public/current/deploy/backup-crypto.mjs
+ExecStart=/bin/bash /opt/bitcraft-claim-monitor-public/current/deploy/backup-bitcraft-claim-monitor-public daily
+UMask=0077
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

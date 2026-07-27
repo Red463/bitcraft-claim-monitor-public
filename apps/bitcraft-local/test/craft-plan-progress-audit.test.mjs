@@ -39,6 +39,7 @@ function fixtureSnapshot({
   return {
     schemaVersion: 1,
     claimId: "1",
+    planId: "plan-one",
     capturedAt,
     baselineRevision,
     baselineInputs: {
@@ -114,6 +115,7 @@ function fixtureSnapshot({
 test("snapshot retains exact source identities and complete effort progress", () => {
   const snapshot = buildCraftPlanProgressSnapshot({
     claimId: "77",
+    planId: "plan-77",
     plan: {
       config: {
         targets: [{ id: "1", kind: "items", quantity: 10 }],
@@ -300,11 +302,11 @@ test("repository deduplicates, checkpoints, survives failures, and exports retai
   const heartbeat = repository.recordSuccess(fixtureSnapshot({ capturedAt: clock.now, confirmed: 50 }));
   assert.equal(heartbeat.fullSnapshot, true);
 
-  repository.recordFailure("1", [{ label: "Mosswick inventory", error: "HTTP 500" }], clock.now);
-  repository.recordFailure("1", [{ label: "Mosswick inventory", error: "HTTP 500" }], "2026-07-24T18:02:00.000Z");
-  assert.match(repository.status("1").lastError, /Mosswick inventory/);
+  repository.recordFailure("1", "plan-one", [{ label: "Mosswick inventory", error: "HTTP 500" }], clock.now);
+  repository.recordFailure("1", "plan-one", [{ label: "Mosswick inventory", error: "HTTP 500" }], "2026-07-24T18:02:00.000Z");
+  assert.match(repository.status("1", "plan-one").lastError, /Mosswick inventory/);
   assert.equal(
-    repository.listEvents("1", { since: "2026-07-24T18:00:00.000Z", limit: 100 })
+    repository.listEvents("1", "plan-one", { since: "2026-07-24T18:00:00.000Z", limit: 100 })
       .filter((event) => event.eventType === "source_failure").length,
     1,
   );
@@ -312,12 +314,12 @@ test("repository deduplicates, checkpoints, survives failures, and exports retai
   clock.now = "2026-07-24T18:03:00.000Z";
   const recovered = repository.recordSuccess(fixtureSnapshot({ capturedAt: clock.now, confirmed: 51 }));
   assert.equal(recovered.events.some((event) => event.type === "source_recovered"), true);
-  assert.equal(repository.latestSuccess("1").effortProgress.confirmed.overall.completion, 51);
-  assert.equal(repository.status("1").confirmedCompletion, 51);
-  assert.equal(repository.status("1").projectedCompletion, 51);
-  assert.equal(repository.status("1").baselineRevision, "rev-a");
+  assert.equal(repository.latestSuccess("1", "plan-one").effortProgress.confirmed.overall.completion, 51);
+  assert.equal(repository.status("1", "plan-one").confirmedCompletion, 51);
+  assert.equal(repository.status("1", "plan-one").projectedCompletion, 51);
+  assert.equal(repository.status("1", "plan-one").baselineRevision, "rev-a");
 
-  const bundle = repository.exportRange("1", {
+  const bundle = repository.exportRange("1", "plan-one", {
     label: "all",
     since: "2026-07-10T18:03:00.000Z",
   });
@@ -344,6 +346,7 @@ test("repository records one baseline event and uses the new comparison epoch", 
 test("audit snapshots retain exact identities while redacting credential values", () => {
   const snapshot = buildCraftPlanProgressSnapshot({
     claimId: "1",
+    planId: "plan-one",
     plan: {
       config: {
         targets: [{ id: "1", kind: "items", quantity: 10 }],
@@ -392,7 +395,7 @@ test("audit export skips corrupt checkpoints with an explicit warning", () => {
   repository.recordSuccess(fixtureSnapshot({ capturedAt: clock.now }));
   db.prepare("UPDATE craft_plan_progress_audit_snapshots SET payload_gzip = ?").run(Buffer.from("not-gzip"));
 
-  const bundle = repository.exportRange("1", { label: "24h", since: "2026-07-23T12:00:00.000Z" });
+  const bundle = repository.exportRange("1", "plan-one", { label: "24h", since: "2026-07-23T12:00:00.000Z" });
   assert.equal(bundle.snapshots.length, 0);
   assert.match(bundle.warnings.join(" "), /corrupt snapshot/i);
   db.close();

@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2, CircleHelp, ExternalLink, FileText, MessageCircle, Settings, Shield, X } from "lucide-react";
+import { CircleHelp, ExternalLink, FileText, Shield, X } from "lucide-react";
 
 import packageJson from "../../../package.json";
 import { legalPolicyForEnvironment } from "../../legal/legalPolicy.mjs";
@@ -7,7 +7,7 @@ import { Dialog } from "./Dialog";
 import type { ActivePanel } from "../../types/app";
 import { routeHelpFor } from "../../navigation/routeHelp";
 
-const GITHUB_REPOSITORY = "https://github.com/Red463/bitcraft-claim-monitor";
+const GITHUB_REPOSITORY = "https://github.com/Red463/bitcraft-claim-monitor-public";
 const APP_VERSION = packageJson.version;
 const DEFAULT_LEGAL_POLICY = legalPolicyForEnvironment({});
 type AnalyticsConsent = "accepted" | "declined" | null;
@@ -53,7 +53,7 @@ export function HelpCenter({ activePage, version, onClose, onPrivacy, onTerms, o
           </button>
           <button className="help-link-button" onClick={() => { onClose(); onTerms(); }}>
             <strong>Legal & Bot Terms</strong>
-            <span>Read usage terms for the site and Discord bot</span>
+            <span>Read the public website usage terms</span>
             <FileText size={14} />
           </button>
         </div>
@@ -153,8 +153,8 @@ export function DedicatedLegalPage({ type }: { type: "terms" | "privacy" }) {
   const isTerms = type === "terms";
   const title = isTerms ? DEFAULT_LEGAL_POLICY.terms.title : DEFAULT_LEGAL_POLICY.privacy.title;
   const description = isTerms
-    ? "Rules for using Timbersteel Claim Monitor, its Discord features, and connected community tools."
-    : "How Timbersteel Claim Monitor collects, uses, protects, retains, and removes personal data.";
+    ? "Rules for using the public BitCraft Settlement Monitor."
+    : "How BitCraft Settlement Monitor handles browser preferences, analytics, and operational data.";
   const sections = isTerms ? DEFAULT_LEGAL_POLICY.terms.sections : DEFAULT_LEGAL_POLICY.privacy.sections;
   return (
     <main className="legal-page">
@@ -243,34 +243,6 @@ export function CookieBanner({ onConsent, onPrivacy }: { onConsent: (choice: Exc
         <div className="cookie-actions">
           <button className="toolbar-button primary" onClick={() => onConsent("accepted")}>Accept Anonymous Analytics</button>
           <button className="toolbar-button" onClick={() => onConsent("declined")}>Decline</button>
-        </div>
-    </Dialog>
-  );
-}
-
-export function DiscordSignInPrompt({ onDiscordLogin, onClose, onSettings }: { onDiscordLogin: () => void; onClose: () => void; onSettings: () => void }) {
-  return (
-    <Dialog open title="Sign in with Discord" onClose={onClose} className="help-dialog discord-signin-dialog" backdropClassName="help-overlay discord-signin-overlay">
-        <header>
-          <div>
-            <MessageCircle size={19} />
-            <h2 id="discord-signin-title">Sign in with Discord</h2>
-          </div>
-          <button onClick={onClose} aria-label="Close Discord sign-in prompt"><X size={16} /></button>
-        </header>
-        <div className="discord-signin-body">
-          <strong>Keep your preferences with you.</strong>
-          <p>Discord sign-in lets you link your BitCraft character for approval and save your app settings on this server instead of only in this browser.</p>
-          <ul>
-            <li><CheckCircle2 size={14} /> Request a verified character link.</li>
-            <li><CheckCircle2 size={14} /> Restore saved settings after changing browser or device.</li>
-            <li><CheckCircle2 size={14} /> Local browsing still works if you skip this.</li>
-          </ul>
-        </div>
-        <div className="help-actions">
-          <button className="toolbar-button primary" onClick={onDiscordLogin}><MessageCircle size={14} /> Sign in with Discord</button>
-          <button className="toolbar-button" onClick={onSettings}><Settings size={14} /> Open settings</button>
-          <button className="toolbar-button" onClick={onClose}>Maybe later</button>
         </div>
     </Dialog>
   );

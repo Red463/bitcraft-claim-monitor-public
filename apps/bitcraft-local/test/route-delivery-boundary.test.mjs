@@ -15,13 +15,12 @@ const routeStyles = new Map([
   ["ConstructionPage.tsx", "construction.css"],
   ["ResearchPage.tsx", "research.css"],
   ["MarketPage.tsx", "market.css"],
+  ["SettlementMarketPage.tsx", "market.css"],
   ["RegionPage.tsx", "region.css"],
   ["EmpiresPage.tsx", "empires.css"],
   ["ActivityPage.tsx", "activity.css"],
   ["PublicCraftFinderPage.tsx", "public-craft.css"],
-  ["CraftCalculatorPage.tsx", "craftcalc.css"],
   ["MapPage.tsx", "map.css"],
-  ["SyncPage.tsx", "sync.css"],
 ]);
 
 test("main keeps feature styles out of the eager entry graph", () => {
@@ -41,8 +40,8 @@ test("public and admin pages are delivered through lazy route boundaries", () =>
   const routes = [
     "DashboardPage", "LeaderboardPage", "MembersPage", "SkillsPage", "ProductionPage",
     "CraftPlanningPage", "InventoryPage", "ConstructionPage", "ResearchPage", "MarketPage",
-    "RegionPage", "EmpiresPage", "ActivityPage", "PublicCraftFinderPage", "CraftCalculatorPage",
-    "MapPage", "SyncPage",
+    "SettlementMarketPage", "RegionPage", "EmpiresPage", "ActivityPage", "PublicCraftFinderPage",
+    "MapPage",
   ];
 
   for (const route of routes) {
@@ -66,8 +65,8 @@ test("each feature route owns its stylesheet", () => {
   }
 });
 
-test("map and sync own recoverable iframe host state", () => {
-  for (const page of ["MapPage.tsx", "SyncPage.tsx"]) {
+test("map owns recoverable iframe host state", () => {
+  for (const page of ["MapPage.tsx"]) {
     const pageSource = source(`../src/pages/${page}`);
     assert.match(pageSource, /type FrameState = "loading" \| "ready" \| "timed-out" \| "failed"/);
     assert.match(pageSource, /setTimeout/);

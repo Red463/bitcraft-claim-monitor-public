@@ -37,6 +37,6 @@ corepack pnpm --filter @workspace/bitcraft-local run build
 NODE_ENV=production BITCRAFT_LOCAL_DATA_DIR=/var/lib/bitcraft-claim-monitor corepack pnpm --filter @workspace/bitcraft-local run start
 ```
 
-Configure Discord OAuth/bot settings before relying on Discord admin login in production. The full systemd and Caddy procedure is in the deployment guide.
+Configure the dedicated administrator-only Discord OAuth application before relying on Admin login in production. No bot installation or bot token is used. The full systemd and Caddy procedure is in the deployment guide.
 
 License: repository-wide `AGPL-3.0-only`. See the root [`LICENSE`](../../LICENSE), [`NOTICE`](../../NOTICE), and [`TRADEMARKS.md`](../../TRADEMARKS.md).

@@ -239,19 +239,6 @@ test("scheduledJobsStatus recovers stale jobs before returning public status", (
   assert.equal(status.jobs[0].scheduleLabel, "Every 2 minutes");
   assert.equal(status.jobs[0].running, true);
 });
-test("server registers the YouTube channel monitor scheduled job", () => {
-  const server = readFileSync(new URL("../server.mjs", import.meta.url), "utf8");
-  assert.match(server, /youtube_channel_monitor/);
-  assert.match(server, /interval@600/);
-});
-
-test("server registers the six-hour Empire Hexite reserves refresh", () => {
-  const server = readFileSync(new URL("../server.mjs", import.meta.url), "utf8");
-  assert.match(server, /empire_hexite_reserves_refresh/);
-  assert.match(server, /schedule: "interval@21600"/);
-  assert.match(server, /requestsPerMinute: Math\.max\(1, Math\.min\([^\n]+150\)\)/);
-});
-
 test("planner catalog refresh uses heartbeat-based recovery and a responsive scheduler", () => {
   const server = readFileSync(new URL("../server.mjs", import.meta.url), "utf8");
   const statements = readFileSync(new URL("../src/server/preparedStatements.mjs", import.meta.url), "utf8");

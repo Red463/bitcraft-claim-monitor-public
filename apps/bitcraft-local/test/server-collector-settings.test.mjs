@@ -54,22 +54,6 @@ test("side-effect collector intervals do not monopolize production", () => {
   assert.equal(Object.hasOwn(domainCollectorDefaults, "snapshotHistory"), false);
 });
 
-test("empire membership tracking has an independent bounded cadence", () => {
-  assert.deepEqual(domainCollectorDefaults.empireMembership, {
-    label: "Empire membership history",
-    intervalSeconds: 60,
-  });
-  const normalized = normalizeCollectorSettings({
-    empireMembership: { enabled: true, intervalSeconds: 5 },
-  });
-  assert.deepEqual(normalized.empireMembership, {
-    label: "Empire membership history",
-    enabled: true,
-    intervalSeconds: 15,
-  });
-  assert.equal(Object.hasOwn(collectorCurrentTables, "empireMembership"), false);
-});
-
 test("collector settings still clamp submitted intervals to the existing bounds", () => {
   const normalized = normalizeCollectorSettings({ marketListings: { intervalSeconds: 2 } });
 
@@ -79,14 +63,16 @@ test("production activity and settlement state rows are not gated by contributio
   const source = readFileSync(new URL("../server.mjs", import.meta.url), "utf8");
   const activityStart = source.indexOf("async function runProductionActivityCollector");
   const contributionStart = source.indexOf("async function runProductionContributionCollector");
+  const publicCollectionStart = source.indexOf("async function collectPublicClaimHistory");
   const snapshotStart = source.indexOf("async function collectServerSnapshot");
   const activityFunction = source.slice(activityStart, contributionStart);
-  const contributionFunction = source.slice(contributionStart, snapshotStart);
+  const contributionFunction = source.slice(contributionStart, publicCollectionStart);
 
   assert.ok(activityStart > -1);
   assert.ok(contributionStart > activityStart);
+  assert.ok(publicCollectionStart > contributionStart);
   assert.ok(snapshotStart > contributionStart);
-  assert.match(source, /await runProductionActivityCollector\(claimId, currentData\);\s*await runProductionContributionCollector\(claimId, currentData, force\);/);
+  assert.match(source, /await syncProductionJobActivityForSnapshot\(claimId, currentData\.crafts, new Date\(\)\.toISOString\(\)\);\s*await runProductionContributionCollector\(claimId, currentData, force\);/);
   assert.match(source, /recordSettlementState\(\{/);
   assert.doesNotMatch(source, /sideEffectCollectorDue\("snapshotHistory"/);
   assert.doesNotMatch(source, /collector(?:Attempt|Success|Failure)\("snapshotHistory"/);

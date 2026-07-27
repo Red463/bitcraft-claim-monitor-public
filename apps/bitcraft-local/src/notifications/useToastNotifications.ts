@@ -56,6 +56,14 @@ export function useToastNotifications({ soundSettings }: { soundSettings: Pick<U
     setNotificationLog(markNotificationsRead);
   }, [setNotificationLog]);
 
+  const resetNotifications = React.useCallback(() => {
+    for (const timer of toastTimersRef.current.values()) window.clearTimeout(timer);
+    toastTimersRef.current.clear();
+    notificationSourceKeysRef.current = new Set();
+    setToasts([]);
+    setNotificationLog([]);
+  }, [setNotificationLog]);
+
   React.useEffect(() => {
     notificationSourceKeysRef.current = notificationSourceKeys(notificationLog);
   }, [notificationLog]);
@@ -109,6 +117,7 @@ export function useToastNotifications({ soundSettings }: { soundSettings: Pick<U
     markNotificationLogRead,
     notificationLog,
     pushToast,
+    resetNotifications,
     toasts,
   };
 }

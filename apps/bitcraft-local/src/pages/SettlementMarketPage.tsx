@@ -16,7 +16,6 @@ import {
   Globe2,
   GraduationCap,
   Hammer,
-  Lock,
   Map as MapIcon,
   MapPin,
   Package,
@@ -73,7 +72,6 @@ import { unique } from "../utils/array";
 import { SKILL_IDS, SKILL_NAMES, TOOL_TAG_BY_TYPE } from "../utils/professions";
 import { updateQueryState } from "../navigation";
 import { resolveAllowedView, settlementMarketViewLocation, type SettlementMarketViewId } from "../navigation/routeState.ts";
-import { effectiveTargetAllowed, targetIdForTab, type EffectiveAccess } from "../access/accessControl.mjs";
 import { trackAnalyticsEvent } from "../utils/analytics";
 import type { ActivePanel, LoadState } from "../types/app";
 import { useManualRefresh } from "../refresh/ManualRefreshContext";
@@ -163,7 +161,7 @@ function BestSellersLeaderboard({ rows, itemMeta }: { rows: AnyRecord[]; itemMet
     </div>
   );
 }
-export function SettlementMarket({ data, history, claimId, access, locationSearch, listingsLoading = false, listingError = null, onQueryStateChange }: { data: ReturnType<typeof normalizeData>; history: AnyRecord | null; claimId: string; access?: EffectiveAccess | null; locationSearch: string; listingsLoading?: boolean; listingError?: string | null; onQueryStateChange: () => void }) {
+export function SettlementMarket({ data, history, claimId, locationSearch, listingsLoading = false, listingError = null, onQueryStateChange }: { data: ReturnType<typeof normalizeData>; history: AnyRecord | null; claimId: string; locationSearch: string; listingsLoading?: boolean; listingError?: string | null; onQueryStateChange: () => void }) {
   const { request, trackPromise } = useManualRefresh();
   const [q, setQ] = React.useState("");
   const [view, setView] = usePersistedState<SettlementMarketViewId>("settlementMarket.view", "live");
@@ -172,10 +170,10 @@ export function SettlementMarket({ data, history, claimId, access, locationSearc
   const [rarity, setRarity] = usePersistedState("market.rarity", "All");
   const [memberFilter, setMemberFilter] = usePersistedState("market.member", "All");
   const [memberHistory, setMemberHistory] = React.useState<AnyRecord | null>(null);
-  const marketViews = React.useMemo(() => [
+  const marketViews = [
     { id: "live" as const, label: "Live Listings", icon: <ShoppingCart size={15} /> },
     { id: "analytics" as const, label: "Analytics", icon: <TrendingUp size={15} /> },
-  ].filter((entry) => effectiveTargetAllowed(access, targetIdForTab("settlement-market", entry.id))), [access]);
+  ];
   const resolvedView = resolveAllowedView(view, marketViews.map((entry) => entry.id));
   React.useEffect(() => {
     if (!resolvedView || resolvedView === view) return;
@@ -291,15 +289,6 @@ export function SettlementMarket({ data, history, claimId, access, locationSearc
   const trendRange = daily.length ? `${formatMarketDay(daily[0].day)} to ${formatMarketDay(daily[daily.length - 1].day)}` : "No confirmed sales";
   const filterLabel = memberFilter === "All" ? "all members" : memberFilter;
   const currentView = resolvedView ?? view;
-  if (!resolvedView) return (
-    <div className="panel restricted-access-panel">
-      <section className="empty-state restricted-access-state">
-        <Lock size={34} />
-        <strong>Settlement Market is restricted</strong>
-        <span>No settlement market views are available for your account.</span>
-      </section>
-    </div>
-  );
   return (
     <div className="panel market-page">
       <header className="members-topbar market-topbar">

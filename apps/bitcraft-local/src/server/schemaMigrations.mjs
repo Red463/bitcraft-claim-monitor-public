@@ -20,11 +20,8 @@ export const additiveColumnMigrations = [
   { table: "admin_users", column: "discord_username", definition: "TEXT" },
   { table: "admin_users", column: "discord_global_name", definition: "TEXT" },
   { table: "admin_users", column: "discord_avatar", definition: "TEXT" },
-  { table: "user_sessions", column: "reauthenticated_at", definition: "TEXT" },
-  { table: "user_accounts", column: "inactivity_warning_sent_at", definition: "TEXT" },
   { table: "production_jobs", column: "start_notified", definition: "INTEGER NOT NULL DEFAULT 0" },
   { table: "domain_payload_current", column: "updated_at", definition: "TEXT" },
-  { table: "discord_youtube_channels", column: "discord_channel_id", definition: "TEXT" },
   { table: "game_catalog_item_list_outputs", column: "guaranteed_quantity", definition: "REAL NOT NULL DEFAULT 0" },
   { table: "game_catalog_recipes", column: "action_count", definition: "REAL NOT NULL DEFAULT 0" },
   { table: "game_catalog_recipes", column: "activity_kind", definition: "TEXT NOT NULL DEFAULT 'craft' CHECK (activity_kind IN ('craft', 'gathering'))" },
@@ -35,6 +32,8 @@ export const additiveColumnMigrations = [
   { table: "game_catalog_recipe_outputs", column: "yield_basis", definition: "TEXT NOT NULL DEFAULT 'per_craft' CHECK (yield_basis IN ('per_craft', 'per_progress'))" },
   { table: "game_catalog_recipe_outputs", column: "guaranteed_quantity", definition: "REAL" },
   { table: "game_catalog_item_list_possibility_outputs", column: "nested_item_list_id", definition: "TEXT" },
+  { table: "craft_plan_progress_audit_snapshots", column: "plan_id", definition: "TEXT NOT NULL DEFAULT 'legacy'" },
+  { table: "craft_plan_progress_audit_events", column: "plan_id", definition: "TEXT NOT NULL DEFAULT 'legacy'" },
 ];
 
 export const schemaIndexStatements = [
@@ -42,6 +41,10 @@ export const schemaIndexStatements = [
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_market_events_source ON market_events (claim_id, source_key) WHERE source_key IS NOT NULL;",
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_users_discord_id ON admin_users (discord_id) WHERE discord_id IS NOT NULL AND discord_id <> '';",
   "CREATE INDEX IF NOT EXISTS idx_game_catalog_entities_item_list ON game_catalog_entities (item_list_id, catalog_key);",
+  "DROP INDEX IF EXISTS idx_craft_plan_progress_snapshots_claim_time;",
+  "DROP INDEX IF EXISTS idx_craft_plan_progress_events_claim_time;",
+  "CREATE INDEX IF NOT EXISTS idx_craft_plan_progress_snapshots_claim_time ON craft_plan_progress_audit_snapshots (claim_id, plan_id, captured_at DESC);",
+  "CREATE INDEX IF NOT EXISTS idx_craft_plan_progress_events_claim_time ON craft_plan_progress_audit_events (claim_id, plan_id, captured_at DESC);",
 ];
 
 export function applySettlementStateMigration(db) {
@@ -100,8 +103,37 @@ export function applySettlementStateMigration(db) {
 
 export function applyAdditiveColumnMigrations(db, migrations = additiveColumnMigrations) {
   for (const migration of migrations) {
-    const exists = db.prepare(`PRAGMA table_info(${migration.table})`).all().some((row) => row.name === migration.column);
+    const tableColumns = db.prepare(`PRAGMA table_info(${migration.table})`).all();
+    if (tableColumns.length === 0) continue;
+    const exists = tableColumns.some((row) => row.name === migration.column);
     if (!exists) db.exec(`ALTER TABLE ${migration.table} ADD COLUMN ${migration.column} ${migration.definition}`);
+  }
+  const auditStateColumns = db.prepare("PRAGMA table_info(craft_plan_progress_audit_state)").all();
+  if (auditStateColumns.length && !auditStateColumns.some((row) => row.name === "plan_id")) {
+    db.exec(`
+      ALTER TABLE craft_plan_progress_audit_state RENAME TO craft_plan_progress_audit_state_legacy;
+      CREATE TABLE craft_plan_progress_audit_state (
+        claim_id TEXT NOT NULL,
+        plan_id TEXT NOT NULL,
+        last_fingerprint TEXT,
+        last_payload_gzip BLOB,
+        last_snapshot_id INTEGER,
+        last_full_snapshot_at TEXT,
+        last_success_at TEXT,
+        last_failure_fingerprint TEXT,
+        last_error TEXT,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (claim_id, plan_id)
+      );
+      INSERT INTO craft_plan_progress_audit_state (
+        claim_id, plan_id, last_fingerprint, last_payload_gzip, last_snapshot_id,
+        last_full_snapshot_at, last_success_at, last_failure_fingerprint, last_error, updated_at
+      )
+      SELECT claim_id, 'legacy', last_fingerprint, last_payload_gzip, last_snapshot_id,
+        last_full_snapshot_at, last_success_at, last_failure_fingerprint, last_error, updated_at
+      FROM craft_plan_progress_audit_state_legacy;
+      DROP TABLE craft_plan_progress_audit_state_legacy;
+    `);
   }
 }
 

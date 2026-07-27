@@ -39,16 +39,28 @@ jobs:
         run: corepack pnpm --filter @workspace/bitcraft-local run build
       - name: Test deployment contracts
         run: node --test scripts/test/deploy-*.test.mjs
+      - name: Validate deployment shell
+        run: |
+          bash -n deploy/update-bitcraft-claim-monitor-public
+          bash -n deploy/backup-bitcraft-claim-monitor-public
       - name: Validate systemd units
         run: |
           test -x /usr/bin/node || sudo ln -s "$(command -v node)" /usr/bin/node
+          sudo install -m 0755 deploy/backup-bitcraft-claim-monitor-public /usr/local/bin/backup-bitcraft-claim-monitor-public
           systemd-analyze verify \
-            deploy/bitcraft-claim-monitor.service \
-            deploy/bitcraft-claim-monitor-worker.service \
-            deploy/bitcraft-monitor-collector.service \
-            deploy/bitcraft-monitor-collector.timer \
-            deploy/bitcraft-claim-monitor-backup.service \
-            deploy/bitcraft-claim-monitor-backup.timer
+            deploy/bitcraft-claim-monitor-public.service \
+            deploy/bitcraft-claim-monitor-public-worker.service \
+            deploy/bitcraft-claim-monitor-public-collector.service \
+            deploy/bitcraft-claim-monitor-public-collector.timer \
+            deploy/bitcraft-claim-monitor-public-backup.service \
+            deploy/bitcraft-claim-monitor-public-backup.timer
+      - name: Validate Caddy configuration
+        run: |
+          docker run --rm \
+            -e ACME_EMAIL=ci@example.invalid \
+            -v "$PWD/deploy/Caddyfile.example:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10-alpine \
+            caddy validate --config /etc/caddy/Caddyfile
 
   deploy:
     needs: verify
@@ -85,7 +97,7 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
             -- "$VPS_DEPLOY_USER@$VPS_HOST" \
-            "sudo /usr/local/bin/update-bitcraft-monitor --revision '$GITHUB_SHA'$BACKUP_OPTION" 2>&1)"
+            "sudo /usr/local/bin/update-bitcraft-claim-monitor-public --revision '$GITHUB_SHA'$BACKUP_OPTION" 2>&1)"
           DEPLOY_STATUS=$?
           set -e
 

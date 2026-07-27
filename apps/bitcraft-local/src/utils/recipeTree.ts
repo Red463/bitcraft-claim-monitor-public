@@ -1,6 +1,6 @@
 import type { AnyRecord } from "../main-app-data";
 
-// Craft Calculator recipe planning lives here so the page can stay focused on
+// Shared recipe planning lives here so market views can stay focused on their
 // search/selection UI. BitJita exposes multiple recipe families and sometimes
 // package/unpack routes; this module normalizes those into a deterministic plan
 // without inventing missing recipe data.

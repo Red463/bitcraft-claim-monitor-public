@@ -19,8 +19,6 @@ export const POPUP_PAGE_OPTIONS = [
   ["map", "Map"],
   ["activity", "Activity"],
   ["publiccrafts", "Public Craft Finder"],
-  ["craftcalc", "Craft Calculator"],
-  ["sync", "Sync"],
 ] as const;
 
 export type PopupType = typeof POPUP_TYPES[number];

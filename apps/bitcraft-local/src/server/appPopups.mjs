@@ -17,8 +17,6 @@ export const POPUP_PAGE_OPTIONS = [
   ["map", "Map"],
   ["activity", "Activity"],
   ["publiccrafts", "Public Craft Finder"],
-  ["craftcalc", "Craft Calculator"],
-  ["sync", "Sync"],
 ];
 
 function isPopupType(value) {

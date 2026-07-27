@@ -92,6 +92,10 @@ export function useBitjitaData(
   });
 
   React.useEffect(() => {
+    if (!/^\d+$/.test(String(claimId ?? "").trim())) {
+      setState({ data: null, error: null, loading: false });
+      return;
+    }
     const cacheKey = `${claimId}:${activePanel}`;
     const cached = pageNavigationCache.get(cacheKey);
     const cachedAgeMs = cached ? Date.now() - cached.cachedAt : Number.POSITIVE_INFINITY;

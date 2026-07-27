@@ -4,9 +4,9 @@ import test from "node:test";
 
 const activityPage = readFileSync(new URL("../src/pages/ActivityPage.tsx", import.meta.url), "utf8");
 
-test("Activity renders a restricted state when every category is denied", () => {
-  assert.match(activityPage, /resolveAllowedView\(filter, visibleActivityFilters\.map\(\(\[id\]\) => id\)\)/);
-  assert.match(activityPage, /No activity categories are available for your account\./);
+test("Activity exposes every category without account access gates", () => {
+  assert.match(activityPage, /const visibleActivityFilters = ACTIVITY_FILTERS/);
+  assert.doesNotMatch(activityPage, /EffectiveAccess|effectiveTargetAllowed|restricted-access/);
 });
 
 test("Activity page lives outside the legacy MainPages bundle", () => {

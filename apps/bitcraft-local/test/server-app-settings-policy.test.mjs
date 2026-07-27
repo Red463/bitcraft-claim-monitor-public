@@ -7,45 +7,31 @@ const {
   DEFAULT_APP_PAGE,
   VALID_APP_PAGES,
   normalizeSavedRefreshIntervalSeconds,
-  normalizeStoredExcludedMemberIds,
-  normalizeSubmittedExcludedMemberIds,
   parseRegionIds,
   validAppPage,
-  validBitcraftSyncUrl,
   validClaimId,
   validRefreshIntervalSeconds,
   validRegionId,
 } = appSettingsPolicy;
 
-test("validBitcraftSyncUrl accepts only https BitCraft Sync links", () => {
-  assert.equal(validBitcraftSyncUrl("https://bitcraftsync.app/claim/12345678"), true);
-  assert.equal(validBitcraftSyncUrl("https://bitcraftsync.app"), true);
-  assert.equal(validBitcraftSyncUrl("http://bitcraftsync.app/claim/12345678"), false);
-  assert.equal(validBitcraftSyncUrl("https://example.com/claim/12345678"), false);
-  assert.equal(validBitcraftSyncUrl("not a url"), false);
-  assert.equal(validBitcraftSyncUrl(""), false);
-});
-
-test("validAppPage preserves the existing default-page allow list", () => {
+test("validAppPage preserves the public default-page allow list", () => {
   assert.equal(DEFAULT_APP_PAGE, "dashboard");
   assert.deepEqual(VALID_APP_PAGES, [
     "dashboard",
     "leaderboard",
-    "overview",
     "members",
     "skills",
-    "production",
+    "craft-monitor",
     "planning",
     "publiccrafts",
-    "craftcalc",
     "inventory",
     "construction",
     "research",
+    "settlement-market",
     "market",
-    "empire",
+    "region",
     "empires",
     "map",
-    "sync",
     "activity",
   ]);
   for (const page of VALID_APP_PAGES) {
@@ -79,7 +65,7 @@ test("snapshot retention policy is no longer exported", () => {
   assert.equal(Object.hasOwn(appSettingsPolicy, "normalizeSavedSnapshotRetentionDays"), false);
 });
 
-test("region and excluded member helpers preserve settings normalization", () => {
+test("region helpers preserve settings normalization", () => {
   assert.equal(validRegionId("123"), true);
   assert.equal(validRegionId(" 123 "), true);
   assert.equal(validRegionId(""), false);
@@ -89,10 +75,6 @@ test("region and excluded member helpers preserve settings normalization", () =>
   assert.deepEqual(parseRegionIds("north, 202,, 303x 404"), ["202", "404"]);
   assert.deepEqual(parseRegionIds(null), []);
 
-  assert.deepEqual(normalizeStoredExcludedMemberIds(["12345678", " 12345678 ", "bad", "1234567", ""]), ["12345678", "bad", "1234567"]);
-  assert.deepEqual(normalizeSubmittedExcludedMemberIds(["12345678", " 12345678 ", "87654321", "bad", "1234567"]), ["12345678", "87654321"]);
-  assert.deepEqual(normalizeStoredExcludedMemberIds("12345678"), []);
-  assert.deepEqual(normalizeSubmittedExcludedMemberIds("12345678"), []);
 });
 
 test("saved interval normalizer preserves settings fallback and clamp behavior", () => {

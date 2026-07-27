@@ -148,16 +148,7 @@ export const NOTIFICATION_MATRIX_PAGES: readonly NotificationMatrixPage[] = [
   { panel: "map", label: "Map", path: "/?page=map" },
   { panel: "activity", label: "Activity", path: "/?page=activity" },
   { panel: "publiccrafts", label: "Public Craft Finder", path: "/?page=publiccrafts" },
-  { panel: "craftcalc", label: "Craft Calculator", path: "/?page=craftcalc" },
-  { panel: "sync", label: "Sync", path: "/?page=sync" },
 ];
-
-export const BOT_NOTIFICATION_EXCEPTION = {
-  route: "/bot",
-  supported: false,
-  releaseDecision: "accepted-intentional-exception",
-  reason: "Dedicated bot dashboard mounts BotControlApp without DashboardApp notification chrome.",
-} as const;
 
 export function verificationRowsForStatus(status: NotificationVerificationStatus): NotificationVerificationRow[] {
   return NOTIFICATION_MATRIX_PAGES.flatMap((page) => (

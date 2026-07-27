@@ -7,25 +7,25 @@ import "./styles/first-run-tour.css";
 import {
   ArrowDown,
   Bell,
+  Building2,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
   FileText,
   KeyRound,
-  LockKeyhole,
-  MessageCircle,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
   RefreshCw,
   Settings,
   Shield,
+  ChevronsUpDown,
   X,
 } from "lucide-react";
 import packageJson from "../package.json";
 import { useBitjitaData } from "./api/bitjita";
-import { useDealAlerts, useLocalHistory, useNotificationActivity } from "./api/localHistory";
+import { useLocalHistory, useNotificationActivity } from "./api/localHistory";
 import { ApiErrorState, ApiStatusBanner, AppSkeleton, RefreshStatus, type ApiStatusDiagnostics } from "./components/main/AppChrome";
 import { RouteLoadingState } from "./components/main/RouteLoadingState";
 import { CommandPalette } from "./components/main/CommandPalette";
@@ -33,9 +33,7 @@ import { NotificationDrawer, ToastStack } from "./components/main/Notifications"
 import { AppPopupManager } from "./components/main/AppPopupManager";
 import { UserSettingsDialog } from "./components/main/UserSettingsDialog";
 import { BuyMeCoffeeButton, DiscordIcon } from "./components/main/SupportLinks";
-import { CookieBanner, DedicatedLegalPage, DiscordSignInPrompt, HelpCenter, PrivacyDialog, TermsDialog } from "./components/main/LegalDialogs";
-import { LegalAcceptanceDialog, type PublicLegalPolicy } from "./components/main/LegalAcceptanceDialog";
-import { AccountDeletionDialog } from "./components/main/AccountDeletionDialog";
+import { CookieBanner, DedicatedLegalPage, HelpCenter, PrivacyDialog, TermsDialog } from "./components/main/LegalDialogs";
 import { FirstRunTourManager } from "./components/main/FirstRunTourManager";
 import { useBrowserNotificationSmoke } from "./notifications/useBrowserNotificationSmoke";
 import { useBrowserNotificationSources } from "./notifications/useBrowserNotificationSources";
@@ -43,10 +41,10 @@ import { useToastNotifications } from "./notifications/useToastNotifications";
 import { normalizeUserToastSettings } from "./notifications/userToastSettings";
 import { clearBrowserLocalSettings, hasPersistedState, usePersistedState } from "./hooks/usePersistedState";
 import { toNumber, type AnyRecord } from "./main-app-data";
-import { DEFAULT_CLAIM_ID, DEFAULT_SETTINGS, DEFAULT_SYNC_URL, DEFAULT_USER_TOAST_SETTINGS } from "./settingsDefaults";
+import { DEFAULT_SETTINGS, DEFAULT_USER_TOAST_SETTINGS } from "./settingsDefaults";
 import { canonicalPanel, DEFAULT_SIDEBAR_GROUPS, NAV, NAV_GROUPS, panelHref, updateQueryState, urlPanel } from "./navigation";
 import { settlementNavigationLabel } from "./navigation/navigationLabels";
-import { readAnalyticsConsent, setAnalyticsPreference, syncAnalyticsConsent, trackAnalyticsEvent, withdrawAnalyticsConsent, type AnalyticsConsent } from "./utils/analytics";
+import { readAnalyticsConsent, setAnalyticsPreference, syncAnalyticsConsent, trackAnalyticsEvent, type AnalyticsConsent } from "./utils/analytics";
 import {
   normalizeReleaseBuildId,
   readLastLoadedReleaseBuild,
@@ -54,32 +52,36 @@ import {
   writeLastLoadedReleaseBuild,
 } from "./utils/releaseUpdate";
 import { normalizeAppSettings } from "./utils/appSettings";
-import { applyMemberTrackingFilter } from "./utils/memberTracking";
 import { getTrackedOwnerName } from "./utils/ownership";
 import { normalizeData } from "./utils/normalize";
 import { urlMapFocus } from "./utils/mapFocus";
 import type { ActivePanel } from "./types/app";
-import type { AppSettings, AppUser, UserAuthState, UserToastSettings } from "./types/settings";
+import type { AppSettings, UserToastSettings } from "./types/settings";
 import type { MapFocus } from "./pages/map/mapUtils";
-import { applyTheme, DEFAULT_THEME, normalizeThemeCandidate, type ThemeSettings } from "./theme";
-import { ACCESS_CONTROL_TARGETS, effectiveTargetAllowed, targetIdForPage, type EffectiveAccess } from "./access/accessControl.mjs";
-import { restrictedAccessGuidance } from "./access/restrictedAccess";
+import { applyTheme, DEFAULT_THEME, type ThemeSettings } from "./theme";
 import { ManualRefreshProvider, type ManualRefreshRequest } from "./refresh/ManualRefreshContext";
 import { cooldownRemainingMs, createManualRefreshRequest, createManualRefreshTaskCoordinator, manualRefreshApplies } from "./refresh/manualRefresh.mjs";
+import { SettlementPicker } from "./settlements/SettlementPicker";
+import {
+  SELECTED_SETTLEMENT_STORAGE_KEY,
+  initialSettlementId,
+  resetSettlementScopedPreferences,
+  settlementShareHref,
+  validSettlementId,
+} from "./settlements/settlementSelection";
 
 /*
  * Top-level browser application shell.
  *
  * This module coordinates the public claim monitor, the admin console, and the
- * dedicated /bot dashboard route. Page-level rendering has mostly been moved to
  * focused modules, but cross-cutting state remains here because routing,
- * persisted browser settings, auth, analytics consent, notifications, and the
+ * persisted browser settings, analytics consent, notifications, and the
  * current BitJita payload all need to meet in one place.
  */
 
 const API = "/api/bitjita";
 const LOCAL_API = "/api/local";
-const GITHUB_REPOSITORY = "https://github.com/Red463/bitcraft-claim-monitor";
+const GITHUB_REPOSITORY = "https://github.com/Red463/bitcraft-claim-monitor-public";
 const CHANGELOG_URL = `${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md`;
 const DISCORD_URL = "https://discord.gg/ET4bteqbG5";
 const APP_VERSION = packageJson.version;
@@ -92,6 +94,38 @@ type ManualRefreshState = {
   pendingTasks: string[];
   errors: string[];
 };
+
+const HISTORY_BACKED_PAGES = new Set(["dashboard", "leaderboard", "settlement-market", "market", "activity", "planning"]);
+
+function CollectionCoverage({ claimId, page }: { claimId: string; page: string }) {
+  const [coverage, setCoverage] = React.useState<AnyRecord | null>(null);
+  React.useEffect(() => {
+    if (!claimId || !HISTORY_BACKED_PAGES.has(page)) {
+      setCoverage(null);
+      return;
+    }
+    const controller = new AbortController();
+    fetch(`${LOCAL_API}/claims/${encodeURIComponent(claimId)}/coverage`, { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        if (!controller.signal.aborted) setCoverage(payload);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setCoverage(null);
+      });
+    return () => controller.abort();
+  }, [claimId, page]);
+  if (!coverage) return null;
+  const lagMinutes = Math.max(0, Math.round(toNumber(coverage.lagSeconds) / 60));
+  return (
+    <div className={`api-status-banner ${toNumber(coverage.dataGaps) > 0 || lagMinutes > 15 ? "warning" : ""}`} role="status">
+      <strong>History coverage</strong>
+      <span>Collecting since {coverage.collectionStart ? new Date(coverage.collectionStart).toLocaleString() : "first successful refresh"}</span>
+      <span>Last success {coverage.lastSuccessAt ? new Date(coverage.lastSuccessAt).toLocaleString() : "pending"}</span>
+      <span>{lagMinutes}m lag · {toNumber(coverage.dataGaps)} data gap{toNumber(coverage.dataGaps) === 1 ? "" : "s"}</span>
+    </div>
+  );
+}
 
 const Dashboard = React.lazy(() => import("./pages/DashboardPage").then(({ Dashboard }) => ({ default: Dashboard })));
 const Leaderboard = React.lazy(() => import("./pages/LeaderboardPage").then(({ Leaderboard }) => ({ default: Leaderboard })));
@@ -108,9 +142,7 @@ const Region = React.lazy(() => import("./pages/RegionPage").then(({ Region }) =
 const Empires = React.lazy(() => import("./pages/EmpiresPage").then(({ Empires }) => ({ default: Empires })));
 const ActivityPanel = React.lazy(() => import("./pages/ActivityPage").then(({ ActivityPanel }) => ({ default: ActivityPanel })));
 const PublicCraftFinder = React.lazy(() => import("./pages/PublicCraftFinderPage").then(({ PublicCraftFinder }) => ({ default: PublicCraftFinder })));
-const CraftCalculatorPage = React.lazy(() => import("./pages/CraftCalculatorPage").then(({ CraftCalculatorPage }) => ({ default: CraftCalculatorPage })));
 const MapPanel = React.lazy(() => import("./pages/MapPage").then(({ MapPanel }) => ({ default: MapPanel })));
-const SyncPanel = React.lazy(() => import("./pages/SyncPage").then(({ SyncPanel }) => ({ default: SyncPanel })));
 const AdminPanel = React.lazy(() => import("./components/admin/AdminPanel").then(({ AdminPanel }) => ({ default: AdminPanel })));
 
 class RouteErrorBoundary extends React.Component<{ routeKey: string; children: React.ReactNode }, { failed: boolean }> {
@@ -140,52 +172,24 @@ function hasProductionPayload(raw: AnyRecord | null): boolean {
   return Boolean(raw && Object.prototype.hasOwnProperty.call(raw, "crafts"));
 }
 
-function RestrictedAccessState({
-  title,
-  decision,
-  user,
-  discordLoginEnabled,
-  onDiscordLogin,
-  onOpenUserSettings,
-}: {
-  title: string;
-  decision: { mode?: string; reason?: string } | undefined;
-  user: AppUser | null;
-  discordLoginEnabled: boolean;
-  onDiscordLogin: () => void;
-  onOpenUserSettings: () => void;
-}) {
-  const guidance = restrictedAccessGuidance(decision, user, discordLoginEnabled);
-  return (
-    <div className="panel restricted-access-panel">
-      <section className="empty-state restricted-access-state">
-        <Shield size={34} />
-        <strong>{title} is restricted</strong>
-        <span>{decision?.reason || "You do not have access to this area."}</span>
-        <small>{guidance.message}</small>
-        {guidance.action === "discord-login" ? <button className="toolbar-button primary" onClick={onDiscordLogin}><MessageCircle size={15} /> Sign in with Discord</button> : null}
-        {guidance.action === "user-settings" ? <button className="toolbar-button primary" onClick={onOpenUserSettings}><Settings size={15} /> Open User Settings</button> : null}
-      </section>
-    </div>
-  );
+function browserInitialSettlementId(): string {
+  const saved = validSettlementId(window.localStorage.getItem(SELECTED_SETTLEMENT_STORAGE_KEY));
+  const shared = validSettlementId(new URLSearchParams(window.location.search).get("claimId"));
+  if (shared && saved && shared !== saved) {
+    const accepted = window.confirm(`This link monitors settlement #${shared}. Switch from your saved settlement #${saved}?`);
+    if (!accepted) return saved;
+  }
+  return initialSettlementId({
+    search: window.location.search,
+    readStorage: (key) => window.localStorage.getItem(key),
+  });
 }
 
-function accountCharacterStatusLabel(user: UserAuthState["user"]): string {
-  if (!user) return "Not signed in";
-  if (user.characterStatus === "approved" && user.characterPlayerId) return "Character verified";
-  if (user.characterStatus === "pending") return "Pending approval";
-  if (user.characterStatus === "rejected") return "Link rejected";
-  return "Not linked";
-}
-
-function accountDisplayName(user: UserAuthState["user"]): string {
-  return user?.globalName || user?.username || "Discord user";
-}
 /**
  * Main public application route.
  *
  * This component owns public navigation, BitJita refreshes, browser-local
- * preferences, user Discord auth state, notifications, and page composition.
+ * preferences, notifications, and page composition.
  */
 function DashboardApp() {
   const [active, setActive] = usePersistedState<ActivePanel>("navigation.page", "dashboard");
@@ -216,24 +220,17 @@ function DashboardApp() {
   const releaseUpdateBuildIdRef = React.useRef("");
   const [releaseUpdateBuildId, setReleaseUpdateBuildId] = React.useState("");
   const [releaseUpdatedNotice, setReleaseUpdatedNotice] = React.useState(false);
-  const [userAuth, setUserAuth] = React.useState<UserAuthState>({
-    user: null,
-    csrfToken: null,
-    discordLoginEnabled: false,
-    legal: { version: "", termsDigest: "", privacyDigest: "", acceptedAt: null, requiresAcceptance: false },
-  });
-  const [publicLegalPolicy, setPublicLegalPolicy] = React.useState<PublicLegalPolicy | null>(null);
-  const [legalAcceptanceOpen, setLegalAcceptanceOpen] = React.useState(false);
-  const [legalLoginReturnTo, setLegalLoginReturnTo] = React.useState("");
-  const [effectiveAccess, setEffectiveAccess] = React.useState<EffectiveAccess | null>(null);
   const [adminAuth, setAdminAuth] = React.useState<AnyRecord>({ authenticated: false });
-  const [claimId, setClaimId] = React.useState(DEFAULT_CLAIM_ID);
-  const [syncUrl, setSyncUrl] = React.useState(DEFAULT_SYNC_URL);
+  const [claimId, setClaimId] = React.useState(browserInitialSettlementId);
+  const [selectedClaim, setSelectedClaim] = React.useState<AnyRecord | null>(null);
+  const [settlementPickerOpen, setSettlementPickerOpen] = React.useState(() => !initialSettlementId({
+    search: window.location.search,
+    readStorage: (key) => window.localStorage.getItem(key),
+  }));
   const [browserTheme, setBrowserTheme] = usePersistedState<ThemeSettings>("theme.local", DEFAULT_THEME);
   const [refreshToken, setRefreshToken] = React.useState(0);
   const [historyAutoRefreshToken, setHistoryAutoRefreshToken] = React.useState(0);
   const [notificationRefreshToken, setNotificationRefreshToken] = React.useState(0);
-  const [dealRefreshToken, setDealRefreshToken] = React.useState(0);
   const [historyRefreshToken, setHistoryRefreshToken] = React.useState(0);
   const [manualRefreshRequest, setManualRefreshRequest] = React.useState<ManualRefreshRequest | null>(null);
   const [manualRefreshState, setManualRefreshState] = React.useState<ManualRefreshState>({ requestId: "", status: "idle", pendingTasks: [], errors: [] });
@@ -246,9 +243,30 @@ function DashboardApp() {
   const [lastUpdated, setLastUpdated] = React.useState<Date | null>(null);
   const [mapFocus, setMapFocus] = usePersistedState<MapFocus>("map.focus", urlMapFocus());
   const [selectedMemberId, setSelectedMemberId] = usePersistedState("production.member", "All");
+  const resetNotificationsRef = React.useRef<() => void>(() => undefined);
+  const selectSettlement = React.useCallback((claim: AnyRecord) => {
+    const nextClaimId = validSettlementId(claim?.claimId ?? claim?.entityId ?? claim?.id);
+    if (!nextClaimId) return;
+    if (claimId && claimId !== nextClaimId) {
+      resetSettlementScopedPreferences((key) => window.localStorage.removeItem(key));
+      resetNotificationsRef.current();
+    }
+    window.localStorage.setItem(SELECTED_SETTLEMENT_STORAGE_KEY, nextClaimId);
+    window.history.replaceState(window.history.state, "", settlementShareHref(window.location.href, nextClaimId));
+    setSelectedClaim(claim);
+    setClaimId(nextClaimId);
+    setSelectedMemberId("All");
+    setMapFocus(null);
+    setLastUpdated(null);
+    setRefreshToken((current) => current + 1);
+    setHistoryRefreshToken((current) => current + 1);
+    setNotificationRefreshToken((current) => current + 1);
+    setSettlementPickerOpen(false);
+  }, [claimId, setMapFocus, setSelectedMemberId]);
   const [userToastSettings, setUserToastSettings] = usePersistedState<UserToastSettings>("user.notifications", DEFAULT_USER_TOAST_SETTINGS);
   const normalizedUserToastSettings = React.useMemo(() => normalizeUserToastSettings(userToastSettings), [userToastSettings]);
-  const { toasts, notificationLog, dismissToast, pushToast, markNotificationLogRead } = useToastNotifications({ soundSettings: normalizedUserToastSettings });
+  const { toasts, notificationLog, dismissToast, pushToast, markNotificationLogRead, resetNotifications } = useToastNotifications({ soundSettings: normalizedUserToastSettings });
+  resetNotificationsRef.current = resetNotifications;
   const appBuildLabel = React.useMemo(() => {
     const shortBuildId = appBuildId.trim().slice(0, 7);
     return shortBuildId ? `v${APP_VERSION} - ${shortBuildId}` : `v${APP_VERSION}`;
@@ -257,19 +275,15 @@ function DashboardApp() {
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState("layout.sidebarCollapsed", false);
   const [sidebarGroups, setSidebarGroups] = usePersistedState<Record<string, boolean>>("layout.sidebarGroups", DEFAULT_SIDEBAR_GROUPS);
   const [floatingActionsCollapsed, setFloatingActionsCollapsed] = usePersistedState("layout.floatingActionsCollapsed", false);
-  const [discordPromptDismissed, setDiscordPromptDismissed] = usePersistedState("auth.discordPromptDismissed", false);
   const [helpOpen, setHelpOpen] = React.useState(false);
   const [tourVisible, setTourVisible] = React.useState(false);
   const [tourReplayToken, setTourReplayToken] = React.useState(0);
   const [userSettingsOpen, setUserSettingsOpen] = React.useState(false);
   const [privacyOpen, setPrivacyOpen] = React.useState(false);
-  const [accountDeletionOpen, setAccountDeletionOpen] = React.useState(() => new URLSearchParams(window.location.search).get("privacy") === "delete-ready");
   const [termsOpen, setTermsOpen] = React.useState(false);
   const [consent, setConsent] = React.useState<AnalyticsConsent>(() => readAnalyticsConsent());
   const [noticeOpen, setNoticeOpen] = React.useState(false);
   const [commandOpen, setCommandOpen] = React.useState(false);
-  const [accountSettingsHydratedFor, setAccountSettingsHydratedFor] = React.useState("");
-  const accountSettingsSyncPause = React.useRef<{ target: string; settled: boolean } | null>(null);
   const showCollapsedNavTooltip = React.useCallback((anchor: HTMLAnchorElement, label: string) => {
     if (!sidebarCollapsed || mobileNavigationOpen) return;
     const rect = anchor.getBoundingClientRect();
@@ -320,47 +334,58 @@ function DashboardApp() {
         throw error;
       });
   }, [active, manualRefreshCoordinator, manualRefreshRequest]);
-  const state = useBitjitaData(refreshToken, claimId, active, manualRefreshRequest, trackManualRefreshPromise);
-  const excludedMemberIds = appSettings.excludedMemberIds;
-  const data = React.useMemo(() => {
-    // BitJita payloads vary by endpoint. Normalize them once here, then apply
-    // the admin-controlled member visibility filter before any page receives
-    // app data.
-    const normalized = normalizeData(state.data);
-    return applyMemberTrackingFilter({ ...normalized, raw: state.data }, excludedMemberIds);
-  }, [state.data, excludedMemberIds]);
-  const localHistory = useLocalHistory(historyAutoRefreshToken + historyRefreshToken, claimId, active, manualRefreshRequest, trackManualRefreshPromise);
-  const notificationActivity = useNotificationActivity(notificationRefreshToken, claimId);
-  const dealAlerts = useDealAlerts(dealRefreshToken);
-  const dealAlertSource = React.useMemo(
-    () => ({ ...dealAlerts, userKey: userAuth.user?.discordId ?? "" }),
-    [dealAlerts, userAuth.user?.discordId],
-  );
-  const selectedProductionMember = selectedMemberId === "All" ? null : data.members.find((member: AnyRecord) => String(member.playerEntityId) === selectedMemberId) ?? null;
-  syncAnalyticsConsent(consent);
-  const refreshUserAuth = React.useCallback(async () => {
-    const response = await fetch(`${LOCAL_API}/auth/me`);
-    if (!response.ok) return;
-    setUserAuth(await response.json());
-  }, []);
   React.useEffect(() => {
+    if (!claimId) {
+      setSelectedClaim(null);
+      setSettlementPickerOpen(true);
+      return;
+    }
     const controller = new AbortController();
-    fetch(`${LOCAL_API}/legal`, { signal: controller.signal })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`legal policy HTTP ${response.status}`)))
-      .then((policy) => setPublicLegalPolicy(policy))
+    fetch(`${LOCAL_API}/claims/${encodeURIComponent(claimId)}`, { signal: controller.signal })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ?? "Unable to validate the selected settlement");
+        setSelectedClaim(payload);
+      })
       .catch(() => {
-        if (!controller.signal.aborted) setPublicLegalPolicy(null);
+        if (controller.signal.aborted) return;
+        setSelectedClaim(null);
+        setClaimId("");
+        window.localStorage.removeItem(SELECTED_SETTLEMENT_STORAGE_KEY);
+        window.history.replaceState(window.history.state, "", settlementShareHref(window.location.href, ""));
+        setSettlementPickerOpen(true);
       });
     return () => controller.abort();
-  }, []);
-  const refreshEffectiveAccess = React.useCallback(async () => {
-    try {
-      const response = await fetch(`${LOCAL_API}/access-control/effective`);
-      if (response.ok) setEffectiveAccess(await response.json());
-    } catch {
-      setEffectiveAccess(null);
-    }
-  }, []);
+  }, [claimId]);
+  React.useEffect(() => {
+    if (!claimId) return;
+    let controller = new AbortController();
+    const heartbeat = () => {
+      if (document.visibilityState === "hidden") return;
+      controller.abort();
+      controller = new AbortController();
+      void fetch(`${LOCAL_API}/claims/${encodeURIComponent(claimId)}/interest`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        signal: controller.signal,
+      }).catch(() => undefined);
+    };
+    heartbeat();
+    const timer = window.setInterval(heartbeat, 2 * 60 * 1000);
+    document.addEventListener("visibilitychange", heartbeat);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", heartbeat);
+    };
+  }, [claimId]);
+  const state = useBitjitaData(refreshToken, claimId, active, manualRefreshRequest, trackManualRefreshPromise);
+  const data = React.useMemo(() => ({ ...normalizeData(state.data), raw: state.data }), [state.data]);
+  const localHistory = useLocalHistory(historyAutoRefreshToken + historyRefreshToken, claimId, active, manualRefreshRequest, trackManualRefreshPromise);
+  const notificationActivity = useNotificationActivity(notificationRefreshToken, claimId);
+  const dealAlertSource = React.useMemo(() => ({ alerts: [], unread: 0, loading: false, error: null, userKey: "", refreshToken: 0 }), []);
+  const selectedProductionMember = selectedMemberId === "All" ? null : data.members.find((member: AnyRecord) => String(member.playerEntityId) === selectedMemberId) ?? null;
+  syncAnalyticsConsent(consent);
   const refreshAdminAuth = React.useCallback(async () => {
     try {
       const response = await fetch(`${LOCAL_API}/admin/me`);
@@ -373,150 +398,6 @@ function DashboardApp() {
       setAdminAuth({ authenticated: false });
     }
   }, []);
-  React.useEffect(() => {
-    refreshEffectiveAccess().catch(() => undefined);
-  }, [refreshEffectiveAccess, userAuth.user?.discordId, userAuth.user?.characterStatus]);
-  const discordLogin = React.useCallback((returnTo = `${window.location.pathname}${window.location.search}`) => {
-    setDiscordPromptDismissed(true);
-    setLegalLoginReturnTo(returnTo);
-    setLegalAcceptanceOpen(true);
-  }, [setDiscordPromptDismissed]);
-  React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("legal") !== "required") return;
-    discordLogin(params.get("returnTo") || "/?page=dashboard");
-    params.delete("legal");
-    params.delete("returnTo");
-    const query = params.toString();
-    window.history.replaceState(window.history.state, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
-  }, [discordLogin]);
-  const startDiscordLogin = React.useCallback(async ({ acceptedTerms, ageConfirmed }: { acceptedTerms: true; ageConfirmed: true }) => {
-    const response = await fetch(`${LOCAL_API}/auth/discord/start`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ returnTo: legalLoginReturnTo, acceptedTerms, ageConfirmed }),
-    });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? "Unable to prepare Discord sign-in");
-    if (typeof body.authorizeUrl !== "string" || !body.authorizeUrl.startsWith("https://discord.com/")) {
-      throw new Error("The server returned an invalid Discord sign-in address");
-    }
-    window.location.assign(body.authorizeUrl);
-  }, [legalLoginReturnTo]);
-  const acceptCurrentLegalPolicy = React.useCallback(async ({ acceptedTerms, ageConfirmed }: { acceptedTerms: true; ageConfirmed: true }) => {
-    const response = await fetch(`${LOCAL_API}/auth/legal/accept`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-csrf-token": String(userAuth.csrfToken ?? "") },
-      body: JSON.stringify({ acceptedTerms, ageConfirmed }),
-    });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? "Unable to record legal acceptance");
-    setUserAuth(body);
-    setLegalAcceptanceOpen(false);
-  }, [userAuth.csrfToken]);
-  const discordLogout = React.useCallback(async () => {
-    const response = await fetch(`${LOCAL_API}/auth/logout`, { method: "POST" });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? "Unable to sign out");
-    setUserAuth(body);
-  }, []);
-  const linkDiscordCharacter = React.useCallback(async (member: AnyRecord | null) => {
-    const payload = member ? { characterPlayerId: String(member.playerEntityId ?? ""), characterName: String(member.userName ?? member.username ?? member.playerUsername ?? member.name ?? "") } : {};
-    const response = await fetch(`${LOCAL_API}/auth/character`, { method: "PUT", headers: { "content-type": "application/json", "x-csrf-token": String(userAuth.csrfToken ?? "") }, body: JSON.stringify(payload) });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? "Unable to save character link request");
-    setUserAuth((current) => ({ ...current, user: body.user }));
-  }, [userAuth.csrfToken]);
-  const accountSettingsFingerprint = React.useMemo(() => JSON.stringify(userAuth.user?.settings ?? {}), [userAuth.user?.settings]);
-  const applyAccountSettings = React.useCallback((saved: AnyRecord) => {
-    if (saved.density === "comfortable" || saved.density === "compact") setDensity(saved.density);
-    if (saved.toastSettings && typeof saved.toastSettings === "object") setUserToastSettings(normalizeUserToastSettings(saved.toastSettings));
-    const savedTheme = normalizeThemeCandidate(saved.theme)?.theme;
-    if (savedTheme) setBrowserTheme(savedTheme);
-    if (typeof saved.sidebarCollapsed === "boolean") setSidebarCollapsed(saved.sidebarCollapsed);
-    if (saved.sidebarGroups && typeof saved.sidebarGroups === "object" && !Array.isArray(saved.sidebarGroups)) setSidebarGroups({ ...DEFAULT_SIDEBAR_GROUPS, ...saved.sidebarGroups });
-    if (typeof saved.selectedMemberId === "string") setSelectedMemberId(saved.selectedMemberId);
-  }, [setBrowserTheme, setDensity, setSelectedMemberId, setSidebarCollapsed, setSidebarGroups, setUserToastSettings]);
-  React.useEffect(() => {
-    const discordId = userAuth.user?.discordId ?? "";
-    if (!discordId) {
-      setAccountSettingsHydratedFor("");
-      return;
-    }
-    applyAccountSettings(userAuth.user?.settings ?? {});
-    setAccountSettingsHydratedFor(`${discordId}:${accountSettingsFingerprint}`);
-  }, [accountSettingsFingerprint, applyAccountSettings, userAuth.user?.discordId, userAuth.user?.settings]);
-  const syncAccountSettings = React.useCallback(async (settings: AnyRecord) => {
-    const response = await fetch(`${LOCAL_API}/auth/settings`, { method: "PUT", headers: { "content-type": "application/json", "x-csrf-token": String(userAuth.csrfToken ?? "") }, body: JSON.stringify({ settings }) });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? "Unable to sync account settings");
-    setUserAuth((current) => ({ ...current, user: body.user }));
-  }, [userAuth.csrfToken]);
-  React.useEffect(() => {
-    const discordId = userAuth.user?.discordId ?? "";
-    if (!discordId || accountSettingsHydratedFor !== `${discordId}:${accountSettingsFingerprint}`) return;
-    const settings = { ...(userAuth.user?.settings ?? {}), density, toastSettings: normalizedUserToastSettings, theme: browserTheme, sidebarCollapsed, sidebarGroups, selectedMemberId };
-    const settingsFingerprint = JSON.stringify(settings);
-    const pausedSync = accountSettingsSyncPause.current;
-    if (pausedSync) {
-      if (settingsFingerprint === pausedSync.target) {
-        pausedSync.settled = true;
-        return;
-      }
-      else if (pausedSync.settled) accountSettingsSyncPause.current = null;
-      else return;
-    }
-    if (settingsFingerprint === accountSettingsFingerprint) return;
-    const timeout = window.setTimeout(() => {
-      void syncAccountSettings(settings).catch(() => undefined);
-    }, 600);
-    return () => window.clearTimeout(timeout);
-  }, [accountSettingsFingerprint, accountSettingsHydratedFor, browserTheme, density, normalizedUserToastSettings, selectedMemberId, sidebarCollapsed, sidebarGroups, syncAccountSettings, userAuth.user?.discordId, userAuth.user?.settings]);
-  const setDiscordMarketSaleDm = React.useCallback(async (enabled: boolean) => {
-    const settings = { ...(userAuth.user?.settings ?? {}), discordMarketSaleDm: enabled };
-    const response = await fetch(`${LOCAL_API}/auth/settings`, { method: "PUT", headers: { "content-type": "application/json", "x-csrf-token": String(userAuth.csrfToken ?? "") }, body: JSON.stringify({ settings }) });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? "Unable to save Discord notification preference");
-    setUserAuth((current) => ({ ...current, user: body.user }));
-  }, [userAuth.csrfToken, userAuth.user?.settings]);
-  const handlePrivacyUserChanged = React.useCallback((user: AppUser, reason: "character" | "settings") => {
-    if (reason === "settings") {
-      const defaults = {
-        density: "comfortable" as const,
-        toastSettings: normalizeUserToastSettings(DEFAULT_USER_TOAST_SETTINGS),
-        theme: DEFAULT_THEME,
-        sidebarCollapsed: false,
-        sidebarGroups: DEFAULT_SIDEBAR_GROUPS,
-        selectedMemberId: "All",
-      };
-      accountSettingsSyncPause.current = { target: JSON.stringify(defaults), settled: false };
-      setDensity(defaults.density);
-      setUserToastSettings(defaults.toastSettings);
-      setBrowserTheme(defaults.theme);
-      setSidebarCollapsed(defaults.sidebarCollapsed);
-      setSidebarGroups(defaults.sidebarGroups);
-      setSelectedMemberId(defaults.selectedMemberId);
-    }
-    setUserAuth((current) => ({ ...current, user }));
-  }, [setBrowserTheme, setDensity, setSelectedMemberId, setSidebarCollapsed, setSidebarGroups, setUserToastSettings]);
-  const handleAnalyticsCleared = React.useCallback(() => {
-    withdrawAnalyticsConsent();
-    setConsent(null);
-  }, []);
-  const handleAccountDeleted = React.useCallback(() => {
-    withdrawAnalyticsConsent();
-    setConsent(null);
-    setUserSettingsOpen(false);
-    setUserAuth((current) => ({
-      ...current,
-      user: null,
-      csrfToken: null,
-      legal: { ...current.legal, acceptedAt: null, requiresAcceptance: false },
-    }));
-  }, []);
-  const accessTargetMeta = React.useMemo(() => new Map(ACCESS_CONTROL_TARGETS.map((target) => [target.id, target])), []);
-  const accessDecisionFor = React.useCallback((targetId: string) => effectiveAccess?.targets?.[targetId], [effectiveAccess]);
-  const isPageAllowed = React.useCallback((panel: ActivePanel | string) => panel === "admin" || effectiveTargetAllowed(effectiveAccess, targetIdForPage(panel)), [effectiveAccess]);
   const syncRouteSearch = React.useCallback(() => setRouteSearch(window.location.search), []);
   const navigate = React.useCallback((panel: ActivePanel, marketTab?: string, nextMapFocus?: MapFocus) => {
     setActive(panel);
@@ -574,6 +455,16 @@ function DashboardApp() {
     function restoreFromHistory() {
       setRouteStatus("");
       setRouteSearch(window.location.search);
+      const historyClaimId = validSettlementId(new URLSearchParams(window.location.search).get("claimId"));
+      if (historyClaimId && historyClaimId !== claimId) {
+        void fetch(`${LOCAL_API}/claims/${encodeURIComponent(historyClaimId)}`)
+          .then(async (response) => {
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error ?? "Settlement not found");
+            selectSettlement(payload);
+          })
+          .catch(() => setSettlementPickerOpen(true));
+      }
       const rawHistoryPanel = new URLSearchParams(window.location.search).get("page");
       const panel = urlPanel();
       if (panel && rawHistoryPanel !== panel) updateQueryState({ page: panel });
@@ -583,7 +474,7 @@ function DashboardApp() {
     }
     window.addEventListener("popstate", restoreFromHistory);
     return () => window.removeEventListener("popstate", restoreFromHistory);
-  }, [setActive, setMapFocus]);
+  }, [claimId, selectSettlement, setActive, setMapFocus]);
   React.useEffect(() => {
     function openCommands(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
@@ -666,8 +557,6 @@ function DashboardApp() {
         if (!config) return;
         const next = normalizeAppSettings(config);
         setAppSettings(next);
-        setClaimId(next.claimId);
-        setSyncUrl(next.syncUrl);
         if (!defaultPageAppliedRef.current && !savedPageRef.current && next.defaultPage !== "admin") {
           defaultPageAppliedRef.current = true;
           setActive(next.defaultPage);
@@ -676,9 +565,6 @@ function DashboardApp() {
       })
       .catch(() => undefined);
   }, []);
-  React.useEffect(() => {
-    refreshUserAuth().catch(() => undefined);
-  }, [refreshUserAuth]);
   React.useEffect(() => {
     refreshAdminAuth().catch(() => undefined);
   }, [refreshAdminAuth]);
@@ -706,7 +592,7 @@ function DashboardApp() {
   }, [active, consent]);
   React.useEffect(() => {
     const label = NAV.find(([id]) => id === active)?.[1] ?? "Dashboard";
-    document.title = `${label} — BitCraft Claim Monitor`;
+    document.title = `${label} — BitCraft Settlement Monitor`;
   }, [active]);
   React.useEffect(() => {
     const intervalMs = appSettings.refreshSeconds * 1000;
@@ -724,7 +610,6 @@ function DashboardApp() {
     schedule(setRefreshToken, 0);
     schedule(setHistoryAutoRefreshToken, Math.min(5000, Math.floor(intervalMs * 0.25)));
     schedule(setNotificationRefreshToken, Math.min(10000, Math.floor(intervalMs * 0.5)));
-    schedule(setDealRefreshToken, Math.min(15000, Math.floor(intervalMs * 0.75)));
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [appSettings.refreshSeconds]);
   React.useEffect(() => {
@@ -780,32 +665,31 @@ function DashboardApp() {
   }, [active, appSettings.browserSnapshotsEnabled, claimId, state.data, data.claim, data.members.length, data.buildings.length, data.market]);
 
   const panels: Record<string, React.ReactNode> = {
-    dashboard: <Dashboard data={data} activity={localHistory.activity} marketHistory={localHistory.market} dashboardSummary={localHistory.dashboard} lastUpdated={lastUpdated} onNavigate={navigate} />,
-    leaderboard: <Leaderboard claimId={claimId} refreshToken={refreshToken} excludedMemberIds={appSettings.excludedMemberIds} data={data} access={effectiveAccess} />,
+    dashboard: <Dashboard data={data} activity={localHistory.activity} marketHistory={localHistory.market} dashboardSummary={localHistory.dashboard} lastUpdated={lastUpdated} selectedPlanId={String(window.localStorage.getItem(`claim-monitor.settlement.${claimId}.selectedPlan`) ?? "")} onNavigate={navigate} />,
+    leaderboard: <Leaderboard claimId={claimId} refreshToken={refreshToken} data={data} />,
     members: <Members data={data} selectedMemberId={selectedMemberId} onSelectMember={setSelectedMemberId} onMemberDetailsOpened={() => trackAnalyticsEvent("member_details_opened")} />,
     skills: <Skills data={data} />,
     "craft-monitor": <Production data={data} refreshToken={refreshToken} selectedMemberId={selectedMemberId} onSelectMember={setSelectedMemberId} />,
     planning: <CraftPlanningPage claimId={claimId} refreshToken={refreshToken} />,
     publiccrafts: <div className="panel public-craft-page"><PublicCraftFinder refreshToken={refreshToken} monitoredRegionId={String(data.claim.regionId ?? "")} monitoredOwnerName={getTrackedOwnerName(data.claim)} defaultRegionId={appSettings.defaultRegion} onShowMap={(focus) => { setMapFocus(focus); navigate("map", undefined, focus); }} /></div>,
-    craftcalc: <CraftCalculatorPage />,
     inventory: <Inventory data={data} />,
     construction: <Construction data={data} />,
     research: <Research data={data} />,
-    market: <Market access={effectiveAccess} locationSearch={routeSearch} fallbackRegionId={String(data.claim.regionId ?? "")} onQueryStateChange={syncRouteSearch} onNavigate={navigate} onShowMap={(focus, regionId) => { const target = { ...focus, regionId }; setMapFocus(target); navigate("map", undefined, target); }} onDiscordLogin={discordLogin} />,
-    "settlement-market": <SettlementMarket data={data} history={localHistory.market} claimId={claimId} access={effectiveAccess} locationSearch={routeSearch} listingsLoading={state.loading} listingError={state.error} onQueryStateChange={syncRouteSearch} />,
+    market: <Market locationSearch={routeSearch} fallbackRegionId={String(data.claim.regionId ?? "")} onQueryStateChange={syncRouteSearch} onNavigate={navigate} onShowMap={(focus, regionId) => { const target = { ...focus, regionId }; setMapFocus(target); navigate("map", undefined, target); }} />,
+    "settlement-market": <SettlementMarket data={data} history={localHistory.market} claimId={claimId} locationSearch={routeSearch} listingsLoading={state.loading} listingError={state.error} onQueryStateChange={syncRouteSearch} />,
     region: <Region data={data} />,
-    empires: <Empires monitoredRegionId={String(data.claim.regionId ?? "")} access={effectiveAccess} />,
+    empires: <Empires monitoredRegionId={String(data.claim.regionId ?? "")} />,
     map: <MapPanel data={data} focus={mapFocus} onClearFocus={() => { setMapFocus(null); updateQueryState({ label: null, x: null, z: null, regionId: null, mapName: null, mapX: null, mapZ: null }); }} />,
-    sync: <SyncPanel syncUrl={syncUrl} />,
-    activity: <ActivityPanel activity={localHistory.activity} activityTotal={localHistory.activityTotal} claimId={claimId} error={localHistory.error} access={effectiveAccess} />,
-    admin: <AdminPanel settings={appSettings} members={normalizeData(state.data).members} onAuthChanged={setAdminAuth} onSettingsSaved={(settings) => { setAppSettings(settings); setClaimId(settings.claimId); setSyncUrl(settings.syncUrl ?? DEFAULT_SYNC_URL); setRefreshToken((x) => x + 1); setHistoryRefreshToken((x) => x + 1); }} />,
+    activity: <ActivityPanel activity={localHistory.activity} activityTotal={localHistory.activityTotal} claimId={claimId} error={localHistory.error} />,
+    admin: <AdminPanel settings={appSettings} members={normalizeData(state.data).members} onAuthChanged={setAdminAuth} onSettingsSaved={(settings) => { setAppSettings(settings); setRefreshToken((x) => x + 1); setHistoryRefreshToken((x) => x + 1); }} />,
   };
-  const activePageTargetId = targetIdForPage(active);
-  const activePageDecision = accessDecisionFor(activePageTargetId);
-  const activePageLabel = accessTargetMeta.get(activePageTargetId)?.label ?? NAV.find(([id]) => id === active)?.[1] ?? "This page";
-  const activePanel = isPageAllowed(active)
-    ? panels[active] ?? panels.dashboard
-    : <RestrictedAccessState title={activePageLabel} decision={activePageDecision} user={userAuth.user} discordLoginEnabled={userAuth.discordLoginEnabled} onDiscordLogin={discordLogin} onOpenUserSettings={() => setUserSettingsOpen(true)} />;
+  const activePageLabel = NAV.find(([id]) => id === active)?.[1] ?? "This page";
+  const configuredPanel = panels[active] ?? panels.dashboard;
+  const activePanel = active !== "admin" && appSettings.maintenanceMode
+    ? <section className="panel empty-state"><Settings size={34} /><strong>Scheduled maintenance</strong><span>The public monitor is temporarily unavailable. Please try again shortly.</span></section>
+    : active !== "admin" && appSettings.pageFlags[active] === false
+      ? <section className="panel empty-state"><Shield size={34} /><strong>{activePageLabel} is temporarily unavailable</strong><span>This page has been disabled by the site operator.</span><button className="toolbar-button primary" onClick={() => navigate("dashboard")}>Return to Dashboard</button></section>
+      : configuredPanel;
   const manualRefreshIsRefreshing = manualRefreshState.status === "refreshing";
   const manualRefreshCooldownMs = cooldownRemainingMs(manualRefreshRequest?.requestedAt, manualRefreshClock);
   const manualRefreshCooldownSeconds = Math.ceil(manualRefreshCooldownMs / 1000);
@@ -833,7 +717,6 @@ function DashboardApp() {
     setManualRefreshClock(now);
     setManualRefreshRequest(request);
     setNotificationRefreshToken((current) => current + 1);
-    setDealRefreshToken((current) => current + 1);
   }, [active, manualRefreshCoordinator, manualRefreshRequest?.requestedAt, manualRefreshState.status]);
   React.useEffect(() => {
     if (!manualRefreshRequest) return undefined;
@@ -881,15 +764,16 @@ function DashboardApp() {
     warnings: apiWarnings,
   }), [active, apiWarnings, claimId, data.citizens.length, data.construction, data.crafts.length, data.inventories, data.market.length, data.members.length, data.region.length, lastUpdated, state.loading]);
 
-  const sidebarAccountName = accountDisplayName(userAuth.user);
-  const sidebarAccountStatus = accountCharacterStatusLabel(userAuth.user);
-  const sidebarAccountInitial = sidebarAccountName.slice(0, 1).toUpperCase();
   const mobileNavigationUnavailable = isNarrowViewport && !mobileNavigationOpen;
   const narrowAwareFloatingActionsCollapsed = isNarrowViewport ? !mobileFloatingActionsOpen : floatingActionsCollapsed;
   return (
     <div className={`app-shell density-${density} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <header className="mobile-shell-bar">
-        <span><strong className="mobile-shell-brand">Claim Monitor</strong><small className="mobile-shell-route">{activePageLabel}</small></span>
+        <button type="button" className="mobile-settlement-switcher" onClick={() => setSettlementPickerOpen(true)} aria-label="Change monitored settlement">
+          <Building2 size={16} />
+          <span><strong className="mobile-shell-brand">{selectedClaim?.name ?? data.claim.name ?? "Choose settlement"}</strong><small className="mobile-shell-route">{activePageLabel}</small></span>
+          <ChevronsUpDown size={14} />
+        </button>
         <button ref={mobileNavigationTriggerRef} type="button" aria-label="Open navigation" aria-controls="mobile-navigation" aria-expanded={mobileNavigationOpen} onClick={() => setMobileNavigationOpen(true)}>
           <Menu size={18} />
         </button>
@@ -899,28 +783,17 @@ function DashboardApp() {
         <button type="button" className="mobile-navigation-close" aria-label="Close navigation" onClick={() => setMobileNavigationOpen(false)}><X size={18} /></button>
         <div className="brand">
           {appSettings.branding.logo ? <img src={`${appSettings.branding.logo.url}?v=${encodeURIComponent(appSettings.branding.logo.updatedAt)}`} alt="" /> : <Shield />}
-          <div title={data.claim.name ?? "Settlement"}><h1>{data.claim.name ?? "Settlement"}</h1><span>Claim Monitor</span></div>
+          <div title={selectedClaim?.name ?? data.claim.name ?? "Settlement"}><h1>{selectedClaim?.name ?? data.claim.name ?? "Settlement"}</h1><span>Settlement Monitor</span></div>
           <button className="sidebar-toggle" type="button" onClick={() => setSidebarCollapsed((current) => !current)} title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
             {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
         </div>
         <div className="sidebar-top-stack">
-          <section className={`sidebar-account-card ${userAuth.user ? "signed-in" : "signed-out"}`} aria-label="Account">
-            {userAuth.user ? (
-              <button type="button" className="sidebar-account-main" onClick={() => setUserSettingsOpen(true)} title="Open account settings">
-                <span className="sidebar-account-avatar">{userAuth.user.avatarUrl ? <img src={userAuth.user.avatarUrl} alt="" /> : sidebarAccountInitial}</span>
-                <span className="sidebar-account-copy"><strong>{sidebarAccountName}</strong><small>{sidebarAccountStatus}</small></span>
-              </button>
-            ) : (
-              <>
-                <div className="sidebar-account-main">
-                  <span className="sidebar-account-avatar"><MessageCircle size={16} /></span>
-                  <span className="sidebar-account-copy"><strong>Not signed in</strong><small>Sign in to save settings and verify your character.</small></span>
-                </div>
-                {userAuth.discordLoginEnabled ? <button className="sidebar-account-action" onClick={() => discordLogin()}><MessageCircle size={14} /> Sign in with Discord</button> : <span className="sidebar-account-disabled">Discord login unavailable</span>}
-              </>
-            )}
-          </section>
+          <button type="button" className="settlement-switcher-button" onClick={() => setSettlementPickerOpen(true)} aria-label="Change monitored settlement">
+            <span className="sidebar-account-avatar"><Building2 size={16} /></span>
+            <span className="sidebar-account-copy"><strong>{selectedClaim?.name ?? data.claim.name ?? "Choose settlement"}</strong><small>{claimId ? `Claim #${claimId}${selectedClaim?.regionId ? ` · Region ${selectedClaim.regionId}` : ""}` : "Select a settlement to begin"}</small></span>
+            <ChevronsUpDown size={14} />
+          </button>
           <a className="discord-cta" href={DISCORD_URL} target="_blank" rel="noreferrer"><DiscordIcon size={18} /><span>Join Discord Server</span><ExternalLink size={13} /></a>
         </div>
         <nav ref={navigationRef} aria-label="Main navigation" data-tour="sidebar-navigation">
@@ -940,17 +813,15 @@ function DashboardApp() {
                   <ArrowDown size={12} aria-hidden="true" />
                 </button>
                 <div className="sidebar-section-items">
-                  {group.items.map(([id, label, Icon]) => {
-                    const restricted = !isPageAllowed(id);
-                    const accessibleLabel = restricted ? `${label} — restricted` : label;
+                  {group.items.filter(([id]) => appSettings.pageFlags[id] !== false).map(([id, label, Icon]) => {
+                    const accessibleLabel = label;
                     return (
                       <a
                         key={id}
-                        className={[`nav-destination`, active === id ? "active" : "", restricted ? "is-restricted" : ""].filter(Boolean).join(" ")}
+                        className={[`nav-destination`, active === id ? "active" : ""].filter(Boolean).join(" ")}
                         href={panelHref(id)}
                         aria-current={active === id ? "page" : undefined}
-                        aria-label={restricted ? `${label} — restricted` : label}
-                        data-restricted={restricted || undefined}
+                        aria-label={label}
                         title={accessibleLabel}
                         onMouseEnter={(event) => showCollapsedNavTooltip(event.currentTarget, accessibleLabel)}
                         onMouseLeave={() => setCollapsedNavTooltip(null)}
@@ -965,7 +836,6 @@ function DashboardApp() {
                       >
                         <Icon size={16} /><span className="nav-label">{label}</span>
                         <span className="collapsed-nav-label" aria-hidden="true">{label}</span>
-                        {restricted ? <LockKeyhole className="nav-access-lock" size={13} aria-hidden="true" /> : null}
                       </a>
                     );
                   })}
@@ -989,8 +859,10 @@ function DashboardApp() {
         {state.loading && !state.data ? <AppSkeleton /> : state.error && !state.data ? <ApiErrorState message={state.error} /> : (
           <>
             <ApiStatusBanner warnings={apiWarnings} lastUpdated={lastUpdated} diagnostics={apiDiagnostics} />
-            <div className="page-view" key={active}>
-              <RouteErrorBoundary routeKey={active}>
+            {active !== "admin" && appSettings.announcement ? <div className="api-status-banner" role="status"><strong>Announcement</strong><span>{appSettings.announcement}</span></div> : null}
+            <CollectionCoverage claimId={claimId} page={active} />
+            <div className="page-view" key={`${claimId}:${active}`}>
+              <RouteErrorBoundary routeKey={`${claimId}:${active}`}>
                 <React.Suspense fallback={<RouteLoadingState label={activePageLabel} />}>
                   <ManualRefreshProvider page={active} request={manualRefreshRequest} coordinator={manualRefreshCoordinator}>
                     {activePanel}
@@ -1003,7 +875,7 @@ function DashboardApp() {
       <footer className="app-footer">
           <div className="footer-links">
             <span className="footer-copy">
-              &copy; {new Date().getFullYear()} Timbersteel Claim Monitor - unofficial fan-made tool.
+              &copy; {new Date().getFullYear()} BitCraft Settlement Monitor — unofficial fan-made tool.
             </span>
             <span className="footer-build" title={appBuildId ? `Version ${APP_VERSION}, commit ${appBuildId}` : `Version ${APP_VERSION}`}>
               {appBuildLabel}
@@ -1013,7 +885,7 @@ function DashboardApp() {
             <a href={`${GITHUB_REPOSITORY}/issues`} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Feature Requests</a>
             <BuyMeCoffeeButton />
             <button className="footer-link" onClick={() => setPrivacyOpen(true)}><Shield size={13} /> Privacy & Analytics</button>
-            <button className="footer-link" onClick={() => setTermsOpen(true)}><FileText size={13} /> Terms & Bot Use</button>
+            <button className="footer-link" onClick={() => setTermsOpen(true)}><FileText size={13} /> Terms of Use</button>
             <a href="https://bitcraftmap.com/" target="_blank" rel="noreferrer"><ExternalLink size={13} /> BitCraft Map</a>
           </div>
         </footer>
@@ -1088,74 +960,30 @@ function DashboardApp() {
       </div>
       {!tourVisible ? <ToastStack notices={toasts} onDismiss={dismissToast} /> : null}
       {noticeOpen ? <NotificationDrawer notices={notificationLog} onClose={() => setNoticeOpen(false)} onOpenNotice={(notice) => { setNoticeOpen(false); navigate(notice.destination ?? "activity"); }} /> : null}
-      {commandOpen ? <CommandPalette adminAuthenticated={Boolean(adminAuth.authenticated)} access={effectiveAccess} members={data.members} onClose={() => setCommandOpen(false)} onNavigate={(panel, tab) => navigate(panel, tab)} onSelectMember={setSelectedMemberId} /> : null}
-      {consent != null && !discordPromptDismissed && userAuth.discordLoginEnabled && !userAuth.user ? <DiscordSignInPrompt onDiscordLogin={() => discordLogin()} onClose={() => setDiscordPromptDismissed(true)} onSettings={() => { setDiscordPromptDismissed(true); setUserSettingsOpen(true); }} /> : null}
-      {userSettingsOpen ? <UserSettingsDialog density={density} onDensityChange={setDensity} toastSettings={normalizedUserToastSettings} appToastSettings={appSettings.toastSettings} onToastSettingsChange={(settings) => setUserToastSettings(normalizeUserToastSettings(settings))} theme={{ ...DEFAULT_THEME, ...browserTheme }} onThemeChange={setBrowserTheme} auth={userAuth} members={data.members} onDiscordLogin={discordLogin} onDiscordLogout={discordLogout} onLinkCharacter={linkDiscordCharacter} onDiscordMarketSaleDmChange={setDiscordMarketSaleDm} showAdminTools={Boolean(adminAuth.authenticated)} onOpenAdmin={() => { setUserSettingsOpen(false); navigate("admin"); }} onPrivacyUserChanged={handlePrivacyUserChanged} onAnalyticsCleared={handleAnalyticsCleared} onDeleteAccount={() => setAccountDeletionOpen(true)} onResetSettings={() => { clearBrowserLocalSettings(); window.location.reload(); }} modal onClose={() => setUserSettingsOpen(false)} /> : null}
+      {commandOpen ? <CommandPalette adminAuthenticated={Boolean(adminAuth.authenticated)} members={data.members} onClose={() => setCommandOpen(false)} onNavigate={(panel, tab) => navigate(panel, tab)} onSelectMember={setSelectedMemberId} /> : null}
+      {userSettingsOpen ? <UserSettingsDialog density={density} onDensityChange={setDensity} toastSettings={normalizedUserToastSettings} appToastSettings={appSettings.toastSettings} onToastSettingsChange={(settings) => setUserToastSettings(normalizeUserToastSettings(settings))} theme={{ ...DEFAULT_THEME, ...browserTheme }} onThemeChange={setBrowserTheme} showAdminTools={Boolean(adminAuth.authenticated)} onOpenAdmin={() => { setUserSettingsOpen(false); navigate("admin"); }} onResetSettings={() => { clearBrowserLocalSettings(); window.location.reload(); }} modal onClose={() => setUserSettingsOpen(false)} /> : null}
       {helpOpen ? <HelpCenter activePage={active} version={APP_VERSION} onClose={() => setHelpOpen(false)} onPrivacy={() => setPrivacyOpen(true)} onTerms={() => setTermsOpen(true)} onStartTour={() => { setHelpOpen(false); setTourReplayToken((current) => current + 1); }} /> : null}
       {consent == null && !privacyOpen ? <CookieBanner onConsent={(choice) => { setAnalyticsPreference(choice); setConsent(choice); }} onPrivacy={() => setPrivacyOpen(true)} /> : null}
       {privacyOpen ? <PrivacyDialog consent={consent} onConsent={(choice) => { setAnalyticsPreference(choice); setConsent(choice); setPrivacyOpen(false); }} onClose={() => setPrivacyOpen(false)} /> : null}
       {termsOpen ? <TermsDialog onClose={() => setTermsOpen(false)} onPrivacy={() => setPrivacyOpen(true)} /> : null}
-      {publicLegalPolicy && !accountDeletionOpen && (legalAcceptanceOpen || Boolean(userAuth.user && userAuth.legal.requiresAcceptance)) ? (
-        <LegalAcceptanceDialog
-          mode={userAuth.user && userAuth.legal.requiresAcceptance ? "existing-session" : "login"}
-          policy={publicLegalPolicy}
-          onContinue={userAuth.user && userAuth.legal.requiresAcceptance ? acceptCurrentLegalPolicy : startDiscordLogin}
-          onClose={() => setLegalAcceptanceOpen(false)}
-          onLogout={userAuth.user && userAuth.legal.requiresAcceptance ? discordLogout : undefined}
-          onDeleteAccount={userAuth.user && userAuth.legal.requiresAcceptance ? () => setAccountDeletionOpen(true) : undefined}
-        />
-      ) : null}
-      {accountDeletionOpen ? <AccountDeletionDialog auth={userAuth} onDeleted={handleAccountDeleted} onClose={() => setAccountDeletionOpen(false)} /> : null}
-      <FirstRunTourManager activePage={active} enabled={active !== "admin" && consent != null && !userSettingsOpen && !helpOpen && !privacyOpen && !termsOpen && !commandOpen && !noticeOpen && !(!discordPromptDismissed && userAuth.discordLoginEnabled && !userAuth.user)} showAccountStep={userAuth.discordLoginEnabled} replayToken={tourReplayToken} onNavigate={(panel) => navigate(panel)} onVisibilityChange={setTourVisible} />
+      <FirstRunTourManager activePage={active} enabled={Boolean(claimId) && !settlementPickerOpen && active !== "admin" && consent != null && !userSettingsOpen && !helpOpen && !privacyOpen && !termsOpen && !commandOpen && !noticeOpen} replayToken={tourReplayToken} onNavigate={(panel) => navigate(panel)} onVisibilityChange={setTourVisible} />
       <AppPopupManager activePage={active} enabled={active !== "admin" && !tourVisible && !userSettingsOpen && !helpOpen && !privacyOpen && !termsOpen && !commandOpen && !noticeOpen} />
+      {settlementPickerOpen ? <SettlementPicker currentClaimId={claimId} mode={claimId ? "switch" : "welcome"} onCancel={claimId ? () => setSettlementPickerOpen(false) : undefined} onSelect={selectSettlement} /> : null}
     </div>
   );
 }
 
 function DedicatedLegalApp({ type }: { type: "terms" | "privacy" }) {
   React.useEffect(() => {
-    document.title = `${type === "terms" ? "Terms & Discord Bot Use" : "Privacy Policy"} — BitCraft Claim Monitor`;
+    document.title = `${type === "terms" ? "Terms of Use" : "Privacy Policy"} — BitCraft Settlement Monitor`;
   }, [type]);
   return <DedicatedLegalPage type={type} />;
 }
 
-/**
- * Dedicated bot dashboard route.
- *
- * This keeps bot administration separate from the public app while still using
- * the same AdminPanel implementation and server-side admin permissions.
- */
-function BotControlApp() {
-  const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
-  const [loading, setLoading] = React.useState(true);
-  React.useEffect(() => {
-    document.title = "Discord Bot Control — BitCraft Claim Monitor";
-    fetch(`${LOCAL_API}/config`)
-      .then((response) => response.ok ? response.json() : null)
-      .then((config) => {
-        const next = normalizeAppSettings(config);
-        setSettings(next);
-        applyTheme(next.theme);
-      })
-      .catch(() => applyTheme(DEFAULT_THEME))
-      .finally(() => setLoading(false));
-  }, []);
-  return loading ? <main><AppSkeleton /></main> : (
-    <main className="bot-control-page">
-      <AdminPanel settings={settings} onSettingsSaved={(next) => {
-        setSettings(next);
-        applyTheme(next.theme);
-      }} botOnly headingLevel={1} />
-    </main>
-  );
-}
-
 export default function App() {
   const dedicatedLegalPath = window.location.pathname === "/terms" ? "terms" : window.location.pathname === "/privacy" ? "privacy" : null;
-  const dedicatedBotPath = window.location.pathname === "/bot" || window.location.hostname.toLowerCase().startsWith("bot.");
   // Route-level branching happens before mounting DashboardApp so legal pages
-  // and the bot console do not initialise public page data unnecessarily.
+  // do not initialise public page data unnecessarily.
   if (dedicatedLegalPath) return <DedicatedLegalApp type={dedicatedLegalPath} />;
-  if (dedicatedBotPath) return <BotControlApp />;
   return <DashboardApp />;
 }

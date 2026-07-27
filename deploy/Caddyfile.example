@@ -1,7 +1,12 @@
-# Canonical production domain.
-app.timbersteeltrade.com {
+{
+	email {$ACME_EMAIL}
+}
+
+claim-monitor.com {
 	encode zstd gzip
 	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; connect-src 'self' https://bitjita.com https://api.bitjita.com; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self' https://discord.com"
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
@@ -18,17 +23,12 @@ app.timbersteeltrade.com {
 		@api path /api/*
 		handle @api {
 			header Content-Type application/json
-			respond `{"error":"Claim Monitor is updating. Retry in a few seconds."}` 503
+			respond `{"error":"BitCraft Settlement Monitor is updating. Retry in a few seconds."}` 503
 		}
-		respond "Claim Monitor is updating. Please retry in a few seconds." 503
+		respond "BitCraft Settlement Monitor is updating. Please retry in a few seconds." 503
 	}
 }
 
-# Legacy host redirects.
-claim.timbersteeltrade.com {
-	redir https://app.timbersteeltrade.com{uri} permanent
-}
-
-claim.hostred.co.uk {
-	redir https://app.timbersteeltrade.com{uri} permanent
+www.claim-monitor.com {
+	redir https://claim-monitor.com{uri} permanent
 }

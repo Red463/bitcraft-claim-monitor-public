@@ -19,5 +19,5 @@ export function seedDefaultDiscordOwner({
       .run(defaultOwnerDiscordId, "red463", "red463", existingRed.id);
     return;
   }
-  statements.insertDiscordAdmin.run("red463", "discord-oauth-admin", "owner", now(), defaultOwnerDiscordId, "red463", "red463", "");
+  statements.insertDiscordAdmin.run("red463", "owner", now(), defaultOwnerDiscordId, "red463", "red463", "");
 }

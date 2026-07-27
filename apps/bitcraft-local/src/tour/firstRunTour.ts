@@ -50,14 +50,6 @@ export const FIRST_RUN_TOUR_STEPS: FirstRunTourStep[] = [
     placement: "center",
   },
   {
-    id: "account-access",
-    page: "dashboard",
-    target: "floating-actions",
-    title: "Sign in only when it helps",
-    body: "Discord sign-in can synchronize supported preferences and identify your linked character. Some routes may require a signed-in or verified character, but signing in or verification does not guarantee access.",
-    placement: "center",
-  },
-  {
     id: "help-replay",
     page: "dashboard",
     target: "floating-actions",
@@ -66,10 +58,6 @@ export const FIRST_RUN_TOUR_STEPS: FirstRunTourStep[] = [
     placement: "center",
   },
 ];
-
-export function effectiveTourSteps(showAccountStep: boolean) {
-  return FIRST_RUN_TOUR_STEPS.filter((step) => showAccountStep || step.id !== "account-access");
-}
 
 export function firstRunTourTransition(_state: FirstRunTourState, action: FirstRunTourTransitionAction): FirstRunTourState {
   if (action.type === "prompt") return { mode: "prompt" };

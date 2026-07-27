@@ -1,9 +1,14 @@
-BitCraft Claim Monitor
-Copyright (c) Tom Bush
+BitCraft Settlement Monitor
+https://github.com/Red463/bitcraft-claim-monitor-public
+
+Public conversion copyright (c) 2026 Thomas Bush.
+
+Based on BitCraft Claim Monitor by Thomas Bush:
 https://github.com/Red463/bitcraft-claim-monitor
 
-This repository is licensed under the GNU Affero General Public License v3.0 only.
-See the LICENSE file for the full license text.
+The original licence, copyright notices, repository history, and attribution are
+preserved. See LICENSE and TRADEMARKS.md.
 
-If you redistribute this project or a modified version, preserve this notice and
-clearly credit the original project and author in your repository documentation.
+BitCraft is a trademark of its respective owner. This project is unofficial and
+is not endorsed by Clockwork Labs. Market and settlement data is provided by the
+BitJita API and remains subject to its terms and availability.

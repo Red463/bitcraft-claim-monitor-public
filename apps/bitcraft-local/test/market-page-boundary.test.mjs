@@ -4,9 +4,10 @@ import { test } from "node:test";
 
 const marketPageSource = readFileSync(new URL("../src/pages/MarketPage.tsx", import.meta.url), "utf8");
 
-test("Market renders a restricted state when every tool view is denied", () => {
+test("Market makes every retained tool view directly available", () => {
   assert.match(marketPageSource, /resolveAllowedView\([\s\S]*?views\.map\(\(entry\) => entry\.id\)\)/);
-  assert.match(marketPageSource, /No global market workspaces are available for your account\./);
+  assert.match(marketPageSource, /const views = MARKET_VIEWS/);
+  assert.doesNotMatch(marketPageSource, /restricted-access|EffectiveAccess/);
   assert.match(marketPageSource, /updateQueryState\(\{ page: "market", tab:[^}]+\}, "push"\)/);
 });
 
@@ -40,7 +41,8 @@ test("Market page exposes a dedicated deal watchlist tool tab", () => {
 
   assert.match(marketPage, /id: "deal-watch"/);
   assert.match(marketPage, /label: "Deal Watch"/);
-  assert.match(marketPage, /<DealWatchlist[^>]*monitoredRegionId=\{regionId \|\| fallbackRegionId\}[^>]*onDiscordLogin=\{onDiscordLogin\}/);
+  assert.match(marketPage, /<DealWatchlist[^>]*monitoredRegionId=\{regionId \|\| fallbackRegionId\}/);
+  assert.doesNotMatch(marketPage, /onDiscordLogin/);
   assert.match(commandPalette, /deal-watch/);
   assert.match(commandPalette, /Deal Watch/);
 });
@@ -66,13 +68,11 @@ test("global Market uses balanced desktop density with controlled responsive col
   assert.match(css, /@media \(max-width:\s*1280px\)[\s\S]*\.market-order-summary\s*\{[^}]*repeat\(3,\s*minmax\(0,\s*1fr\)\)/s);
 });
 
-test("Market tool tabs accept app access-control decisions", () => {
+test("Market tool tabs do not depend on user access-control decisions", () => {
   const marketPage = readFileSync(new URL("../src/pages/MarketPage.tsx", import.meta.url), "utf8");
 
-  assert.match(marketPage, /type EffectiveAccess/);
-  assert.match(marketPage, /targetIdForTab\("market"/);
   assert.match(marketPage, /MARKET_VIEWS/);
-  assert.match(marketPage, /effectiveTargetAllowed/);
+  assert.doesNotMatch(marketPage, /EffectiveAccess|targetIdForTab|effectiveTargetAllowed/);
 });
 
 test("Market summaries and form controls stack on phones", () => {

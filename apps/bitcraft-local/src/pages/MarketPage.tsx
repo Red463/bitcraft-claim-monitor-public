@@ -1,7 +1,6 @@
 import React from "react";
 import { Activity, Bell, CircleDollarSign, Globe2, Search, ShoppingBag, Store, TrendingUp } from "lucide-react";
 
-import { effectiveTargetAllowed, targetIdForTab, type EffectiveAccess } from "../access/accessControl.mjs";
 import { activeRegionLabel, useActiveRegions } from "../hooks/useActiveRegions";
 import { usePersistedState } from "../hooks/usePersistedState";
 import { toNumber, type AnyRecord } from "../main-app-data";
@@ -31,21 +30,17 @@ const MARKET_VIEWS = [
 ];
 
 export function Market({
-  access,
   locationSearch,
   fallbackRegionId,
   onQueryStateChange,
   onNavigate,
   onShowMap,
-  onDiscordLogin,
 }: {
-  access?: EffectiveAccess | null;
   locationSearch: string;
   fallbackRegionId: string;
   onQueryStateChange: () => void;
   onNavigate: (panel: ActivePanel, tab?: string) => void;
   onShowMap: (focus: NonNullable<MapFocus>, regionId?: string) => void;
-  onDiscordLogin: (returnTo?: string) => void;
 }) {
   const location = React.useMemo(() => marketViewLocation(new URLSearchParams(locationSearch).get("tab")), [locationSearch]);
   const { request, trackPromise } = useManualRefresh();
@@ -61,7 +56,7 @@ export function Market({
   const activeRegions = useActiveRegions();
   const activeRegionIds = React.useMemo(() => new Set(activeRegions.map((region) => region.regionId)), [activeRegions]);
   const regionId = regionChoice !== "All" && activeRegionIds.has(regionChoice) ? regionChoice : "";
-  const views = React.useMemo(() => MARKET_VIEWS.filter((entry) => effectiveTargetAllowed(access, targetIdForTab("market", entry.id))), [access]);
+  const views = MARKET_VIEWS;
   const allowedView = resolveAllowedView(location.page === "market" ? location.view as GlobalMarketViewId : view, views.map((entry) => entry.id));
   const currentView = allowedView ?? view;
   const marketRefresh = React.useMemo(() => ({
@@ -120,8 +115,6 @@ export function Market({
     onQueryStateChange();
   }
 
-  if (!allowedView) return <div className="panel restricted-access-panel"><section className="empty-state restricted-access-state"><Globe2 size={34} /><strong>Market is restricted</strong><span>No global market workspaces are available for your account.</span></section></div>;
-
   return (
     <div className="panel market-page global-market-page">
       <header className="members-topbar market-topbar">
@@ -141,7 +134,7 @@ export function Market({
       {currentView === "browse" ? <MarketBrowse {...marketRefresh} mode="browse" regionId={regionId} favorites={favorites} onToggleFavorite={toggleFavorite} onShowMap={onShowMap} locationSearch={locationSearch} onQueryStateChange={onQueryStateChange} /> : null}
       {currentView === "deals" ? <MarketDeals {...marketRefresh} sharedRegionId={regionId} activeRegions={activeRegions} onShowMap={onShowMap} /> : null}
       {currentView === "buy-orders" ? <MarketBrowse {...marketRefresh} mode="buy" regionId={regionId} favorites={favorites} onToggleFavorite={toggleFavorite} onShowMap={onShowMap} locationSearch={locationSearch} onQueryStateChange={onQueryStateChange} /> : null}
-      {currentView === "deal-watch" ? <DealWatchlist {...marketRefresh} monitoredRegionId={regionId || fallbackRegionId} onDiscordLogin={onDiscordLogin} /> : null}
+      {currentView === "deal-watch" ? <DealWatchlist {...marketRefresh} monitoredRegionId={regionId || fallbackRegionId} /> : null}
       {currentView === "stalls" ? <MarketStalls {...marketRefresh} regionId={regionId} onShowMap={onShowMap} /> : null}
       <footer className="global-market-source"><CircleDollarSign size={14} /><span>Live market data is provided by BitJita. Global insight snapshots are retained locally for trend calculations.</span></footer>
     </div>

@@ -32,7 +32,6 @@ test("first-run tour is a short task-based path to useful settlement context", (
     "dashboard-attention",
     "navigation-groups",
     "search-jump",
-    "account-access",
     "help-replay",
   ]);
   assert.equal(FIRST_RUN_TOUR_STEPS.every((step) => step.id && step.target && step.title && step.body), true);
@@ -41,14 +40,12 @@ test("first-run tour is a short task-based path to useful settlement context", (
   assert.equal(FIRST_RUN_TOUR_STEPS[1].target, "dashboard-summary");
   assert.match(FIRST_RUN_TOUR_STEPS[1].body, /attention|start/i);
   assert.match(FIRST_RUN_TOUR_STEPS.find((step) => step.id === "search-jump")?.body ?? "", /Craft Planning/);
-  assert.match(FIRST_RUN_TOUR_STEPS.find((step) => step.id === "account-access")?.body ?? "", /does not guarantee access/i);
   assert.match(FIRST_RUN_TOUR_STEPS.find((step) => step.id === "help-replay")?.body ?? "", /replay/i);
 });
 
-test("account and verification guidance appears only when Discord access is useful", () => {
-  assert.equal(typeof firstRunTourModule.effectiveTourSteps, "function");
-  assert.equal(firstRunTourModule.effectiveTourSteps(false).some((step) => step.id === "account-access"), false);
-  assert.equal(firstRunTourModule.effectiveTourSteps(true).some((step) => step.id === "account-access"), true);
+test("the public tour contains no account or verification step", () => {
+  assert.equal(FIRST_RUN_TOUR_STEPS.some((step) => step.id === "account-access"), false);
+  assert.equal(Object.hasOwn(firstRunTourModule, "effectiveTourSteps"), false);
 });
 
 test("tour transitions keep prompt, run, skip, and replay visibility deterministic", () => {

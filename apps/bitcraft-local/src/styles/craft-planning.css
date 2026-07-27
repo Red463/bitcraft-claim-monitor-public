@@ -831,3 +831,40 @@
 .craft-plan-section-override .modal-actions {
   padding-top: 2px;
 }
+.craft-plan-shared-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-raised, #182131);
+}
+
+.craft-plan-shared-toolbar label {
+  display: grid;
+  gap: 5px;
+  flex: 1 1 260px;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.craft-plan-shared-toolbar select {
+  min-height: 39px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--input-bg, #0c121c);
+  color: var(--text);
+}
+
+.craft-plan-create-dialog .modal-body {
+  display: grid;
+  gap: 14px;
+}
+
+.craft-plan-create-dialog textarea {
+  min-height: 100px;
+  resize: vertical;
+}

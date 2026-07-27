@@ -29,7 +29,7 @@ import { activityMetadata, signedDelta } from "./activity/activityUtils";
 import { MARKET_INCOME_RANGES, buildMarketIncomeSummary, type MarketIncomeRangeDays } from "./market/marketAnalytics";
 import { hasRecentCraftContribution } from "./production/productionUtils";
 
-export function Dashboard({ data, activity, marketHistory, dashboardSummary, lastUpdated, onNavigate }: { data: ReturnType<typeof normalizeData>; activity: AnyRecord[]; marketHistory: AnyRecord | null; dashboardSummary: AnyRecord | null; lastUpdated: Date | null; onNavigate: (panel: ActivePanel, marketTab?: string) => void }) {
+export function Dashboard({ data, activity, marketHistory, dashboardSummary, lastUpdated, selectedPlanId, onNavigate }: { data: ReturnType<typeof normalizeData>; activity: AnyRecord[]; marketHistory: AnyRecord | null; dashboardSummary: AnyRecord | null; lastUpdated: Date | null; selectedPlanId: string; onNavigate: (panel: ActivePanel, marketTab?: string) => void }) {
   const { request, trackPromise } = useManualRefresh();
   const [marketIncomeRange, setMarketIncomeRange] = React.useState<MarketIncomeRangeDays>(7);
   const { claim, members, market, construction, crafts } = data;
@@ -95,15 +95,18 @@ export function Dashboard({ data, activity, marketHistory, dashboardSummary, las
   const [craftPlan, setCraftPlan] = React.useState<AnyRecord | null>(null);
   React.useEffect(() => {
     const monitoredClaimId = String(claim.entityId ?? claim.id ?? "").trim();
-    if (!monitoredClaimId) return;
+    if (!monitoredClaimId || !selectedPlanId) {
+      setCraftPlan(null);
+      return;
+    }
     let stale = false;
     const controller = new AbortController();
-    const refresh = fetch(`/api/local/craft-plan?claimId=${encodeURIComponent(monitoredClaimId)}`, { headers: manualRefreshHeaders(request, "dashboard"), signal: controller.signal })
+    const refresh = fetch(`/api/local/craft-plan?claimId=${encodeURIComponent(monitoredClaimId)}&planId=${encodeURIComponent(selectedPlanId)}`, { headers: manualRefreshHeaders(request, "dashboard"), signal: controller.signal })
       .then((response) => response.ok ? response.json() : null)
       .then((body) => { if (!stale) setCraftPlan(body); });
     void trackPromise("dashboard-craft-plan", refresh).catch(() => {});
     return () => { stale = true; controller.abort(); };
-  }, [claim.entityId, claim.id, request?.sequence, trackPromise]);
+  }, [claim.entityId, claim.id, request?.sequence, selectedPlanId, trackPromise]);
   const gatherNextPreview = (Array.isArray(craftPlan?.gatherNext) ? craftPlan.gatherNext : []).flatMap((group: AnyRecord) => {
     const item = Array.isArray(group.items) ? group.items[0] : null;
     return item ? [{ ...item, section: group.section ?? item.section ?? "Other" }] : [];
@@ -225,7 +228,7 @@ export function Dashboard({ data, activity, marketHistory, dashboardSummary, las
                   <time>{formatNumber(item.missing, 0)}</time>
                 </button>;
               })()
-            )) : <div className="dashboard-empty">No craft plan needs are configured yet.</div>}
+            )) : <div className="dashboard-empty">{selectedPlanId ? "No craft plan needs are configured yet." : "Choose a shared plan on Craft Planning."}</div>}
           </div>
         </article>
 

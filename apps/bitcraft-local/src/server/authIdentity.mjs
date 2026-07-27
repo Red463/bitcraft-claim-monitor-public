@@ -1,7 +1,3 @@
-export function validAdminUsername(username) {
-  return /^[A-Za-z0-9_-]{3,32}$/.test(username);
-}
-
 export function validDiscordId(value) {
   return /^\d{15,25}$/.test(String(value ?? "").trim());
 }

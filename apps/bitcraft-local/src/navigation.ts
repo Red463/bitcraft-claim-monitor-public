@@ -1,6 +1,5 @@
 import {
   Activity,
-  Calculator,
   CircleDollarSign,
   Factory,
   ClipboardList,
@@ -14,7 +13,6 @@ import {
   Map as MapIcon,
   Package,
   Search,
-  Share2,
   Trophy,
   Users,
 } from "lucide-react";
@@ -57,8 +55,6 @@ export const NAV_GROUPS = [
   ] },
   { id: "tools", label: "Tools", items: [
     ["publiccrafts", "Public Craft Finder", Search],
-    ["craftcalc", "Craft Calculator", Calculator],
-    ["sync", "Sync", Share2],
   ] },
 ] as const satisfies readonly NavGroup[];
 

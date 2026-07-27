@@ -16,16 +16,14 @@ test("server admits manual refreshes through one guarded request header", () => 
 test("server propagates a request-scoped bypass to live aggregate caches", () => {
   assert.match(server, /fetchUpstreamCached\(upstream,\s*\{\s*forceRefresh\s*\}\)/);
   assert.match(server, /dashboardData\([^\n]+\{\s*forceRefresh\s*\}/);
-  assert.match(server, /computedCompactCraftPlanResponse\([^\n]+\{\s*forceRefresh,\s*refreshId\s*\}/);
-  assert.match(server, /computedCraftPlanResponse\([^\n]+\{\s*forceRefresh,\s*refreshId\s*\}/);
+  assert.match(server, /computedCompactCraftPlanResponse\(requestClaimId,\s*\{\s*forceRefresh,\s*refreshId,/);
+  assert.match(server, /computedCraftPlanResponse\(requestClaimId,\s*\{\s*forceRefresh,\s*refreshId,/);
   assert.match(server, /settlementProductionCrafts\(\{\s*\.\.\.body,\s*forceRefresh\s*\}\)/);
   assert.match(server, /passiveCraftSummaries\(\{\s*\.\.\.body,\s*forceRefresh\s*\}\)/);
   assert.match(server, /playerDetailSummaries\(\{\s*\.\.\.body,\s*forceRefresh\s*\}\)/);
   assert.match(server, /fetchCachedActiveRegions\(include,\s*\{\s*forceRefresh\s*\}\)/);
   assert.match(server, /regionalEmpireOverview\(regionId,\s*\{\s*forceRefresh\s*\}\)/);
   assert.match(server, /regionalEmpireDetails\(empireId,\s*regionId,\s*inactiveDays,\s*\{\s*forceRefresh\s*\}\)/);
-  assert.match(server, /regionalEmpireClaimMembers\(claimId,\s*\{\s*forceRefresh\s*\}\)/);
-  assert.match(server, /regionalEmpireWatchtowers\(regionId,\s*inactiveDays,\s*\{\s*forceRefresh\s*\}\)/);
 });
 
 test("every live page aggregate admits the guarded manual refresh identifier", () => {
@@ -34,8 +32,6 @@ test("every live page aggregate admits the guarded manual refresh identifier", (
     "/api/local/region/claims",
     "/api/local/empires",
     "/api/local/empires/details",
-    "/api/local/empires/claim-members",
-    "/api/local/empires/watchtowers",
     "/api/local/market/history",
     "/api/local/leaderboard",
     "/api/local/history",

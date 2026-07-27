@@ -1,4 +1,20 @@
 export function createPreparedStatements(db) {
+  const sourceDb = db;
+  db = {
+    prepare(sql) {
+      try {
+        return sourceDb.prepare(sql);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!/no such table:/i.test(message)) throw error;
+        const removedTable = message.match(/no such table:\s*(\S+)/i)?.[1] ?? "unknown";
+        const removed = () => {
+          throw new Error(`Removed public-edition storage was accessed: ${removedTable}`);
+        };
+        return { all: removed, get: removed, run: removed, iterate: removed };
+      }
+    },
+  };
   return {
   getSettlementState: db.prepare(`
     SELECT claim_id, captured_at, supplies, treasury, members_count, buildings_count, market_count, updated_at
@@ -78,57 +94,57 @@ export function createPreparedStatements(db) {
   `),
   insertCraftPlanProgressSnapshot: db.prepare(`
     INSERT INTO craft_plan_progress_audit_snapshots (
-      claim_id, captured_at, baseline_revision, fingerprint, full_snapshot,
+      claim_id, plan_id, captured_at, baseline_revision, fingerprint, full_snapshot,
       payload_gzip, app_version, build_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `),
   latestCraftPlanProgressSnapshot: db.prepare(`
     SELECT * FROM craft_plan_progress_audit_snapshots
-    WHERE claim_id = ?
+    WHERE claim_id = ? AND plan_id = ?
     ORDER BY captured_at DESC, id DESC
     LIMIT 1
   `),
   latestCraftPlanProgressSnapshotBefore: db.prepare(`
     SELECT * FROM craft_plan_progress_audit_snapshots
-    WHERE claim_id = ? AND captured_at <= ?
+    WHERE claim_id = ? AND plan_id = ? AND captured_at <= ?
     ORDER BY captured_at DESC, id DESC
     LIMIT 1
   `),
   listLatestCraftPlanProgressSnapshots: db.prepare(`
     SELECT * FROM craft_plan_progress_audit_snapshots
-    WHERE claim_id = ?
+    WHERE claim_id = ? AND plan_id = ?
     ORDER BY captured_at DESC, id DESC
     LIMIT ?
   `),
   listCraftPlanProgressSnapshotsSince: db.prepare(`
     SELECT * FROM craft_plan_progress_audit_snapshots
-    WHERE claim_id = ? AND captured_at >= ?
+    WHERE claim_id = ? AND plan_id = ? AND captured_at >= ?
     ORDER BY captured_at ASC, id ASC
   `),
   insertCraftPlanProgressEvent: db.prepare(`
     INSERT INTO craft_plan_progress_audit_events (
-      claim_id, captured_at, baseline_revision, event_type, summary, payload_json
-    ) VALUES (?, ?, ?, ?, ?, ?)
+      claim_id, plan_id, captured_at, baseline_revision, event_type, summary, payload_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `),
   listCraftPlanProgressEvents: db.prepare(`
     SELECT * FROM craft_plan_progress_audit_events
-    WHERE claim_id = ? AND captured_at >= ?
+    WHERE claim_id = ? AND plan_id = ? AND captured_at >= ?
     ORDER BY captured_at ASC, id ASC
     LIMIT ?
   `),
   latestCraftPlanBaselineChange: db.prepare(`
     SELECT * FROM craft_plan_progress_audit_events
-    WHERE claim_id = ? AND event_type = 'baseline_change'
+    WHERE claim_id = ? AND plan_id = ? AND event_type = 'baseline_change'
     ORDER BY captured_at DESC, id DESC
     LIMIT 1
   `),
   upsertCraftPlanProgressAuditState: db.prepare(`
     INSERT INTO craft_plan_progress_audit_state (
-      claim_id, last_fingerprint, last_payload_gzip, last_snapshot_id,
+      claim_id, plan_id, last_fingerprint, last_payload_gzip, last_snapshot_id,
       last_full_snapshot_at, last_success_at, last_failure_fingerprint,
       last_error, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(claim_id) DO UPDATE SET
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(claim_id, plan_id) DO UPDATE SET
       last_fingerprint = excluded.last_fingerprint,
       last_payload_gzip = excluded.last_payload_gzip,
       last_snapshot_id = excluded.last_snapshot_id,
@@ -139,14 +155,14 @@ export function createPreparedStatements(db) {
       updated_at = excluded.updated_at
   `),
   getCraftPlanProgressAuditState: db.prepare(`
-    SELECT * FROM craft_plan_progress_audit_state WHERE claim_id = ?
+    SELECT * FROM craft_plan_progress_audit_state WHERE claim_id = ? AND plan_id = ?
   `),
   craftPlanProgressAuditCounts: db.prepare(`
     SELECT
-      (SELECT COUNT(*) FROM craft_plan_progress_audit_snapshots WHERE claim_id = ?) AS snapshot_count,
-      (SELECT COUNT(*) FROM craft_plan_progress_audit_events WHERE claim_id = ?) AS event_count,
-      COALESCE((SELECT SUM(LENGTH(payload_gzip)) FROM craft_plan_progress_audit_snapshots WHERE claim_id = ?), 0)
-        + COALESCE((SELECT SUM(LENGTH(payload_json)) FROM craft_plan_progress_audit_events WHERE claim_id = ?), 0)
+      (SELECT COUNT(*) FROM craft_plan_progress_audit_snapshots WHERE claim_id = ? AND plan_id = ?) AS snapshot_count,
+      (SELECT COUNT(*) FROM craft_plan_progress_audit_events WHERE claim_id = ? AND plan_id = ?) AS event_count,
+      COALESCE((SELECT SUM(LENGTH(payload_gzip)) FROM craft_plan_progress_audit_snapshots WHERE claim_id = ? AND plan_id = ?), 0)
+        + COALESCE((SELECT SUM(LENGTH(payload_json)) FROM craft_plan_progress_audit_events WHERE claim_id = ? AND plan_id = ?), 0)
         AS stored_bytes
   `),
   pruneCraftPlanProgressSnapshots: db.prepare(`
@@ -314,7 +330,6 @@ export function createPreparedStatements(db) {
   `),
   updateRecipeCatalogError: db.prepare("UPDATE recipe_catalog_entries SET last_error = ?, updated_at = ? WHERE catalog_key = ?"),
   adminCount: db.prepare("SELECT COUNT(*) AS count FROM admin_users"),
-  adminByUsername: db.prepare("SELECT * FROM admin_users WHERE username = ? AND active = 1"),
   adminByDiscordId: db.prepare("SELECT * FROM admin_users WHERE discord_id = ? AND active = 1"),
   adminBySession: db.prepare(`
     SELECT admin_users.id, admin_users.username, admin_users.role, admin_users.discord_id, admin_users.discord_username, admin_users.discord_global_name, admin_users.discord_avatar
@@ -322,10 +337,8 @@ export function createPreparedStatements(db) {
     JOIN admin_users ON admin_users.id = admin_sessions.user_id
     WHERE admin_sessions.token_hash = ? AND admin_sessions.expires_at > ? AND admin_users.active = 1
   `),
-  insertAdmin: db.prepare("INSERT INTO admin_users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)"),
-  insertDiscordAdmin: db.prepare("INSERT INTO admin_users (username, password_hash, role, created_at, discord_id, discord_username, discord_global_name, discord_avatar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"),
+  insertDiscordAdmin: db.prepare("INSERT INTO admin_users (username, role, created_at, discord_id, discord_username, discord_global_name, discord_avatar) VALUES (?, ?, ?, ?, ?, ?, ?)"),
   updateAdminDiscordProfile: db.prepare("UPDATE admin_users SET username = ?, discord_username = ?, discord_global_name = ?, discord_avatar = ?, last_login_at = ? WHERE id = ?"),
-  updatePassword: db.prepare("UPDATE admin_users SET password_hash = ? WHERE id = ?"),
   updateAdminActive: db.prepare("UPDATE admin_users SET active = ? WHERE id = ?"),
   updateAdminRole: db.prepare("UPDATE admin_users SET role = ? WHERE id = ?"),
   updateLastLogin: db.prepare("UPDATE admin_users SET last_login_at = ? WHERE id = ?"),

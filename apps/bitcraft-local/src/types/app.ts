@@ -8,7 +8,6 @@ export type ActivePanel =
   | "craft-monitor"
   | "planning"
   | "publiccrafts"
-  | "craftcalc"
   | "inventory"
   | "construction"
   | "research"
@@ -17,7 +16,6 @@ export type ActivePanel =
   | "region"
   | "empires"
   | "map"
-  | "sync"
   | "activity"
   | "admin";
 

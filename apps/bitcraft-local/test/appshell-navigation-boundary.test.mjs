@@ -75,7 +75,7 @@ test("Market tab locations canonicalize aliases and clean invalid values", () =>
 test("route shell restores history and announces explicit route changes", () => {
   assert.match(appShell, /window\.addEventListener\("popstate", restoreFromHistory\)/);
   assert.match(appShell, /function restoreFromHistory\(\) \{[\s\S]*?setRouteStatus\(""\)/);
-  assert.match(appShell, /document\.title = `\$\{[^}]+\} — BitCraft Claim Monitor`/);
+  assert.match(appShell, /document\.title = `\$\{[^}]+\} — BitCraft Settlement Monitor`/);
   assert.match(appShell, /role="status" aria-live="polite"/);
   assert.match(appShell, /mainRef\.current\?\.focus\(\)/);
   assert.match(appShell, /updateQueryState\(\{[\s\S]*?page: panel,[\s\S]*?\}, "push"\)/);
@@ -85,27 +85,11 @@ test("route shell restores history and announces explicit route changes", () => 
   assert.match(appShell, /<Market[\s\S]*?locationSearch=\{routeSearch\}[\s\S]*?onQueryStateChange=\{syncRouteSearch\}/);
 });
 
-test("sidebar and command palette consume the same effective page access", () => {
-  assert.match(appShell, /<CommandPalette adminAuthenticated=\{Boolean\(adminAuth\.authenticated\)\} access=\{effectiveAccess\}/);
+test("sidebar and command palette expose the same public pages", () => {
+  assert.match(appShell, /<CommandPalette adminAuthenticated=\{Boolean\(adminAuth\.authenticated\)\} members=/);
   assert.match(commandPalette, /visiblePagePaletteItems\(NAV, adminAuthenticated\)/);
-  assert.match(commandPalette, /effectiveTargetAllowed\(access, targetIdForPage\(id\)\)/);
-  assert.match(commandPalette, /effectiveTargetAllowed\(access, targetIdForTab\("market", tab\)\)/);
+  assert.doesNotMatch(commandPalette, /EffectiveAccess|effectiveTargetAllowed|targetIdForPage|targetIdForTab/);
   assert.match(commandPalette, /allowedPages\.has\("members"\)/);
-});
-
-test("dedicated bot route has a route title and level-one panel heading", () => {
-  assert.match(appShell, /document\.title = "Discord Bot Control — BitCraft Claim Monitor"/);
-  assert.match(appShell, /<AdminPanel[\s\S]*?botOnly headingLevel=\{1\}/);
-  assert.match(adminPanel, /headingLevel\?: 1 \| 2/);
-  assert.match(adminPanel, /const Heading = headingLevel === 1 \? "h1" : "h2"/);
-});
-
-test("bot console exposes Linked Accounts through the shared admin tab navigation", () => {
-  assert.match(adminPanel, /const BOT_CONSOLE_TAB_GROUPS: AdminTabGroup\[\] = \[/);
-  assert.match(adminPanel, /key: "discord", label: "Discord Bot Control"/);
-  assert.match(adminPanel, /key: "accounts", label: "Linked Accounts"/);
-  assert.match(adminPanel, /botOnly \? BOT_CONSOLE_TAB_GROUPS : ADMIN_TAB_GROUPS/);
-  assert.match(adminPanel, /if \(!tabs\.some\(\(item\) => item\.key === tab\)\) setTab\(botOnly \? "discord" : "status"\)/);
 });
 
 test("dedicated legal routes set their titles from an effect", () => {
@@ -113,12 +97,10 @@ test("dedicated legal routes set their titles from an effect", () => {
   assert.match(appShell, /return <DedicatedLegalPage type=\{type\} \/>/);
 });
 
-test("sidebar destinations keep restricted public pages discoverable and preserve active-route semantics", () => {
-  assert.doesNotMatch(appShell, /group\.items\.filter\(\(\[id\]\) => isPageAllowed\(id\)\)/);
-  assert.match(appShell, /const restricted = !isPageAllowed\(id\)/);
+test("sidebar destinations are public and preserve active-route semantics", () => {
+  assert.doesNotMatch(appShell, /isPageAllowed|is-restricted|data-restricted|nav-access-lock/);
   assert.match(appShell, /className=\{\[`nav-destination`/);
-  assert.match(appShell, /aria-label=\{restricted \? `\$\{label\} — restricted` : label\}/);
-  assert.match(appShell, /<LockKeyhole className="nav-access-lock"/);
+  assert.match(appShell, /aria-label=\{label\}/);
   assert.match(appShell, /href=\{panelHref\(id\)\}/);
   assert.match(appShell, /aria-current=\{active === id \? "page" : undefined\}/);
 });
@@ -131,7 +113,7 @@ test("navigation retains existing groups and non-admin route IDs", () => {
   for (const routeId of [
     "dashboard", "leaderboard", "members", "skills", "craft-monitor", "planning",
     "inventory", "construction", "research", "market", "region", "empires",
-    "map", "activity", "publiccrafts", "craftcalc", "sync",
+    "map", "activity", "publiccrafts",
   ]) {
     assert.match(navigation, new RegExp(`\\["${routeId}",`));
   }
@@ -172,7 +154,7 @@ test("narrow navigation exposes an accessible grouped drawer", () => {
   assert.equal(openClass, "mobile-open");
   assert.match(shellCss, new RegExp(`\\.app-sidebar\\.${openClass}\\s*\\{[^}]*transform:\\s*translateX\\(0\\)`, "s"));
   assert.match(appShell, /NAV_GROUPS\.map\(\(group\) =>/);
-  assert.match(appShell, /group\.items\.map\(\(\[id, label, Icon\]\) =>/);
+  assert.match(appShell, /group\.items\.filter\(\(\[id\]\) => appSettings\.pageFlags\[id\] !== false\)\.map\(\(\[id, label, Icon\]\) =>/);
 });
 
 test("closed narrow drawer is hidden from accessibility and keyboard navigation without disabling desktop sidebar", () => {

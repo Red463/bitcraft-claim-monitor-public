@@ -16,7 +16,6 @@ export const domainCollectorDefaults = {
   region: { label: "Region", intervalSeconds: 300 },
   mapCatalog: { label: "Map/catalog", intervalSeconds: 600 },
   marketListings: { label: "Market listing sync", intervalSeconds: 60 },
-  empireMembership: { label: "Empire membership history", intervalSeconds: 60 },
   productionContributions: { label: "Production contribution sync", intervalSeconds: 300 },
   storageActivity: { label: "Storage activity", intervalSeconds: 60 },
   marketTrades: { label: "Member market trades", intervalSeconds: 60 },
@@ -84,4 +83,3 @@ export function normalizeCollectorSettings(value = {}) {
     }];
   }));
 }
-

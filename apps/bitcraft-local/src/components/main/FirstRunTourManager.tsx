@@ -5,7 +5,7 @@ import { usePersistedState } from "../../hooks/usePersistedState";
 import { Dialog } from "./Dialog";
 import {
   FIRST_RUN_TOUR_SEEN_KEY,
-  effectiveTourSteps,
+  FIRST_RUN_TOUR_STEPS,
   firstRunTourTransition,
   firstRunTourSeenAfterAction,
   reportedTourVisibility,
@@ -20,7 +20,6 @@ import {
 type FirstRunTourManagerProps = {
   activePage: ActivePanel;
   enabled: boolean;
-  showAccountStep: boolean;
   replayToken: number;
   onNavigate: (panel: ActivePanel) => void;
   onVisibilityChange?: (visible: boolean) => void;
@@ -47,7 +46,7 @@ function spotlightStyle(rect: ReturnType<typeof tourTargetRect>): React.CSSPrope
   };
 }
 
-export function FirstRunTourManager({ activePage, enabled, showAccountStep, replayToken, onNavigate, onVisibilityChange }: FirstRunTourManagerProps) {
+export function FirstRunTourManager({ activePage, enabled, replayToken, onNavigate, onVisibilityChange }: FirstRunTourManagerProps) {
   const [seen, setSeen] = usePersistedState(FIRST_RUN_TOUR_SEEN_KEY, false);
   const [tourState, dispatchTour] = React.useReducer(firstRunTourTransition, { mode: "idle" } as FirstRunTourState);
   const handledReplayTokenRef = React.useRef(0);
@@ -55,7 +54,7 @@ export function FirstRunTourManager({ activePage, enabled, showAccountStep, repl
   const [targetRect, setTargetRect] = React.useState<ReturnType<typeof tourTargetRect>>(null);
 
   const blocked = !enabled;
-  const steps = effectiveTourSteps(showAccountStep);
+  const steps = FIRST_RUN_TOUR_STEPS;
   const step = steps[stepIndex] ?? steps[0];
   const promptOpen = tourState.mode === "prompt";
   const running = tourState.mode === "running";

@@ -2,15 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("Craft Planning page is registered in navigation, access control, and AppShell", () => {
+test("Craft Planning page is registered in public navigation and AppShell", () => {
   const appType = readFileSync(new URL("../src/types/app.ts", import.meta.url), "utf8");
   const navigation = readFileSync(new URL("../src/navigation.ts", import.meta.url), "utf8");
-  const access = readFileSync(new URL("../src/access/accessControl.mjs", import.meta.url), "utf8");
   const appShell = readFileSync(new URL("../src/AppShell.tsx", import.meta.url), "utf8");
 
   assert.match(appType, /\| "planning"/);
   assert.match(navigation, /\["planning", "Craft Planning"/);
-  assert.match(access, /\["planning", "Craft Planning"\]/);
   assert.match(appShell, /React\.lazy\(\(\) => import\("\.\/pages\/CraftPlanningPage"\)/);
   assert.match(appShell, /planning: <CraftPlanningPage/);
 });

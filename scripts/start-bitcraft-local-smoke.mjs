@@ -163,7 +163,6 @@ async function main() {
         BITCRAFT_PROCESS_ROLE: "web",
         ENABLE_SERVER_POLLING: "false",
         ENABLE_SCHEDULED_JOBS: "false",
-        ENABLE_DISCORD_STARTUP: "false",
         BITCRAFT_LOCAL_DATA_DIR: path.join(repoRoot, ".dev-data"),
       },
     });

@@ -10,12 +10,9 @@ import { MiniStat } from "../components/main/Stats";
 import { toNumber, type AnyRecord } from "../main-app-data";
 import { formatCompactNumber, formatCurrentSession, formatNumber, formatPlaytime, timeAgo, timestampMs } from "../utils/format";
 import { usePersistedState } from "../hooks/usePersistedState";
-import { memberTrackingKeys } from "../utils/memberIdentity";
 import { normalizeData } from "../utils/normalize";
 import { bitjitaSkillRows, PROFESSION_IDS, skillNameFromRows, skillTier, SKILL_NAMES } from "../utils/professions";
 import type { LoadState } from "../types/app";
-import { effectiveTargetAllowed, targetIdForTab, type EffectiveAccess } from "../access/accessControl.mjs";
-import { resolveAllowedView } from "../navigation/routeState.ts";
 import { useManualRefresh } from "../refresh/ManualRefreshContext";
 import { manualRefreshHeaders } from "../refresh/manualRefresh.mjs";
 
@@ -34,15 +31,11 @@ const LEADERBOARD_TABS: Array<{ id: LeaderboardTab; label: string; icon: React.R
 export function Leaderboard({
   claimId,
   refreshToken,
-  excludedMemberIds = [],
   data,
-  access,
 }: {
   claimId: string;
   refreshToken: number;
-  excludedMemberIds?: string[];
   data: ReturnType<typeof normalizeData>;
-  access?: EffectiveAccess | null;
 }) {
   const { request, trackPromise } = useManualRefresh();
   const [state, setState] = React.useState<LoadState<AnyRecord>>({ data: null, error: null, loading: true });
@@ -51,11 +44,7 @@ export function Leaderboard({
   const [professionSort, setProfessionSort] = React.useState("totalLevel");
   const [activitySort, setActivitySort] = React.useState("totalEvents");
   const [marketSort, setMarketSort] = React.useState("confirmedSaleValue");
-  const visibleTabs = React.useMemo(() => LEADERBOARD_TABS.filter((tab) => effectiveTargetAllowed(access, targetIdForTab("leaderboard", tab.id))), [access]);
-  const resolvedTab = resolveAllowedView(activeTab, visibleTabs.map((tab) => tab.id));
-  React.useEffect(() => {
-    if (resolvedTab && resolvedTab !== activeTab) setActiveTab(resolvedTab);
-  }, [activeTab, resolvedTab, setActiveTab]);
+  const visibleTabs = LEADERBOARD_TABS;
   React.useEffect(() => {
     const controller = new AbortController();
     setState((current) => ({ ...current, loading: true, error: null }));
@@ -70,18 +59,8 @@ export function Leaderboard({
   }, [claimId, refreshToken, request?.sequence, trackPromise]);
   const leaderboard = state.data ?? {};
   const contributionBoard = leaderboard.contribution ?? leaderboard;
-  const excludedLeaderboardKeys = React.useMemo(() => new Set(excludedMemberIds.map((value) => String(value ?? "").trim().toLowerCase()).filter(Boolean)), [excludedMemberIds]);
-  const isExcluded = React.useCallback((entry: AnyRecord) => memberTrackingKeys(entry).some((key) => excludedLeaderboardKeys.has(key)), [excludedLeaderboardKeys]);
-  const contributors: AnyRecord[] = React.useMemo(() => {
-    const rows = contributionBoard.contributors ?? [];
-    if (!excludedLeaderboardKeys.size) return rows;
-    return rows.filter((entry: AnyRecord) => !memberTrackingKeys({ playerEntityId: entry.contributorId, userName: entry.name }).some((key) => excludedLeaderboardKeys.has(key)));
-  }, [contributionBoard.contributors, excludedLeaderboardKeys]);
-  const recent: AnyRecord[] = React.useMemo(() => {
-    const rows = contributionBoard.recent ?? [];
-    if (!excludedLeaderboardKeys.size) return rows;
-    return rows.filter((entry: AnyRecord) => !memberTrackingKeys({ playerEntityId: entry.contributorId, userName: entry.contributorName }).some((key) => excludedLeaderboardKeys.has(key)));
-  }, [contributionBoard.recent, excludedLeaderboardKeys]);
+  const contributors: AnyRecord[] = contributionBoard.contributors ?? [];
+  const recent: AnyRecord[] = contributionBoard.recent ?? [];
   const professions: AnyRecord[] = React.useMemo(() => {
     const byProfession = new Map<string, AnyRecord>();
     for (const contributor of contributors) {
@@ -119,11 +98,7 @@ export function Leaderboard({
   const professionRows = bitjitaSkillRows(data.skills, "Profession");
   const professionIds = professionRows.length ? professionRows.map((skill) => toNumber(skill.id)).filter(Boolean) : PROFESSION_IDS;
   const professionLabel = (id: number) => skillNameFromRows(professionRows, id) || SKILL_NAMES[id] || `Profession ${id}`;
-  const citizens: AnyRecord[] = React.useMemo(() => {
-    const rows = data.citizens ?? [];
-    if (!excludedLeaderboardKeys.size) return rows;
-    return rows.filter((entry) => !isExcluded({ playerEntityId: entry.playerEntityId ?? entry.entityId, userName: entry.userName ?? entry.username }));
-  }, [data.citizens, excludedLeaderboardKeys.size, isExcluded]);
+  const citizens: AnyRecord[] = data.citizens ?? [];
   const professionCompareRows = React.useMemo(() => citizens.map((citizen) => {
     const skills = citizen.skills ?? {};
     const levels = professionIds.map((id) => ({ id, name: professionLabel(id), level: toNumber(skills[String(id)]) }));
@@ -149,17 +124,9 @@ export function Leaderboard({
   const sortedProfessionRows = [...professionCompareRows]
     .filter((row) => professionFilter === "All" || row.levels.some((level: AnyRecord) => level.name === professionFilter))
     .sort((a, b) => professionSortValue(b) - professionSortValue(a) || String(a.name).localeCompare(String(b.name)));
-  const marketRows: AnyRecord[] = React.useMemo(() => {
-    const rows = leaderboard.market?.members ?? [];
-    if (!excludedLeaderboardKeys.size) return rows;
-    return rows.filter((entry: AnyRecord) => !isExcluded({ playerEntityId: entry.memberId, userName: entry.name }));
-  }, [excludedLeaderboardKeys.size, isExcluded, leaderboard.market?.members]);
+  const marketRows: AnyRecord[] = leaderboard.market?.members ?? [];
   const sortedMarketRows = [...marketRows].sort((a, b) => toNumber(b[marketSort]) - toNumber(a[marketSort]) || String(a.name).localeCompare(String(b.name)));
-  const activityRows: AnyRecord[] = React.useMemo(() => {
-    const rows = leaderboard.activity?.members ?? [];
-    if (!excludedLeaderboardKeys.size) return rows;
-    return rows.filter((entry: AnyRecord) => !isExcluded({ userName: entry.name }));
-  }, [excludedLeaderboardKeys.size, isExcluded, leaderboard.activity?.members]);
+  const activityRows: AnyRecord[] = leaderboard.activity?.members ?? [];
   const sortedActivityRows = [...activityRows].sort((a, b) => toNumber(b[activitySort]) - toNumber(a[activitySort]) || String(a.name).localeCompare(String(b.name)));
   const playerById = React.useMemo(() => new Map((data.players ?? []).map((player) => [String(player.playerEntityId ?? player.entityId ?? player.id ?? ""), player])), [data.players]);
   const playerByName = React.useMemo(() => new Map((data.players ?? []).map((player) => [String(player.username ?? player.userName ?? "").toLowerCase(), player])), [data.players]);
@@ -181,7 +148,7 @@ export function Leaderboard({
   }, [data.members, playerById, playerByName]);
   const mostPlayedRow = onlineRows.reduce<AnyRecord | null>((best, row) => toNumber(row.timePlayedSeconds) > toNumber(best?.timePlayedSeconds) ? row : best, null);
   const longestSessionRow = onlineRows.reduce<AnyRecord | null>((best, row) => toNumber(row.sessionSeconds) > toNumber(best?.sessionSeconds) ? row : best, null);
-  const currentTab = resolvedTab ?? activeTab;
+  const currentTab = activeTab;
   const activeTabMeta = visibleTabs.find((tab) => tab.id === currentTab) ?? LEADERBOARD_TABS[0];
   const tabSummary = currentTab === "professions" ? [
     <MiniStat key="members" icon={<Users />} label="Members Compared" value={formatNumber(sortedProfessionRows.length)} />,
@@ -209,11 +176,6 @@ export function Leaderboard({
     <MiniStat key="top" icon={<Users />} label="Top Contributor" value={topContributor?.name ?? "None yet"} />,
     <MiniStat key="profession" icon={<GraduationCap />} label="Top Profession" value={topProfession?.profession ?? "None yet"} />,
   ];
-  if (!resolvedTab) return (
-    <div className="panel restricted-access-panel">
-      <AsyncState kind="restricted" title="Leaderboard is restricted" detail="No leaderboard categories are available for your account." />
-    </div>
-  );
   if (state.loading && !state.data) return <AppSkeleton />;
   if (state.error && !state.data) return <AsyncState kind="error" title="Unable to load leaderboard" detail={state.error} />;
   return (

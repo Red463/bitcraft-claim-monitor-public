@@ -11,7 +11,6 @@ export const ROUTE_HELP = {
   "craft-monitor": { purpose: "Find production opportunities and available crafters.", nextAction: "Filter the work list, then open a recipe or member assignment." },
   planning: { purpose: "Turn settlement goals into tracked material and production needs.", nextAction: "Review the Needs Board, then open a material to see where to get it." },
   publiccrafts: { purpose: "Find public crafting stations and recipes outside the settlement.", nextAction: "Search for the craft you need and compare available locations." },
-  craftcalc: { purpose: "Calculate recipe chains and their total material costs.", nextAction: "Choose a recipe and quantity to expand its requirements." },
   inventory: { purpose: "Inspect settlement storage and item availability.", nextAction: "Search for an item to find its current stacks and locations." },
   construction: { purpose: "Track active construction projects and missing supplies.", nextAction: "Open a project to review its remaining requirements." },
   research: { purpose: "Review research progress and outstanding contribution needs.", nextAction: "Select a research task to inspect its remaining materials." },
@@ -20,7 +19,6 @@ export const ROUTE_HELP = {
   region: { purpose: "Inspect the selected region and its settlement context.", nextAction: "Review the regional summary, then open a related settlement or map location." },
   empires: { purpose: "Compare empire-wide settlement and regional activity.", nextAction: "Select an empire or region to inspect its current details." },
   map: { purpose: "Locate settlements, players, resources, and tracked activity.", nextAction: "Choose a map layer or search target to focus the view." },
-  sync: { purpose: "Open the configured BitCraft Sync materials and goals board.", nextAction: "Use the embedded board here, or open the full page if the embed is unavailable or you need more space." },
   activity: { purpose: "Review recent settlement events and operational changes.", nextAction: "Filter the timeline to investigate the activity that matters." },
 } satisfies Record<PublicPanel, RouteHelp>;
 

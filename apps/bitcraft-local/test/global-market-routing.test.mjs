@@ -7,11 +7,6 @@ import {
   settlementMarketViewLocation,
 } from "../src/navigation/routeState.ts";
 import { localHistoryIncludeForPanel } from "../src/api/localHistoryInclude.ts";
-import {
-  ACCESS_TAB_GROUPS,
-  normalizeAccessControlConfig,
-  resetLegacyMarketAccessRules,
-} from "../src/access/accessControl.mjs";
 
 test("global Market canonicalizes current and legacy tool tabs", () => {
   assert.deepEqual(marketViewLocation(null), {
@@ -67,38 +62,18 @@ test("only Settlement Market requests monitored market history", () => {
   assert.equal(localHistoryIncludeForPanel("dashboard"), "activity,market,dashboard");
 });
 
-test("global Market and Deal Watch use only regions reported active", () => {
+test("global Market and browser-local Deal Watch use active regions", () => {
   const marketPage = readFileSync(new URL("../src/pages/MarketPage.tsx", import.meta.url), "utf8");
   const dealWatch = readFileSync(new URL("../src/pages/market/DealWatchlist.tsx", import.meta.url), "utf8");
   assert.match(marketPage, /const activeRegions = useActiveRegions\(\);/);
-  assert.match(dealWatch, /const activeRegions = useActiveRegions\(\);/);
+  assert.match(dealWatch, /const activeRegions = useActiveRegions\(monitoredRegionId\);/);
+  assert.match(dealWatch, /localStorage/);
   assert.doesNotMatch(marketPage, /useActiveRegions\(fallbackRegionId\)/);
-  assert.doesNotMatch(dealWatch, /useActiveRegions\(defaultRegion\)/);
+  assert.doesNotMatch(dealWatch, /\/market\/deal-watches/);
 });
 
-test("market access reset preserves unrelated rules and exposes new public tabs", () => {
-  assert.deepEqual(ACCESS_TAB_GROUPS.market.map((tab) => tab.id), [
-    "overview",
-    "browse",
-    "deals",
-    "buy-orders",
-    "deal-watch",
-    "stalls",
-  ]);
-  assert.deepEqual(ACCESS_TAB_GROUPS["settlement-market"].map((tab) => tab.id), [
-    "live",
-    "analytics",
-  ]);
-
-  const reset = resetLegacyMarketAccessRules({
-    rules: {
-      "page:market": { mode: "verified" },
-      "tab:market:live": { mode: "discord" },
-      "page:map": { mode: "verified" },
-    },
-  });
-  assert.deepEqual(reset, { rules: { "page:map": { mode: "verified" } } });
-  assert.deepEqual(normalizeAccessControlConfig(reset), {
-    rules: { "page:map": { mode: "verified", allowedDiscordIds: [] } },
-  });
+test("all retained Market workspaces are public", () => {
+  const marketPage = readFileSync(new URL("../src/pages/MarketPage.tsx", import.meta.url), "utf8");
+  assert.match(marketPage, /const views = MARKET_VIEWS/);
+  assert.doesNotMatch(marketPage, /effectiveTargetAllowed|EffectiveAccess|restricted-access/);
 });

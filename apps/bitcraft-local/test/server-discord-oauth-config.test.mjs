@@ -3,50 +3,40 @@ import test from "node:test";
 
 import { resolveDiscordOAuthConfig } from "../src/server/discordOAuthConfig.mjs";
 
-test("resolveDiscordOAuthConfig prefers environment client id and secret before stored settings", () => {
+test("administrator OAuth reads only its dedicated environment variables", () => {
   assert.deepEqual(resolveDiscordOAuthConfig({
     env: {
-      DISCORD_OAUTH_CLIENT_ID: " env-client ",
-      DISCORD_OAUTH_CLIENT_SECRET: " env-secret ",
-      DISCORD_OAUTH_REDIRECT_URI: " https://claim.example/oauth ",
+      ADMIN_DISCORD_OAUTH_CLIENT_ID: " admin-client ",
+      ADMIN_DISCORD_OAUTH_CLIENT_SECRET: " admin-secret ",
+      ADMIN_DISCORD_OAUTH_REDIRECT_URI: " https://claim-monitor.com/admin-callback ",
+      DISCORD_OAUTH_CLIENT_ID: "public-client-must-be-ignored",
+      DISCORD_BOT_TOKEN: "bot-must-be-ignored",
     },
-    discordSettings: { applicationId: "settings-client" },
-    storedClientSecret: "stored-secret",
     origin: "https://fallback.example",
   }), {
-    clientId: "env-client",
-    clientSecret: "env-secret",
-    redirectUri: "https://claim.example/oauth",
+    clientId: "admin-client",
+    clientSecret: "admin-secret",
+    redirectUri: "https://claim-monitor.com/admin-callback",
     enabled: true,
   });
 });
 
-test("resolveDiscordOAuthConfig falls back to dashboard settings, stored secret, and origin callback", () => {
+test("administrator OAuth defaults to the isolated admin callback", () => {
   assert.deepEqual(resolveDiscordOAuthConfig({
-    env: {},
-    discordSettings: { applicationId: " settings-client " },
-    storedClientSecret: " stored-secret ",
-    origin: "https://claim.example",
+    env: {
+      ADMIN_DISCORD_OAUTH_CLIENT_ID: "admin-client",
+      ADMIN_DISCORD_OAUTH_CLIENT_SECRET: "admin-secret",
+    },
+    origin: "https://claim-monitor.com",
   }), {
-    clientId: "settings-client",
-    clientSecret: "stored-secret",
-    redirectUri: "https://claim.example/api/local/auth/discord/callback",
+    clientId: "admin-client",
+    clientSecret: "admin-secret",
+    redirectUri: "https://claim-monitor.com/api/local/admin/auth/discord/callback",
     enabled: true,
   });
 });
 
-test("resolveDiscordOAuthConfig disables Discord login when either id or secret is missing", () => {
-  assert.equal(resolveDiscordOAuthConfig({
-    env: { DISCORD_OAUTH_CLIENT_ID: "client" },
-    discordSettings: {},
-    storedClientSecret: "",
-    origin: "https://claim.example",
-  }).enabled, false);
-
-  assert.equal(resolveDiscordOAuthConfig({
-    env: { DISCORD_OAUTH_CLIENT_SECRET: "secret" },
-    discordSettings: {},
-    storedClientSecret: "",
-    origin: "https://claim.example",
-  }).enabled, false);
+test("administrator OAuth is disabled when either dedicated credential is absent", () => {
+  assert.equal(resolveDiscordOAuthConfig({ env: { ADMIN_DISCORD_OAUTH_CLIENT_ID: "client" } }).enabled, false);
+  assert.equal(resolveDiscordOAuthConfig({ env: { ADMIN_DISCORD_OAUTH_CLIENT_SECRET: "secret" } }).enabled, false);
 });

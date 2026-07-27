@@ -1,16 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { discordProfileDisplayName, validAdminUsername, validDiscordId } from "../src/server/authIdentity.mjs";
-
-test("validAdminUsername preserves the public admin username policy", () => {
-  assert.equal(validAdminUsername("abc"), true);
-  assert.equal(validAdminUsername("Admin_User-123"), true);
-  assert.equal(validAdminUsername("ab"), false);
-  assert.equal(validAdminUsername("a".repeat(33)), false);
-  assert.equal(validAdminUsername("admin user"), false);
-  assert.equal(validAdminUsername("admin!"), false);
-});
+import { discordProfileDisplayName, validDiscordId } from "../src/server/authIdentity.mjs";
 
 test("validDiscordId accepts only realistic Discord snowflake id strings", () => {
   assert.equal(validDiscordId("123456789012345"), true);

@@ -79,6 +79,6 @@ test("seedDefaultDiscordOwner inserts red463 when no default owner exists", () =
     ["get", "123"],
     ["prepare", "SELECT id FROM admin_users WHERE username = ?"],
     ["get", "red463"],
-    ["insert", "red463", "discord-oauth-admin", "owner", "created-at", "123", "red463", "red463", ""],
+    ["insert", "red463", "owner", "created-at", "123", "red463", "red463", ""],
   ]);
 });

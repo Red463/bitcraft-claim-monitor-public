@@ -1,5 +1,55 @@
-export const schemaBootstrapSql = `
+const legacySchemaBootstrapSql = `
   PRAGMA journal_mode = WAL;
+  CREATE TABLE IF NOT EXISTS claim_directory (
+    claim_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    name_search TEXT NOT NULL,
+    region_id TEXT,
+    region_name TEXT,
+    tier INTEGER,
+    owner_name TEXT,
+    refreshed_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS claim_directory_status (
+    singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+    last_attempt_at TEXT,
+    last_success_at TEXT,
+    last_error TEXT
+  );
+  CREATE TABLE IF NOT EXISTS monitored_claims (
+    claim_id TEXT PRIMARY KEY,
+    first_interest_at TEXT NOT NULL,
+    last_interest_at TEXT NOT NULL,
+    last_collected_at TEXT,
+    last_success_at TEXT,
+    last_error TEXT
+  );
+  CREATE TABLE IF NOT EXISTS craft_plans (
+    plan_id TEXT PRIMARY KEY,
+    claim_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    config_json TEXT NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 1,
+    edit_key_hash TEXT NOT NULL,
+    creator_key TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    archived_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS craft_plan_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_id TEXT NOT NULL,
+    claim_id TEXT NOT NULL,
+    reporter_key TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    details TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    created_at TEXT NOT NULL,
+    resolved_at TEXT,
+    resolved_by INTEGER,
+    FOREIGN KEY (plan_id) REFERENCES craft_plans(plan_id) ON DELETE CASCADE
+  );
   CREATE TABLE IF NOT EXISTS settlement_state_current (
     claim_id TEXT PRIMARY KEY,
     captured_at TEXT NOT NULL,
@@ -132,7 +182,6 @@ export const schemaBootstrapSql = `
   CREATE TABLE IF NOT EXISTS admin_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'owner',
     created_at TEXT NOT NULL
   );
@@ -557,6 +606,7 @@ export const schemaBootstrapSql = `
   CREATE TABLE IF NOT EXISTS craft_plan_progress_audit_snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     claim_id TEXT NOT NULL,
+    plan_id TEXT NOT NULL,
     captured_at TEXT NOT NULL,
     baseline_revision TEXT NOT NULL,
     fingerprint TEXT NOT NULL,
@@ -568,6 +618,7 @@ export const schemaBootstrapSql = `
   CREATE TABLE IF NOT EXISTS craft_plan_progress_audit_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     claim_id TEXT NOT NULL,
+    plan_id TEXT NOT NULL,
     captured_at TEXT NOT NULL,
     baseline_revision TEXT,
     event_type TEXT NOT NULL,
@@ -575,7 +626,8 @@ export const schemaBootstrapSql = `
     payload_json TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS craft_plan_progress_audit_state (
-    claim_id TEXT PRIMARY KEY,
+    claim_id TEXT NOT NULL,
+    plan_id TEXT NOT NULL,
     last_fingerprint TEXT,
     last_payload_gzip BLOB,
     last_snapshot_id INTEGER,
@@ -583,7 +635,8 @@ export const schemaBootstrapSql = `
     last_success_at TEXT,
     last_failure_fingerprint TEXT,
     last_error TEXT,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (claim_id, plan_id)
   );
   CREATE TABLE IF NOT EXISTS market_deal_watches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -872,9 +925,9 @@ export const schemaBootstrapSql = `
   CREATE INDEX IF NOT EXISTS idx_global_market_price_time ON global_market_price_snapshots (captured_at DESC);
   CREATE INDEX IF NOT EXISTS idx_craft_plan_settings_updated ON craft_plan_settings (updated_at DESC);
   CREATE INDEX IF NOT EXISTS idx_craft_plan_progress_snapshots_claim_time
-    ON craft_plan_progress_audit_snapshots (claim_id, captured_at DESC);
+    ON craft_plan_progress_audit_snapshots (claim_id, plan_id, captured_at DESC);
   CREATE INDEX IF NOT EXISTS idx_craft_plan_progress_events_claim_time
-    ON craft_plan_progress_audit_events (claim_id, captured_at DESC);
+    ON craft_plan_progress_audit_events (claim_id, plan_id, captured_at DESC);
   CREATE INDEX IF NOT EXISTS idx_market_deal_watches_user ON market_deal_watches (user_id, enabled, updated_at DESC);
   CREATE INDEX IF NOT EXISTS idx_market_deal_watches_scan ON market_deal_watches (claim_id, region_id, enabled, item_id, item_type);
   CREATE INDEX IF NOT EXISTS idx_market_deal_alerts_user ON market_deal_alerts (user_id, created_at DESC);
@@ -913,7 +966,56 @@ export const schemaBootstrapSql = `
   CREATE INDEX IF NOT EXISTS idx_game_catalog_refresh_runs_updated_at ON game_catalog_refresh_runs (updated_at DESC, id DESC);
   CREATE INDEX IF NOT EXISTS idx_game_catalog_refresh_targets_queue ON game_catalog_refresh_targets (run_id, state, sequence);
   CREATE INDEX IF NOT EXISTS idx_domain_payload_claim ON domain_payload_current (claim_id, domain);
+  CREATE INDEX IF NOT EXISTS idx_claim_directory_search ON claim_directory (name_search, claim_id);
+  CREATE INDEX IF NOT EXISTS idx_claim_directory_region ON claim_directory (region_id, name_search);
+  CREATE INDEX IF NOT EXISTS idx_monitored_claims_active ON monitored_claims (last_interest_at DESC, last_collected_at ASC);
+  CREATE INDEX IF NOT EXISTS idx_craft_plans_claim_active ON craft_plans (claim_id, archived_at, updated_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_craft_plans_creator_time ON craft_plans (creator_key, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_craft_plan_reports_status ON craft_plan_reports (status, created_at DESC);
 `;
+
+export const omittedPublicTables = Object.freeze([
+  "user_accounts",
+  "user_sessions",
+  "user_legal_acceptances",
+  "craft_plan_settings",
+  "market_deal_watches",
+  "market_deal_alerts",
+  "empire_hexite_sweeps",
+  "empire_hexite_sweep_empires",
+  "empire_hexite_targets",
+  "empire_hexite_sources",
+  "empire_hexite_snapshots",
+  "empire_membership_tracking",
+  "empire_membership_periods",
+  "discord_delivery_log",
+  "discord_notification_outbox",
+  "discord_craft_plan_report_occurrences",
+  "discord_youtube_channels",
+  "discord_youtube_videos",
+  "discord_craft_watches",
+  "discord_mod_cases",
+  "discord_warnings",
+  "discord_mod_notes",
+  "discord_custom_commands",
+  "discord_component_votes",
+  "discord_component_messages",
+  "discord_temp_bans",
+]);
+
+const omittedPublicTableSet = new Set(omittedPublicTables);
+
+function referencesOmittedPublicTable(statement) {
+  const normalized = String(statement).toLowerCase();
+  return [...omittedPublicTableSet].some((table) => new RegExp(`\\b${table}\\b`).test(normalized));
+}
+
+export const schemaBootstrapSql = `${legacySchemaBootstrapSql
+  .split(";")
+  .map((statement) => statement.trim())
+  .filter(Boolean)
+  .filter((statement) => !referencesOmittedPublicTable(statement))
+  .join(";\n")};`;
 
 export function applySchemaBootstrap(db) {
   db.exec(schemaBootstrapSql);

@@ -100,8 +100,6 @@ test("tour anchors are stable data attributes rather than CSS selectors", () => 
   const map = readFileSync(new URL("../src/pages/MapPage.tsx", import.meta.url), "utf8");
   const activity = readFileSync(new URL("../src/pages/ActivityPage.tsx", import.meta.url), "utf8");
   const publicCrafts = readFileSync(new URL("../src/pages/PublicCraftFinderPage.tsx", import.meta.url), "utf8");
-  const craftCalculator = readFileSync(new URL("../src/pages/CraftCalculatorPage.tsx", import.meta.url), "utf8");
-  const sync = readFileSync(new URL("../src/pages/SyncPage.tsx", import.meta.url), "utf8");
   const userSettingsDialog = readFileSync(new URL("../src/components/main/UserSettingsDialog.tsx", import.meta.url), "utf8");
 
   assert.match(appShell, /data-tour="sidebar-navigation"/);
@@ -120,8 +118,5 @@ test("tour anchors are stable data attributes rather than CSS selectors", () => 
   assert.match(map, /data-tour="map-player-tracking"/);
   assert.match(activity, /data-tour="activity-controls"/);
   assert.match(publicCrafts, /data-tour="publiccrafts-page"/);
-  assert.match(craftCalculator, /data-tour="craftcalc-page"/);
-  assert.match(sync, /data-tour="sync-page"/);
-  assert.match(userSettingsDialog, /dataTour="user-settings"/);
+  assert.match(userSettingsDialog, /title="Browser settings"/);
 });
-

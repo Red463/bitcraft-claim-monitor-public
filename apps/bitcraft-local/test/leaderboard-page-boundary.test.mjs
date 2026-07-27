@@ -4,9 +4,9 @@ import test from "node:test";
 
 const leaderboardPage = readFileSync(new URL("../src/pages/LeaderboardPage.tsx", import.meta.url), "utf8");
 
-test("Leaderboard renders a restricted state when every category is denied", () => {
-  assert.match(leaderboardPage, /resolveAllowedView\(activeTab, visibleTabs\.map\(\(tab\) => tab\.id\)\)/);
-  assert.match(leaderboardPage, /No leaderboard categories are available for your account\./);
+test("Leaderboard exposes every category without account access gates", () => {
+  assert.match(leaderboardPage, /const visibleTabs = LEADERBOARD_TABS/);
+  assert.doesNotMatch(leaderboardPage, /EffectiveAccess|effectiveTargetAllowed|restricted-access/);
 });
 
 test("Leaderboard page lives outside the legacy MainPages bundle", () => {

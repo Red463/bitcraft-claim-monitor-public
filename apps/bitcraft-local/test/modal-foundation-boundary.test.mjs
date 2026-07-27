@@ -41,7 +41,7 @@ test("global and feature overlays delegate dialog semantics to the primitive", (
     "../src/components/main/FirstRunTourManager.tsx",
     "../src/pages/CraftPlanManagerDialog.tsx",
     "../src/pages/MembersPage.tsx",
-    "../src/pages/EmpiresPage.tsx",
+    "../src/pages/empires/EmpireDetailsDialog.tsx",
     "../src/pages/MapPage.tsx",
     "../src/components/admin/AdminPopupsSection.tsx",
     "../src/pages/CraftPlanningPage.tsx",
@@ -65,12 +65,6 @@ test("the notification drawer remains non-modal while blocking dialogs opt into 
   assert.match(notificationCss, /\.drawer-overlay\s*\{[^}]*align-items:\s*stretch;/s);
   assert.match(notificationCss, /\.drawer-overlay\s*\{[^}]*overflow:\s*hidden;/s);
   assert.match(notificationCss, /\.notice-drawer\s*\{[^}]*height:\s*100dvh;[^}]*max-height:\s*100dvh;[^}]*overflow:\s*auto;/s);
-});
-
-test("AppShell resolves consent before mounting optional Discord identity", () => {
-  const shell = readFileSync(new URL("../src/AppShell.tsx", import.meta.url), "utf8");
-
-  assert.match(shell, /consent != null && !discordPromptDismissed && userAuth\.discordLoginEnabled && !userAuth\.user/);
 });
 
 test("settings remains modal when the guided tour yields the active decision", () => {

@@ -3,32 +3,21 @@ export const DEFAULT_APP_PAGE = "dashboard";
 export const VALID_APP_PAGES = [
   "dashboard",
   "leaderboard",
-  "overview",
   "members",
   "skills",
-  "production",
+  "craft-monitor",
   "planning",
   "publiccrafts",
-  "craftcalc",
   "inventory",
   "construction",
   "research",
+  "settlement-market",
   "market",
-  "empire",
+  "region",
   "empires",
   "map",
-  "sync",
   "activity",
 ];
-
-export function validBitcraftSyncUrl(value) {
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "https:" && parsed.hostname === "bitcraftsync.app";
-  } catch {
-    return false;
-  }
-}
 
 export function validAppPage(value) {
   return VALID_APP_PAGES.includes(value);
@@ -52,18 +41,6 @@ export function parseRegionIds(value) {
     .split(/[,\s]+/)
     .map((entry) => entry.trim())
     .filter((entry) => validRegionId(entry));
-}
-
-export function normalizeStoredExcludedMemberIds(values) {
-  return Array.isArray(values)
-    ? [...new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean))]
-    : [];
-}
-
-export function normalizeSubmittedExcludedMemberIds(values) {
-  return Array.isArray(values)
-    ? [...new Set(values.map((value) => String(value ?? "").trim()).filter(validClaimId))]
-    : [];
 }
 
 function finiteNumber(value) {

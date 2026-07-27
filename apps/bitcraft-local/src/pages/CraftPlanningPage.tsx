@@ -1,6 +1,6 @@
 import React from "react";
 import "../styles/craft-planning.css";
-import { AlertTriangle, ChevronDown, ClipboardList, Download, EqualApproximately, Factory, LoaderCircle, Package, Route, Search, Target, X } from "lucide-react";
+import { AlertTriangle, ChevronDown, ClipboardList, Download, EqualApproximately, Factory, Link2, LoaderCircle, Package, Plus, Route, Search, Target, X } from "lucide-react";
 
 import { TierBadge } from "../components/main/Badges";
 import { Dialog } from "../components/main/Dialog";
@@ -19,6 +19,14 @@ import { groupNeedCellActiveCrafts, groupNeedCellRecipeUsages, groupNeedCellSour
 import { acquisitionRouteLabel, acquisitionRouteMetrics, formatProbabilityRate } from "./craftPlanningRoutePresentation.mjs";
 
 const LOCAL_API = "/api/local";
+
+function selectedPlanStorageKey(claimId: string) {
+  return `claim-monitor.settlement.${claimId}.selectedPlan`;
+}
+
+function planEditKeyStorageKey(planId: string) {
+  return `claim-monitor.planEdit.${planId}`;
+}
 
 type ItemDetailFeedback = {
   itemKey: string;
@@ -111,6 +119,15 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
   const [adminAuth, setAdminAuth] = React.useState<AnyRecord | null>(null);
   const [managerOpen, setManagerOpen] = React.useState(false);
   const [managerRefreshToken, setManagerRefreshToken] = React.useState(0);
+  const [sharedPlans, setSharedPlans] = React.useState<AnyRecord[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = React.useState("");
+  const [plansLoading, setPlansLoading] = React.useState(true);
+  const [createPlanOpen, setCreatePlanOpen] = React.useState(false);
+  const [createPlanTitle, setCreatePlanTitle] = React.useState("");
+  const [createPlanDescription, setCreatePlanDescription] = React.useState("");
+  const [createPlanPending, setCreatePlanPending] = React.useState(false);
+  const [createPlanError, setCreatePlanError] = React.useState("");
+  const [planActionMessage, setPlanActionMessage] = React.useState("");
   const [selectedSections, setSelectedSections] = React.useState<string[]>([]);
   const [shortagesOnly, setShortagesOnly] = React.useState(false);
   const [needsSearch, setNeedsSearch] = React.useState("");
@@ -141,11 +158,100 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
   }, []);
 
   React.useEffect(() => {
+    const controller = new AbortController();
+    setPlansLoading(true);
+    fetch(`${LOCAL_API}/craft-plans?claimId=${encodeURIComponent(claimId)}`, { signal: controller.signal })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
+        const plans = Array.isArray(body.plans) ? body.plans : [];
+        setSharedPlans(plans);
+        const params = new URLSearchParams(window.location.search);
+        const requested = String(params.get("planId") ?? "");
+        const stored = String(window.localStorage.getItem(selectedPlanStorageKey(claimId)) ?? "");
+        const next = [requested, stored].find((id) => plans.some((candidate: AnyRecord) => candidate.planId === id)) ?? "";
+        setSelectedPlanId(next);
+        if (next) window.localStorage.setItem(selectedPlanStorageKey(claimId), next);
+        const editToken = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("plan-edit");
+        if (next && editToken) {
+          window.localStorage.setItem(planEditKeyStorageKey(next), editToken);
+          window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`);
+        }
+      })
+      .catch((reason) => {
+        if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setPlansLoading(false);
+      });
+    return () => controller.abort();
+  }, [claimId, managerRefreshToken]);
+
+  const choosePlan = React.useCallback((planId: string) => {
+    setSelectedPlanId(planId);
+    if (planId) window.localStorage.setItem(selectedPlanStorageKey(claimId), planId);
+    else window.localStorage.removeItem(selectedPlanStorageKey(claimId));
+    const url = new URL(window.location.href);
+    if (planId) url.searchParams.set("planId", planId);
+    else url.searchParams.delete("planId");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [claimId]);
+
+  async function createSharedPlan() {
+    if (!createPlanTitle.trim()) return;
+    setCreatePlanPending(true);
+    setCreatePlanError("");
+    try {
+      const response = await fetch(`${LOCAL_API}/craft-plans`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          claimId,
+          title: createPlanTitle,
+          description: createPlanDescription,
+          config: {
+            enabled: true,
+            name: createPlanTitle,
+            targets: [],
+            sourceRules: { storageContainerIds: [], playerIds: [], craftPlayerIds: [], bankPlayerIds: [], deployableContainerIds: [] },
+            routeOverrides: {},
+            sectionOverrides: {},
+            rowNameOverrides: {},
+            multipliers: {},
+            gatheredItemKeys: [],
+            buildingProgress: {},
+          },
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
+      window.localStorage.setItem(planEditKeyStorageKey(body.plan.planId), body.editKey);
+      setSharedPlans((current) => [body.plan, ...current]);
+      choosePlan(body.plan.planId);
+      setCreatePlanOpen(false);
+      setCreatePlanTitle("");
+      setCreatePlanDescription("");
+      setManagerRefreshToken((value) => value + 1);
+      setManagerOpen(true);
+    } catch (reason) {
+      setCreatePlanError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setCreatePlanPending(false);
+    }
+  }
+
+  React.useEffect(() => {
+    if (!selectedPlanId) {
+      setPlan(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     let stale = false;
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    const refresh = fetch(`${LOCAL_API}/craft-plan?claimId=${encodeURIComponent(claimId)}`, { headers: manualRefreshHeaders(request, "planning"), signal: controller.signal })
+    const refresh = fetch(`${LOCAL_API}/craft-plan?claimId=${encodeURIComponent(claimId)}&planId=${encodeURIComponent(selectedPlanId)}`, { headers: manualRefreshHeaders(request, "planning"), signal: controller.signal })
       .then(async (response) => {
         const body = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
@@ -164,7 +270,7 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
       stale = true;
       controller.abort();
     };
-  }, [claimId, managerRefreshToken, refreshToken, request?.sequence, trackPromise]);
+  }, [claimId, managerRefreshToken, refreshToken, request?.sequence, selectedPlanId, trackPromise]);
 
   async function openNeedDetail(cell: NeedCell) {
     const requestId = ++detailRequestRef.current;
@@ -176,7 +282,7 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
     setDetailLoading(true);
     try {
       const keys = [...new Set(cell.items.map(itemKey).filter(Boolean))];
-      const detail = fetch(`${LOCAL_API}/craft-plan/detail?claimId=${encodeURIComponent(claimId)}&keys=${encodeURIComponent(keys.join(","))}`, { headers: manualRefreshHeaders(request, "planning") })
+      const detail = fetch(`${LOCAL_API}/craft-plan/detail?claimId=${encodeURIComponent(claimId)}&planId=${encodeURIComponent(selectedPlanId)}&keys=${encodeURIComponent(keys.join(","))}`, { headers: manualRefreshHeaders(request, "planning") })
         .then(async (response) => {
           const body = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
@@ -231,7 +337,9 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
     () => filterNeedsBoard(personalBoard.board, selectedSections, shortagesOnly, needsSearch),
     [personalBoard.board, selectedSections, shortagesOnly, needsSearch],
   );
-  const canManage = Boolean(adminAuth?.authenticated && adminAuth?.csrfToken);
+  const selectedSharedPlan = sharedPlans.find((candidate) => candidate.planId === selectedPlanId) ?? plan?.sharedPlan ?? null;
+  const storedEditKey = selectedPlanId ? String(window.localStorage.getItem(planEditKeyStorageKey(selectedPlanId)) ?? "") : "";
+  const canManage = Boolean(selectedPlanId && (storedEditKey || (adminAuth?.authenticated && adminAuth?.csrfToken)));
   const currentSectionOverrides = config.sectionOverrides ?? {};
   const currentRowNameOverrides = config.rowNameOverrides ?? {};
   const selectedNeedSources = selectedNeed ? groupNeedCellSources(selectedNeed) : [];
@@ -244,6 +352,56 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
   React.useEffect(() => {
     setBufferPercent(String(Math.max(0, Math.round((selectedMultiplier - 1) * 1000) / 10)));
   }, [selectedNeedKey, selectedMultiplier]);
+
+  async function copyPlanLink(includeEditKey = false) {
+    if (!selectedPlanId) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("claimId", claimId);
+    url.searchParams.set("planId", selectedPlanId);
+    url.hash = includeEditKey && storedEditKey ? `plan-edit=${encodeURIComponent(storedEditKey)}` : "";
+    await navigator.clipboard.writeText(url.toString());
+  }
+
+  async function rotatePlanKey() {
+    if (!selectedPlanId || !storedEditKey) return;
+    const response = await fetch(`${LOCAL_API}/craft-plans/${encodeURIComponent(selectedPlanId)}/rotate-key`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-plan-edit-key": storedEditKey },
+      body: "{}",
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
+    window.localStorage.setItem(planEditKeyStorageKey(selectedPlanId), body.editKey);
+    setManagerRefreshToken((value) => value + 1);
+  }
+
+  async function archivePlan() {
+    if (!selectedPlanId || !storedEditKey || !window.confirm(`Archive “${selectedSharedPlan?.title ?? selectedPlanId}”? Viewers will no longer see it in the settlement list.`)) return;
+    const response = await fetch(`${LOCAL_API}/craft-plans/${encodeURIComponent(selectedPlanId)}/archive`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-plan-edit-key": storedEditKey },
+      body: "{}",
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
+    window.localStorage.removeItem(planEditKeyStorageKey(selectedPlanId));
+    choosePlan("");
+    setSharedPlans((current) => current.filter((candidate) => candidate.planId !== selectedPlanId));
+  }
+
+  async function reportPlan() {
+    if (!selectedPlanId) return;
+    const reason = window.prompt("Briefly describe why this shared plan should be reviewed.");
+    if (!reason?.trim()) return;
+    const response = await fetch(`${LOCAL_API}/craft-plans/${encodeURIComponent(selectedPlanId)}/report`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: reason.trim() }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
+    setPlanActionMessage("Report submitted for administrator review.");
+  }
   const sectionOverrideDialog = selectedSectionOverride ? (
     <Dialog open title="Override needs board row" closeOnBackdrop={false} onClose={() => { setSelectedSectionOverride(null); setRowOverrideError(null); }} className="modal craft-plan-section-override" backdropClassName="modal-backdrop craft-plan-section-override-backdrop">
         <header className="modal-header">
@@ -503,9 +661,39 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
       : [...current, section]);
   }
 
+  async function saveSharedPlanConfig(nextConfig: AnyRecord) {
+    if (!selectedPlanId || !selectedSharedPlan) throw new Error("Choose a shared plan first");
+    const adminAuthority = !storedEditKey && Boolean(adminAuth?.authenticated && adminAuth?.csrfToken);
+    const response = await fetch(
+      adminAuthority
+        ? `${LOCAL_API}/admin/craft-plans/${encodeURIComponent(selectedPlanId)}`
+        : `${LOCAL_API}/craft-plans/${encodeURIComponent(selectedPlanId)}`,
+      {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          "if-match": `"${Number(selectedSharedPlan.revision ?? plan?.sharedPlan?.revision ?? 1)}"`,
+          ...(adminAuthority
+            ? { "x-csrf-token": String(adminAuth?.csrfToken ?? "") }
+            : { "x-plan-edit-key": storedEditKey }),
+        },
+        body: JSON.stringify({
+          title: selectedSharedPlan.title ?? nextConfig.name ?? "Settlement craft plan",
+          description: selectedSharedPlan.description ?? "",
+          config: nextConfig,
+          expectedRevision: Number(selectedSharedPlan.revision ?? plan?.sharedPlan?.revision ?? 1),
+        }),
+      },
+    );
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
+    setSharedPlans((current) => current.map((candidate) => candidate.planId === selectedPlanId ? { ...candidate, ...body } : candidate));
+    setManagerRefreshToken((value) => value + 1);
+    return body;
+  }
 
   async function saveRowOverride(row: NeedRow, section: string | null, name: string | null) {
-    if (!canManage || !adminAuth?.csrfToken || !row.overrideKey) return;
+    if (!canManage || !row.overrideKey) return;
     setRowOverrideError(null);
     try {
       const nextSectionOverrides = { ...currentSectionOverrides };
@@ -520,24 +708,14 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
         sectionOverrides: nextSectionOverrides,
         rowNameOverrides: nextRowNameOverrides,
       };
-      const response = await fetch(LOCAL_API + "/admin/craft-plan", {
-        method: "PUT",
-        headers: {
-          "content-type": "application/json",
-          "x-csrf-token": String(adminAuth.csrfToken),
-        },
-        body: JSON.stringify(nextConfig),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error ?? "HTTP " + response.status);
+      await saveSharedPlanConfig(nextConfig);
       setSelectedSectionOverride(null);
-      setManagerRefreshToken((value) => value + 1);
     } catch (err) {
       setRowOverrideError(err instanceof Error ? err.message : String(err));
     }
   }
   async function saveRouteOverride(outputKey: string, recipeId: string) {
-    if (!canManage || !adminAuth?.csrfToken || !outputKey || !recipeId) return;
+    if (!canManage || !outputKey || !recipeId) return;
     const openCell = selectedNeed;
     setItemDetailFeedback(null);
     setRouteSavePendingId(recipeId);
@@ -549,18 +727,7 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
           [outputKey]: recipeId,
         },
       };
-      const response = await fetch(LOCAL_API + "/admin/craft-plan", {
-        method: "PUT",
-        headers: {
-          "content-type": "application/json",
-          "x-csrf-token": String(adminAuth.csrfToken),
-        },
-        body: JSON.stringify(nextConfig),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error ?? "HTTP " + response.status);
-      if (body.plan) setPlan(body.plan);
-      setManagerRefreshToken((value) => value + 1);
+      await saveSharedPlanConfig(nextConfig);
       if (openCell) await openNeedDetail(openCell);
       setItemDetailFeedback({ itemKey: outputKey, tone: "success", message: "Acquisition route updated." });
     } catch (err) {
@@ -570,18 +737,15 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
     }
   }
   async function saveMultiplier(outputKey: string, percent: number) {
-    if (!canManage || !adminAuth?.csrfToken || !outputKey) return;
+    if (!canManage || !outputKey) return;
     setItemDetailFeedback(null);
     try {
       const multipliers = { ...(config.multipliers ?? {}) };
       const safePercent = Math.max(0, Math.min(1900, Number.isFinite(percent) ? percent : 0));
       if (safePercent > 0) multipliers[outputKey] = { multiplier: 1 + safePercent / 100, note: `${safePercent}% gathering safety buffer` };
       else delete multipliers[outputKey];
-      const response = await fetch(LOCAL_API + "/admin/craft-plan", { method: "PUT", headers: { "content-type": "application/json", "x-csrf-token": String(adminAuth.csrfToken) }, body: JSON.stringify({ ...config, multipliers }) });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error ?? "HTTP " + response.status);
+      await saveSharedPlanConfig({ ...config, multipliers });
       setItemDetailFeedback({ itemKey: outputKey, tone: "success", message: safePercent > 0 ? `Safety buffer saved at ${safePercent}%.` : "Safety buffer removed." });
-      setManagerRefreshToken((value) => value + 1);
     } catch (err) {
       setItemDetailFeedback({ itemKey: outputKey, tone: "error", message: err instanceof Error ? err.message : String(err) });
     }
@@ -609,21 +773,44 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
       <header className="page-header split-header craft-plan-page-header">
         <div>
           <h2><ClipboardList size={24} /> Craft Planning</h2>
-          <p>{hasPlan ? String(config.name ?? "Settlement craft plan") : "Admin-controlled procurement board for settlement crafting goals."}</p>
+          <p>{selectedSharedPlan?.description || (selectedPlanId ? String(config.name ?? selectedSharedPlan?.title ?? "Settlement craft plan") : "Choose a settlement plan to view its shared targets and Needs Board.")}</p>
         </div>
         <div className="dashboard-top-meta">
           <a className="toolbar-button" href={`${LOCAL_API}/catalog/probabilities.xlsx`}><Download size={15} aria-hidden="true" /> Download probabilities</a>
+          {selectedPlanId ? <button className="toolbar-button" type="button" onClick={() => void copyPlanLink(false)}><Link2 size={15} /> Copy viewer link</button> : null}
+          {storedEditKey ? <button className="toolbar-button" type="button" onClick={() => void copyPlanLink(true)}><Link2 size={15} /> Copy recovery link</button> : null}
           {canManage ? <button className="toolbar-button primary" type="button" onClick={() => setManagerOpen(true)}>Manage Plan</button> : null}
           <span>{quantity(totals.missingItems)} materials still short</span>
           <span>{quantity(totals.activeCraftQuantity)} in tracked crafts</span>
         </div>
       </header>
 
-      {!hasPlan ? (
+      <section className="craft-plan-shared-toolbar" aria-label="Shared settlement plan">
+        <label>
+          <span>Shared plan</span>
+          <select value={selectedPlanId} disabled={plansLoading} onChange={(event) => choosePlan(event.target.value)}>
+            <option value="">{plansLoading ? "Loading plans…" : "Choose a shared plan"}</option>
+            {sharedPlans.map((sharedPlan) => <option value={sharedPlan.planId} key={sharedPlan.planId}>{sharedPlan.title}</option>)}
+          </select>
+        </label>
+        <button className="toolbar-button" type="button" onClick={() => setCreatePlanOpen(true)}><Plus size={15} /> Create plan</button>
+        {selectedPlanId ? <button className="toolbar-button" type="button" onClick={() => void reportPlan().catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))}>Report plan</button> : null}
+        {storedEditKey ? <button className="toolbar-button" type="button" onClick={() => void rotatePlanKey().catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))}>Rotate edit key</button> : null}
+        {storedEditKey ? <button className="toolbar-button danger" type="button" onClick={() => void archivePlan().catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))}>Archive</button> : null}
+      </section>
+      {planActionMessage ? <p className="legend" role="status">{planActionMessage}</p> : null}
+
+      {!selectedPlanId ? (
         <div className="empty-state">
           <Target size={36} />
-          <strong>No craft plan configured</strong>
-          <span>{canManage ? "Use Manage Plan to add targets, inventory sources, route overrides, and uncertain-drop multipliers." : "An admin can add targets, inventory sources, route overrides, and uncertain-drop multipliers."}</span>
+          <strong>Choose a shared plan</strong>
+          <span>Select a plan created for this settlement, or create one and share its viewer link with other members.</span>
+        </div>
+      ) : !hasPlan ? (
+        <div className="empty-state">
+          <Target size={36} />
+          <strong>This plan has no targets yet</strong>
+          <span>{canManage ? "Use Manage Plan to add targets, counted sources, route overrides, and uncertain-drop multipliers." : "The plan owner has not added targets yet."}</span>
         </div>
       ) : (
         <>
@@ -769,7 +956,34 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
       )}
       {needDetailDialog}
       {sectionOverrideDialog}
-      {canManage ? <CraftPlanManagerDialog open={managerOpen} onClose={() => setManagerOpen(false)} csrfToken={String(adminAuth?.csrfToken)} onSaved={() => setManagerRefreshToken((value) => value + 1)} /> : null}
+      {canManage && selectedSharedPlan ? <CraftPlanManagerDialog
+        open={managerOpen}
+        onClose={() => setManagerOpen(false)}
+        csrfToken={String(adminAuth?.csrfToken ?? "")}
+        sharedPlan={{
+          planId: selectedPlanId,
+          editKey: storedEditKey,
+          revision: Number(selectedSharedPlan.revision ?? plan?.sharedPlan?.revision ?? 1),
+          title: String(selectedSharedPlan.title ?? config.name ?? "Settlement craft plan"),
+          description: selectedSharedPlan.description,
+        }}
+        onSaved={() => setManagerRefreshToken((value) => value + 1)}
+      /> : null}
+      <Dialog open={createPlanOpen} title="Create shared plan" closeOnBackdrop={false} onClose={() => setCreatePlanOpen(false)} className="modal craft-plan-create-dialog">
+        <header className="modal-header">
+          <div><h2><ClipboardList size={21} /> Create a settlement plan</h2><p>The plan will be publicly viewable for this settlement. You receive one private recovery key for editing.</p></div>
+          <button className="icon-button" type="button" onClick={() => setCreatePlanOpen(false)} aria-label="Close create plan dialog"><X size={18} /></button>
+        </header>
+        <div className="modal-body">
+          <label className="field"><span>Plan title</span><input maxLength={80} value={createPlanTitle} onChange={(event) => setCreatePlanTitle(event.target.value)} placeholder="Town hall upgrade" /></label>
+          <label className="field"><span>Description <small>(optional)</small></span><textarea maxLength={500} value={createPlanDescription} onChange={(event) => setCreatePlanDescription(event.target.value)} placeholder="What this plan is for and who is coordinating it" /></label>
+          {createPlanError ? <p className="alert error" role="alert">{createPlanError}</p> : null}
+        </div>
+        <footer className="modal-actions">
+          <button className="toolbar-button" type="button" onClick={() => setCreatePlanOpen(false)}>Cancel</button>
+          <button className="toolbar-button primary" type="button" disabled={createPlanPending || !createPlanTitle.trim()} onClick={() => void createSharedPlan()}>{createPlanPending ? <LoaderCircle className="is-spinning" size={15} /> : <Plus size={15} />} Create plan</button>
+        </footer>
+      </Dialog>
     </div>
   );
 }

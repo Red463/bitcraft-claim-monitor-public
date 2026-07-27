@@ -32,6 +32,17 @@ export function useLocalHistory(
   });
 
   React.useEffect(() => {
+    if (!/^\d+$/.test(String(claimId ?? "").trim())) {
+      setState({
+        market: null,
+        activity: [],
+        activityTotal: 0,
+        dashboard: null,
+        error: null,
+        refreshToken: 0,
+      });
+      return;
+    }
     const controller = new AbortController();
     async function load() {
       try {
@@ -68,6 +79,10 @@ export function useNotificationActivity(refreshToken: number, claimId: string): 
   const [state, setState] = React.useState<NotificationActivityState>({ events: [], total: 0, error: null, refreshToken: 0 });
 
   React.useEffect(() => {
+    if (!/^\d+$/.test(String(claimId ?? "").trim())) {
+      setState({ events: [], total: 0, error: null, refreshToken: 0 });
+      return;
+    }
     const controller = new AbortController();
     async function load() {
       try {
@@ -134,4 +149,3 @@ export function useDealAlerts(refreshToken: number): DealAlertsState {
 
   return state;
 }
-

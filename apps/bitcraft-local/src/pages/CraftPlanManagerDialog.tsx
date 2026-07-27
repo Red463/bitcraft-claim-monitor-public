@@ -210,7 +210,29 @@ function formatStoredBytes(value: unknown) {
   return `${formatNumber(bytes / (1024 * 1024), 1)} MB`;
 }
 
-export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { open: boolean; onClose: () => void; csrfToken: string; onSaved: () => void }) {
+type SharedPlanEditor = {
+  planId: string;
+  editKey: string;
+  revision: number;
+  title: string;
+  description?: string | null;
+};
+
+export function CraftPlanManagerDialog({
+  open,
+  onClose,
+  csrfToken = "",
+  onSaved,
+  sharedPlan = null,
+}: {
+  open: boolean;
+  onClose: () => void;
+  csrfToken?: string;
+  onSaved: (plan?: AnyRecord) => void;
+  sharedPlan?: SharedPlanEditor | null;
+}) {
+  const sharedMode = Boolean(sharedPlan?.planId);
+  const sharedAdminMode = sharedMode && !sharedPlan?.editKey && Boolean(csrfToken);
   const [state, setState] = React.useState<AnyRecord | null>(null);
   const [config, setConfig] = React.useState<CraftPlanConfig>(emptyConfig());
   const [activeTab, setActiveTab] = React.useState<ManagerTab>("targets");
@@ -232,6 +254,7 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
   const [progressAuditError, setProgressAuditError] = React.useState<string | null>(null);
   const [auditDownloadRange, setAuditDownloadRange] = React.useState<string | null>(null);
   const [auditDownloadError, setAuditDownloadError] = React.useState<string | null>(null);
+  const [sharedRevision, setSharedRevision] = React.useState(Number(sharedPlan?.revision ?? 0));
   const catalogPollingActive = Boolean(
     catalogStatus?.scheduledJob?.running
     || catalogStatus?.scheduledJob?.metadata?.complete === false
@@ -242,7 +265,14 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
   async function adminApi(path: string, options: RequestInit = {}) {
     const headers = new Headers(options.headers);
     headers.set("content-type", "application/json");
-    if (options.method && options.method !== "GET") headers.set("x-csrf-token", csrfToken);
+    if (options.method && options.method !== "GET") {
+      if (sharedMode && !sharedAdminMode) {
+        headers.set("x-plan-edit-key", String(sharedPlan?.editKey ?? ""));
+        headers.set("if-match", `"${sharedRevision}"`);
+      } else {
+        headers.set("x-csrf-token", csrfToken);
+      }
+    }
     const response = await fetch(`${LOCAL_API}${path}`, { ...options, headers });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
@@ -254,18 +284,20 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
     setOperation(mode);
     setError(null);
     try {
-      const result = await adminApi("/admin/craft-plan");
+      const result = await adminApi(sharedMode ? `/craft-plans/${encodeURIComponent(String(sharedPlan?.planId))}/editor` : "/admin/craft-plan");
       setState(result);
       setConfig({ ...emptyConfig(), ...(result.config ?? {}), sourceRules: { ...emptyConfig().sourceRules, ...(result.config?.sourceRules ?? {}) } });
+      if (result.sharedPlan?.revision) setSharedRevision(Number(result.sharedPlan.revision));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
       setOperation(null);
     }
-  }, [csrfToken]);
+  }, [csrfToken, sharedMode, sharedPlan?.planId]);
 
   const loadCatalogStatus = React.useCallback(async (options: { silent?: boolean } = {}) => {
+    if (sharedMode) return;
     const silent = options.silent === true;
     if (!silent) setCatalogBusy(true);
     setCatalogError(null);
@@ -281,9 +313,10 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
     } finally {
       if (!silent) setCatalogBusy(false);
     }
-  }, [csrfToken]);
+  }, [csrfToken, sharedMode]);
 
   const loadAudit = React.useCallback(async () => {
+    if (sharedMode) return;
     setAuditLoading(true);
     setAuditError(null);
     setProgressAuditError(null);
@@ -303,7 +336,7 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
     }
     setAuditLoading(false);
     setAuditLoaded(true);
-  }, [csrfToken]);
+  }, [csrfToken, sharedMode]);
 
   async function downloadProgressAudit(range: string) {
     setAuditDownloadRange(range);
@@ -333,8 +366,8 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
   React.useEffect(() => {
     if (!open) return;
     void load();
-    void loadCatalogStatus();
-  }, [open, load, loadCatalogStatus]);
+    if (!sharedMode) void loadCatalogStatus();
+  }, [open, load, loadCatalogStatus, sharedMode]);
 
   React.useEffect(() => {
     if (open) return;
@@ -350,9 +383,9 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
   }, [open]);
 
   React.useEffect(() => {
-    if (!open || activeTab !== "audit" || auditLoaded || auditLoading) return;
+    if (!open || sharedMode || activeTab !== "audit" || auditLoaded || auditLoading) return;
     void loadAudit();
-  }, [open, activeTab, auditLoaded, auditLoading, loadAudit]);
+  }, [open, sharedMode, activeTab, auditLoaded, auditLoading, loadAudit]);
 
   React.useEffect(() => {
     if (!open || !catalogPollingActive) return;
@@ -427,7 +460,9 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
     setError(null);
     setStatus(null);
     try {
-      const result = await adminApi(`/admin/craft-plan/workstation-preset?tier=${encodeURIComponent(String(preset.tier))}`);
+      const result = await adminApi(sharedMode
+        ? `/craft-plans/${encodeURIComponent(String(sharedPlan?.planId))}/workstation-preset?tier=${encodeURIComponent(String(preset.tier))}`
+        : `/admin/craft-plan/workstation-preset?tier=${encodeURIComponent(String(preset.tier))}`);
       const incoming = Array.isArray(result.workstations) ? result.workstations : [];
       const known = new Set(config.targets.map(itemKey));
       const additions = incoming.filter((target: AnyRecord) => {
@@ -472,12 +507,29 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
     setError(null);
     setStatus(null);
     try {
-      const result = await adminApi("/admin/craft-plan", { method: "PUT", body: JSON.stringify(config) });
-      setState(result);
-      setConfig({ ...emptyConfig(), ...(result.config ?? {}), sourceRules: { ...emptyConfig().sourceRules, ...(result.config?.sourceRules ?? {}) } });
+      const result = await adminApi(sharedAdminMode
+        ? `/admin/craft-plans/${encodeURIComponent(String(sharedPlan?.planId))}`
+        : sharedMode
+          ? `/craft-plans/${encodeURIComponent(String(sharedPlan?.planId))}`
+          : "/admin/craft-plan", {
+        method: "PUT",
+        body: JSON.stringify(sharedMode ? {
+          title: config.name,
+          description: sharedPlan?.description ?? "",
+          config,
+          expectedRevision: sharedRevision,
+        } : config),
+      });
+      if (sharedMode) {
+        setSharedRevision(Number(result.revision));
+        await load("refreshing");
+      } else {
+        setState(result);
+        setConfig({ ...emptyConfig(), ...(result.config ?? {}), sourceRules: { ...emptyConfig().sourceRules, ...(result.config?.sourceRules ?? {}) } });
+      }
       setStatus("Craft plan saved.");
       setAuditLoaded(false);
-      onSaved();
+      onSaved(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -542,7 +594,7 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
         <header className="modal-header">
           <div>
             <h2><ClipboardList size={22} /> Manage Craft Plan</h2>
-            <p>Set goals, choose counted inventories, apply tier presets, and tune routes for the public Craft Planning board.</p>
+            <p>{sharedMode ? "Manage this shared settlement plan. Only browsers holding its private edit key, or an administrator, can save changes." : "Set goals, choose counted inventories, apply tier presets, and tune routes for the public Craft Planning board."}</p>
           </div>
           <button className="icon-button" type="button" onClick={onClose} aria-label="Close craft plan manager"><X size={18} /></button>
         </header>
@@ -553,7 +605,7 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
             <button className="toolbar-button" type="button" onClick={() => void load("refreshing")} disabled={busy || catalogBusy}>{operation === "refreshing" ? <LoaderCircle className="is-spinning" size={14} /> : <RefreshCw size={14} />} {operation === "refreshing" ? "Refreshing…" : "Refresh"}</button>
             <button className="toolbar-button primary" type="button" onClick={save} disabled={busy}>{operation === "saving" ? <LoaderCircle className="is-spinning" size={14} /> : <Save size={14} />} {operation === "saving" ? "Saving…" : "Save Plan"}</button>
           </div>
-          <section className="craft-plan-catalog-band" aria-label="Planner catalog diagnostics">
+          {!sharedMode ? <section className="craft-plan-catalog-band" aria-label="Planner catalog diagnostics">
             <div className="craft-plan-catalog-summary">
               <div>
                 <strong>Planner catalog diagnostics</strong>
@@ -577,7 +629,7 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
               <div className="craft-plan-catalog-stat"><small>Byproducts</small><strong>{formatNumber(byproductCount, 0)}</strong><span>Output variants</span></div>
               <div className={`craft-plan-catalog-stat${failureCount > 0 ? " is-problem" : ""}`}><small>Failures</small><strong>{formatNumber(failureCount, 0)}</strong><span>{failureCount > 0 ? (catalogActive ? "Automatic recovery is active" : "Unavailable entities were skipped") : "No failures recorded"}</span></div>
             </div>
-          </section>
+          </section> : null}
         </div>
         {pendingLabel ? <div className="craft-plan-manager-pending" role="status" aria-live="polite"><LoaderCircle className="is-spinning" size={16} /><span>{pendingLabel}</span></div> : null}
         {error ? <div className="alert error">{error}</div> : null}
@@ -589,7 +641,7 @@ export function CraftPlanManagerDialog({ open, onClose, csrfToken, onSaved }: { 
             ["players", <Package size={15} />, "Players & Deployables"],
             ["routes", <Route size={15} />, "Routes"],
             ["buffers", <SlidersHorizontal size={15} />, "Buffers"],
-            ["audit", <History size={15} />, "Audit"],
+            ...(sharedMode ? [] : [["audit", <History size={15} />, "Audit"]]),
           ].map(([id, icon, label]) => <button key={String(id)} type="button" className={activeTab === id ? "active" : ""} onClick={() => setActiveTab(id as ManagerTab)}>{icon}{label}</button>)}
         </nav>
         <div className="craft-plan-manager-body" aria-busy={busy || catalogBusy}>

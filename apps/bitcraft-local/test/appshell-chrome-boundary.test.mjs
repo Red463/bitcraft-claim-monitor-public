@@ -68,23 +68,6 @@ test("footer shows the app version and build id", () => {
   assert.match(appShell, /footer-build/);
   assert.match(appShell, /APP_VERSION/);
 });
-test("sidebar exposes a persistent app account sign-in affordance", () => {
-  const appShell = readFileSync(new URL("../src/AppShell.tsx", import.meta.url), "utf8");
-  const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
-
-  assert.match(appShell, /sidebar-account-card/);
-  assert.match(appShell, /Not signed in/);
-  assert.match(appShell, /Sign in to save settings and verify your character/);
-  assert.match(appShell, /Sign in with Discord/);
-  assert.match(appShell, /Join Discord Server/);
-  assert.match(appShell, /setUserSettingsOpen\(true\)/);
-  assert.match(css, /\.sidebar-account-card/);
-  assert.match(css, /\.sidebar-account-avatar/);
-  assert.match(css, /\.sidebar-account-action/);
-  assert.match(css, /\.sidebar-top-stack/);
-  assert.match(css, /nav a, nav button \{[^}]*min-height:\s*34px/s);
-  assert.match(css, /nav a\.active, nav button\.active \{[^}]*inset 2px 0 0 var\(--active-color\)/s);
-});
 test("sidebar overview label preserves the existing command group key", () => {
   const navigation = readFileSync(new URL("../src/navigation.ts", import.meta.url), "utf8");
 
@@ -92,4 +75,3 @@ test("sidebar overview label preserves the existing command group key", () => {
   assert.doesNotMatch(navigation, /\{\s*id:\s*"overview"/);
   assert.doesNotMatch(navigation, /label:\s*"Command"/);
 });
-

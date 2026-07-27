@@ -14,13 +14,12 @@ import { mimeType, routeGroup, securityHeaders, shouldLogVisitor, staticCacheCon
 import { sendBinary, sendJson as send, sendText } from "./src/server/httpResponses.mjs";
 import { parseCookies, serializeHttpOnlyCookie } from "./src/server/httpCookies.mjs";
 import { originFromRequest as requestOriginFromRequest, safeReturnPath, sameOriginRequest as requestSameOriginRequest } from "./src/server/httpRequests.mjs";
-import { appUserCsrfToken, csrfToken, validCsrfHeader } from "./src/server/httpCsrf.mjs";
+import { csrfToken, validCsrfHeader } from "./src/server/httpCsrf.mjs";
 import { BODY_LIMITS, readJson, readRawBody } from "./src/server/httpBodies.mjs";
 import { createRateLimiter, RATE_LIMITS, requestAddress } from "./src/server/httpRateLimit.mjs";
 import { anonymizeIpAddress, createIpHasher, normalizeIpAddress } from "./src/server/visitorIp.mjs";
 import { normalizeVisitorSecuritySettings } from "./src/server/visitorSecuritySettings.mjs";
 import { publicNotificationActivityEvent } from "./src/server/notificationActivity.mjs";
-import { dealAlertDiscordPayload, publicDealAlertRow } from "./src/server/dealAlerts.mjs";
 import { nextScheduledRunIso, parseScheduledJobSchedule, publicScheduledJobRow, recoverStaleScheduledJobs as recoverStaleScheduledJobsRegistry, scheduledJobsStatus as scheduledJobsStatusResponse, scheduledJobScheduleLabel, seedScheduledJobs as seedScheduledJobsRegistry, serializeScheduledJobSchedule } from "./src/server/scheduledJobs.mjs";
 import { bitjitaTimestampIso, marketEventSourceKey, normalizeListing, tradeMatchesListing } from "./src/server/marketActivity.mjs";
 import { craftDisplayName, isCompletedProductionJob, normalizeProductionJob, normalizeProfessionKey, productionMetrics } from "./src/server/productionActivity.mjs";
@@ -34,15 +33,8 @@ import {
 import { fetchGameDataProbabilitySnapshot } from "./src/server/gameDataProbabilitySource.mjs";
 import { buildProbabilityWorkbookBuffer } from "./src/server/probabilityWorkbook.mjs";
 import { classifyCatalogRefreshError, parseRetryAfterMs, withCatalogRefreshTargetContext } from "./src/server/catalogRefreshRecovery.mjs";
-import { defaultDiscordSettings, normalizeDiscordPresence, normalizeDiscordRolePanel, normalizeDiscordSettings, normalizeDiscordWelcomeFlow } from "./src/server/discordSettings.mjs";
-import { resolveDiscordChannelSelection } from "./src/server/discordNotifications.mjs";
-import { discordEmbedForActivity as buildDiscordEmbedForActivity } from "./src/server/discordEmbeds.mjs";
-import { marketSaleDiscordRecipientDecision } from "./src/server/marketSaleDiscordRecipients.mjs";
-import { parseYouTubeFeed, resolveYouTubeChannelInput, youtubeFeedUrl, youtubeVideosToNotify } from "./src/server/youtubeMonitor.mjs";
 import { collectorCurrentTables, collectorPrimaryPayloadDomain, domainPayloadKeys, normalizeCollectorSettings, payloadDomainCollector, payloadDomainsForCollectors } from "./src/server/collectorSettings.mjs";
-import { normalizeMarketDealWatchSettings } from "./src/server/marketDealWatchSettings.mjs";
 import { normalizePopupConfig, publicPopups } from "./src/server/appPopups.mjs";
-import { ACCESS_CONTROL_TARGETS, ACCESS_RULE_MODES, normalizeAccessControlConfig, publicEffectiveAccess, resetLegacyMarketAccessRules } from "./src/access/accessControl.mjs";
 import { collectLocalCatalogCraftPlanDetails, computeCraftPlan, createCraftPlanResponseWorkspace, craftPlanAuditDetails, craftPlanAuditLimit, craftPlanCatalogTargets, craftPlanDetailResponse, normalizeCraftPlanAuditRows, normalizeCraftPlanConfig, reconcileCraftPlanBuildingProgress } from "./src/server/craftPlanning.mjs";
 import {
   CRAFT_PLAN_EFFORT_MODEL_VERSION,
@@ -62,35 +54,27 @@ import {
   normalizeCraftPlanAuditRange,
   staleCraftPlanProgress,
 } from "./src/server/craftPlanProgressAudit.mjs";
-import { buildCraftPlanDiscordEmbed, buildCraftPlanDiscordReport, buildUnavailableCraftPlanDiscordReport, craftPlanReportProfessions, dueCraftPlanReportOccurrence, nextCraftPlanReportOccurrenceIso, normalizeCraftPlanReportProfession, validateCraftPlanReportSettings } from "./src/server/craftPlanDiscordReports.mjs";
-import { craftPlanInteractionDiagnostic, deferredDiscordInteractionResult, editDiscordInteractionOriginal, preflightCraftPlanInteraction, runDiscordTaskAfterResponse } from "./src/server/discordCraftPlanInteractions.mjs";
 import { buildWorkstationPresets, normalizeWorkstationTarget } from "./src/server/craftPlanWorkstationPresets.mjs";
 import { craftPlanCatalogLookup, playerInventoryContainerSources, selectedPlayerInventoryIds, settlementStorageSourcesFromInventories, sourceItemsFromSlots, trackedCraftPlanOutputs, trackedPassiveCraftPlanOutputs } from "./src/server/craftPlanSources.mjs";
 import { createBitjitaProxyCache } from "./src/server/bitjitaProxyCache.mjs";
 import { buildMarketOverview, collectMarketSnapshots, snapshotRetentionCutoff } from "./src/server/globalMarketInsights.mjs";
+import { runPublicRetention } from "./src/server/publicRetention.mjs";
 import {
   MANUAL_REFRESH_HEADER,
   createManualRefreshGuard,
 } from "./src/server/manualRefreshGuard.mjs";
 import { createRequestCoordinator } from "./src/server/requestCoordinator.mjs";
 import { ADMIN_ROLE_LABELS, adminHasPermission, adminPermissionFor, normalizeAdminRole } from "./src/server/adminPermissions.mjs";
-import { discordAvatarUrl, publicAdminUser, publicAppUser } from "./src/server/publicUsers.mjs";
+import { discordAvatarUrl, publicAdminUser } from "./src/server/publicUsers.mjs";
 import { adminMutationRejection } from "./src/server/adminRequestGuards.mjs";
-import { discordProfileDisplayName, validAdminUsername, validDiscordId } from "./src/server/authIdentity.mjs";
-import { createAdminLoginAttemptStore, loginAttemptKey } from "./src/server/adminLoginAttempts.mjs";
-import { hashPassword, validLegacyAdminPassword, verifyPassword } from "./src/server/passwordAuth.mjs";
-import { DEFAULT_APP_PAGE, normalizeSavedRefreshIntervalSeconds, normalizeStoredExcludedMemberIds, normalizeSubmittedExcludedMemberIds, parseRegionIds, validAppPage, validBitcraftSyncUrl, validClaimId, validRefreshIntervalSeconds, validRegionId } from "./src/server/appSettingsPolicy.mjs";
+import { discordProfileDisplayName, validDiscordId } from "./src/server/authIdentity.mjs";
+import { DEFAULT_APP_PAGE, normalizeSavedRefreshIntervalSeconds, parseRegionIds, validAppPage, validClaimId, validRefreshIntervalSeconds, validRegionId } from "./src/server/appSettingsPolicy.mjs";
 import { applyDefaultAppSettings, defaultTheme } from "./src/server/defaultAppSettings.mjs";
 import { applySchemaBootstrap } from "./src/server/schemaBootstrap.mjs";
 import { applyDatabaseConnectionPragmas } from "./src/server/databasePragmas.mjs";
 import { applicationMetricInitialDelayMs, buildServerHealthResponse, createCachedServerHealthReader, filterServerHealthLogs, readServerHealthFiles, redactServerHealthText, runApplicationMetricPersistence, serverHealthState, SERVER_HEALTH_THRESHOLDS } from "./src/server/serverHealth.mjs";
 import { jobBudgetAllowsMore, normalizeJobBudget, selectResumeBatch } from "./src/server/jobBudget.mjs";
 import { createPreparedStatements } from "./src/server/preparedStatements.mjs";
-import { aggregateEmpireHexite, createEmpireHexiteRefreshJob, createEmpireHexiteRepository } from "./src/server/empireHexite.mjs";
-import {
-  createEmpireMembershipRepository,
-  normalizeEmpireMembershipRoster,
-} from "./src/server/empireMembership.mjs";
 import { defaultOwnerDiscordIdFromEnv, seedDefaultDiscordOwner } from "./src/server/defaultOwnerAdmin.mjs";
 import { applyAdditiveColumnMigrations, applyLegacySchemaCleanup, applySchemaIndexStatements, applySettlementStateMigration } from "./src/server/schemaMigrations.mjs";
 import { processRoleCapabilities, resolveProcessRole } from "./src/server/processRole.mjs";
@@ -118,30 +102,15 @@ import {
 import { legalPolicyForEnvironment } from "./src/legal/legalPolicy.mjs";
 import { legalPolicyDigests } from "./src/server/legalPolicyDigest.mjs";
 import {
-  currentLegalSnapshot,
-  isCurrentLegalAcceptance,
-  isCurrentOAuthLegalAcceptance,
-  publicLegalStatus,
-} from "./src/server/legalAcceptance.mjs";
+  createClaimDirectoryRepository,
+  normalizeDirectoryClaim,
+  refreshClaimDirectory,
+} from "./src/server/claimDirectory.mjs";
 import {
-  characterLinkAssignedDm,
-  characterLinkAssignmentCorrectiveDm,
-  characterLinkUnassignedDm,
-} from "./src/server/characterLinkNotifications.mjs";
-import {
-  clearCurrentBrowserAnalytics,
-  clearUserMarketData,
-  clearUserSettings,
-  createUserDataExport,
-  unlinkUserCharacter,
-} from "./src/server/userPrivacy.mjs";
-import { deleteUserAccount } from "./src/server/accountDeletion.mjs";
-import {
-  coordinatePrivacyDeletion,
-  readDeletionLedger,
-  replayPrivacyDeletions,
-} from "./src/server/privacyDeletionLedger.mjs";
-import { runPrivacyRetention } from "./src/server/privacyRetention.mjs";
+  collectActiveClaims,
+  createActiveClaimRepository,
+} from "./src/server/activeClaims.mjs";
+import { createSharedCraftPlanRepository } from "./src/server/sharedCraftPlans.mjs";
 
 setDefaultResultOrder("ipv4first");
 
@@ -253,10 +222,12 @@ const discordApiOrigin = isTestRuntime && process.env.DISCORD_API_ORIGIN
   : "https://discord.com/api/v10";
 const legalPolicy = legalPolicyForEnvironment(process.env);
 const legalDigests = legalPolicyDigests(legalPolicy);
-const legalSnapshot = currentLegalSnapshot(legalPolicy, legalDigests);
+const legalSnapshot = Object.freeze({
+  version: legalPolicy.version,
+  termsDigest: legalDigests.termsDigest,
+  privacyDigest: legalDigests.privacyDigest,
+});
 const serveFrontend = isProduction || process.env.SERVE_STATIC === "true";
-const adminSetupKey = process.env.ADMIN_SETUP_KEY ?? "";
-const legacyAdminPasswordAuth = process.env.ENABLE_LEGACY_ADMIN_PASSWORD_AUTH === "true";
 const processRole = resolveProcessRole(process.env, { isProduction });
 const processRoleConfig = processRoleCapabilities(processRole);
 const workerRequestCoordinator = processRole === "worker" ? createRequestCoordinator({ concurrency: 8 }) : null;
@@ -298,13 +269,13 @@ const snapshotIntervalMs = Math.max(Number(process.env.SNAPSHOT_INTERVAL_MS ?? 3
 const productionMissingGraceMs = Math.max(Number(process.env.PRODUCTION_MISSING_GRACE_MS ?? 120000), 0);
 const dataDir = process.env.BITCRAFT_LOCAL_DATA_DIR ?? path.join(root, "data");
 const privacyLedgerPath = process.env.PRIVACY_LEDGER_PATH
-  ?? (isProduction && !isTestRuntime ? "/var/backups/bitcraft-claim-monitor/privacy-deletion-ledger.jsonl" : path.join(dataDir, "privacy-deletion-ledger.jsonl"));
+  ?? path.join(dataDir, "privacy-deletion-ledger.jsonl");
 const readCachedServerHealthFiles = createCachedServerHealthReader(() => readServerHealthFiles(dataDir), { ttlMs: 30_000 });
 const packageJson = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 const appVersion = String(packageJson.version ?? "0.0.0-dev");
-const appIdentifier = process.env.BITJITA_APP_IDENTIFIER ?? "BitCraft Claim Monitor (github.com/Red463/bitcraft-claim-monitor)";
+const appIdentifier = process.env.BITJITA_APP_IDENTIFIER ?? "BitCraft Settlement Monitor (github.com/Red463/bitcraft-claim-monitor-public)";
 const ipHash = createIpHasher(appIdentifier);
-const changelogUrl = "https://github.com/Red463/bitcraft-claim-monitor/blob/main/CHANGELOG.md";
+const changelogUrl = "https://github.com/Red463/bitcraft-claim-monitor-public/blob/main/CHANGELOG.md";
 const changelogPath = path.resolve(root, "..", "..", "CHANGELOG.md");
 const repoRoot = path.resolve(root, "..", "..");
 const brandingDir = path.join(dataDir, "branding");
@@ -357,20 +328,15 @@ const now = new Date().toISOString();
 applyDefaultAppSettings(db, { serverRefreshSeconds: Math.round(snapshotIntervalMs / 1000), updatedAt: now });
 
 const statements = createPreparedStatements(db);
+const claimDirectory = createClaimDirectoryRepository({ db });
+const activeClaims = createActiveClaimRepository({ db });
+const sharedCraftPlans = createSharedCraftPlanRepository({ db });
 const craftPlanProgressAudit = createCraftPlanProgressAuditRepository(db, {
   statements,
   retentionDays: 14,
 });
 let craftPlanProgressAuditWriteWarning = null;
 const gameCatalogRepository = createGameCatalogRepository(db);
-const empireHexiteRepository = createEmpireHexiteRepository(db);
-const empireMembershipRepository = createEmpireMembershipRepository(db);
-const runEmpireHexiteRefreshJob = createEmpireHexiteRefreshJob({
-  repository: empireHexiteRepository,
-  fetchJson: (pathname) => fetchBitjita(pathname, { cache: false }),
-  batchSize: Math.max(1, Math.min(Number(process.env.EMPIRE_HEXITE_BATCH_SIZE ?? 50), 100)),
-  requestsPerMinute: Math.max(1, Math.min(Number(process.env.EMPIRE_HEXITE_REQUESTS_PER_MINUTE ?? 150), 150)),
-});
 
 seedDefaultDiscordOwner({ db, statements, defaultOwnerDiscordId: defaultOwnerDiscordIdFromEnv(process.env), isTestRuntime });
 
@@ -1136,6 +1102,15 @@ async function runPrivacyRetentionJob() {
   });
 }
 
+function runPublicDataRetentionJob() {
+  const settings = getSettings();
+  return runPublicRetention(db, {
+    now: new Date(),
+    historyRetentionDays: settings.historyRetentionDays,
+    tradeRetentionDays: settings.tradeRetentionDays,
+  });
+}
+
 // Scheduled jobs are registered here rather than scattered through route
 // handlers so Admin can expose a consistent enable/run/status surface for each
 // background task. Jobs should report progress in metadata when they can run for
@@ -1156,34 +1131,6 @@ const scheduledJobRegistry = {
     enabled: true,
     run: runGlobalMarketInsightsJob,
   },
-  youtube_channel_monitor: {
-    label: "YouTube channel monitor",
-    description: "Checks monitored YouTube channels for new videos and posts announcements to Discord.",
-    schedule: "interval@600",
-    enabled: true,
-    run: runYouTubeChannelMonitorJob,
-  },
-  discord_app_update_announcer: {
-    label: "Discord app update announcer",
-    description: "Checks for newly deployed app versions and posts update notes to Discord.",
-    schedule: "interval@300",
-    enabled: true,
-    run: runDiscordAppUpdateAnnouncementJob,
-  },
-  market_deal_watch: {
-    label: "Market deal watch",
-    description: "Checks watched Price Finder items for sell listings below confirmed regional sale averages.",
-    schedule: "interval@1800",
-    enabled: true,
-    run: runMarketDealWatchJob,
-  },
-  empire_hexite_reserves_refresh: {
-    label: "Empire Hexite reserves",
-    description: "Refreshes estimated empire Hexite Energy and ready Capsule holdings from BitJita wallets, player storage, and aligned-claim inventories.",
-    schedule: "interval@21600",
-    enabled: true,
-    run: runEmpireHexiteRefreshJob,
-  },
   geoip_database_refresh: {
     label: "GeoIP database refresh",
     description: "Refreshes the local visitor IP-to-location lookup file when local GeoIP mode is used. Provider mode resolves locations on demand with cache.",
@@ -1191,12 +1138,12 @@ const scheduledJobRegistry = {
     enabled: false,
     run: runGeoipRefreshJob,
   },
-  "privacy-retention": {
-    label: "Privacy retention",
-    description: "Applies published personal-data retention periods, sends inactivity warnings, and deletes accounts inactive for 24 months.",
-    schedule: "daily@02:30",
+  public_data_retention: {
+    label: "Public data retention",
+    description: "Prunes activity, historical market snapshots, and confirmed trades using the public retention controls.",
+    schedule: "daily@03:15",
     enabled: true,
-    run: runPrivacyRetentionJob,
+    run: runPublicDataRetentionJob,
   },
 };
 
@@ -1652,7 +1599,7 @@ function getCollectorSettings() {
 }
 
 function currentClaimId() {
-  return statements.getSetting.get("claim_id")?.value ?? defaultClaimId;
+  return activeClaims.active({ limit: 1 })[0]?.claimId ?? "";
 }
 
 function migrateRetiredBuyOrderCollector() {
@@ -1673,15 +1620,6 @@ function migrateRetiredBuyOrderCollector() {
   statements.upsertSetting.run(markerKey, now, now);
 }
 
-function migrateMarketAccessSplit() {
-  const markerKey = "market_access_split_migrated_at";
-  if (statements.getSetting.get(markerKey)?.value) return;
-  const now = new Date().toISOString();
-  const source = safeJson(statements.getSetting.get("access_control_json")?.value, {});
-  statements.upsertSetting.run("access_control_json", JSON.stringify(resetLegacyMarketAccessRules(source)), now);
-  statements.upsertSetting.run(markerKey, now, now);
-}
-
 function scheduleInitialGlobalMarketInsights() {
   if (statements.getSetting.get("global_market_overview_json")?.value) return;
   const now = new Date().toISOString();
@@ -1690,7 +1628,6 @@ function scheduleInitialGlobalMarketInsights() {
 }
 
 migrateRetiredBuyOrderCollector();
-migrateMarketAccessSplit();
 scheduleInitialGlobalMarketInsights();
 
 function marketDealWatchSettings() {
@@ -1705,25 +1642,24 @@ function getSettings() {
   const theme = safeJson(statements.getSetting.get("theme_json")?.value, defaultTheme);
   const toastSettings = safeJson(statements.getSetting.get("toast_json")?.value, { marketListings: true, marketSales: true, production: true });
   const branding = safeJson(statements.getSetting.get("branding_json")?.value, {});
-  const excludedMemberIds = safeJson(statements.getSetting.get("excluded_member_ids_json")?.value, []);
   const savedDefaultPage = statements.getSetting.get("default_page")?.value ?? DEFAULT_APP_PAGE;
+  const pageFlags = safeJson(statements.getSetting.get("public_page_flags_json")?.value, {});
   return {
-    claimId: currentClaimId(),
-    syncUrl: statements.getSetting.get("bitcraft_sync_url")?.value ?? defaultSyncUrl,
-    excludedMemberIds: normalizeStoredExcludedMemberIds(excludedMemberIds),
     theme: { ...defaultTheme, ...theme },
     refreshSeconds: normalizeSavedRefreshIntervalSeconds(statements.getSetting.get("refresh_seconds")?.value, 30),
     serverRefreshSeconds: normalizeSavedRefreshIntervalSeconds(statements.getSetting.get("server_refresh_seconds")?.value, Math.round(snapshotIntervalMs / 1000)),
     collectorSettings: getCollectorSettings(),
     defaultPage: validAppPage(savedDefaultPage) ? savedDefaultPage : DEFAULT_APP_PAGE,
     defaultRegion: statements.getSetting.get("default_region")?.value ?? "",
-    additionalActiveRegions: statements.getSetting.get("active_region_overrides")?.value ?? "",
     toastSettings: { marketListings: true, marketSales: true, production: true, ...toastSettings },
-    marketDealWatch: marketDealWatchSettings(),
     branding,
     visitorSecurity: visitorSecuritySettings(),
     browserSnapshotsEnabled: false,
-    discord: publicDiscordSettings(),
+    historyRetentionDays: Math.max(7, Math.min(730, toNumber(statements.getSetting.get("history_retention_days")?.value) || 90)),
+    tradeRetentionDays: Math.max(30, Math.min(1460, toNumber(statements.getSetting.get("trade_retention_days")?.value) || 365)),
+    maintenanceMode: statements.getSetting.get("maintenance_mode")?.value === "1",
+    announcement: statements.getSetting.get("public_announcement")?.value ?? "",
+    pageFlags,
   };
 }
 
@@ -1939,7 +1875,6 @@ function audit(user, action, details = {}) {
   statements.insertAudit.run(user?.id ?? null, user?.username ?? "system", action, JSON.stringify(details), new Date().toISOString());
 }
 
-const adminLoginAttempts = createAdminLoginAttemptStore();
 const empireScoutInflight = new Map();
 const regionCache = new Map();
 const regionClaimListCache = new Map();
@@ -2199,8 +2134,9 @@ async function resolveCraftPlanWorkstationPreset(tier) {
   });
   return { ...preset, workstations };
 }
-async function craftPlanAdminResponse(claimId = getSettings().claimId) {
-  const config = storedCraftPlanConfig();
+async function craftPlanAdminResponse(claimId = getSettings().claimId, configOverride = null, sharedPlan = null) {
+  const auditPlanId = String(sharedPlan?.planId ?? "legacy");
+  const config = configOverride ? normalizeCraftPlanConfig(configOverride) : storedCraftPlanConfig();
   const [membersPayload, inventoriesPayload] = await Promise.all([
     fetchBitjita(`/claims/${encodeURIComponent(claimId)}/members`).catch(() => ({ members: [] })),
     fetchBitjita(`/claims/${encodeURIComponent(claimId)}/inventories`).catch(() => ({ buildings: [] })),
@@ -2222,11 +2158,16 @@ async function craftPlanAdminResponse(claimId = getSettings().claimId) {
     }
   }
   const [computedPlan, workstationPresets] = await Promise.all([
-    computedCraftPlanResponse(claimId).catch((error) => ({ error: error instanceof Error ? error.message : String(error), steps: [], materials: [], targets: [] })),
+    computedCraftPlanResponse(claimId, {
+      planId: sharedPlan?.planId,
+      planRevision: sharedPlan?.revision,
+      planConfig: config,
+    }).catch((error) => ({ error: error instanceof Error ? error.message : String(error), steps: [], materials: [], targets: [] })),
     craftPlanWorkstationPresets().catch(() => []),
   ]);
   return {
-    config: storedCraftPlanConfig(),
+    config,
+    sharedPlan,
     plan: computedPlan,
     sources: {
       storage: storageSources.map((source) => ({ sourceId: source.sourceId, label: source.label, itemCount: source.items.length, items: source.items.slice(0, 12) })),
@@ -2459,9 +2400,9 @@ async function computedCompactCraftPlanResponse(claimId = getSettings().claimId,
   return (await computedCraftPlanWorkspace(claimId, options)).compact();
 }
 
-function craftPlanBaselineChangeSince(claimId, since = "") {
+function craftPlanBaselineChangeSince(claimId, planId, since = "") {
   try {
-    const change = craftPlanProgressAudit.latestBaselineChange(claimId);
+    const change = craftPlanProgressAudit.latestBaselineChange(claimId, planId);
     if (!change) return null;
     const changedAt = new Date(change.changedAt ?? change.capturedAt).getTime();
     const threshold = since ? new Date(since).getTime() : Number.NEGATIVE_INFINITY;
@@ -2482,34 +2423,35 @@ function craftPlanWithBaselineChange(plan, baselineChange) {
 
 async function computedCraftPlanWorkspace(claimId = getSettings().claimId, options = {}) {
   const normalizedClaimId = String(claimId ?? "").trim();
+  const planCacheKey = `${normalizedClaimId}:${String(options.planId ?? "legacy")}:${String(options.planRevision ?? "0")}`;
   const now = Date.now();
-  const cached = craftPlanResponseCache.get(normalizedClaimId);
+  const cached = craftPlanResponseCache.get(planCacheKey);
   const forceRefresh = options.forceRefresh === true;
   const refreshId = String(options.refreshId ?? "");
   if (cached && cached.expiresAt > now && (!forceRefresh || cached.refreshId === refreshId)) { plannerTelemetry.cacheHits += 1; return cached.workspace; }
-  const existing = craftPlanResponseInflight.get(normalizedClaimId);
+  const existing = craftPlanResponseInflight.get(planCacheKey);
   if (existing?.generation === craftPlanResponseGeneration && (!forceRefresh || existing.refreshId === refreshId)) { plannerTelemetry.inflightReuse += 1; return existing.promise; }
   const generation = craftPlanResponseGeneration;
   const startedAt = Date.now();
   plannerTelemetry.freshCalculations += 1;
-  const promise = computedCraftPlanResponseFresh(normalizedClaimId, { forceRefresh }).then((plan) => {
+  const promise = computedCraftPlanResponseFresh(normalizedClaimId, options).then((plan) => {
     const workspace = createCraftPlanResponseWorkspace(plan);
     plannerTelemetry.lastDurationMs = Date.now() - startedAt;
     plannerTelemetry.lastCompletedAt = new Date().toISOString();
     if (generation === craftPlanResponseGeneration) {
-      craftPlanResponseCache.set(normalizedClaimId, { workspace, expiresAt: Date.now() + CRAFT_PLAN_RESPONSE_CACHE_TTL_MS, refreshId: forceRefresh ? refreshId : "" });
+      craftPlanResponseCache.set(planCacheKey, { workspace, expiresAt: Date.now() + CRAFT_PLAN_RESPONSE_CACHE_TTL_MS, refreshId: forceRefresh ? refreshId : "" });
     }
     return workspace;
   }).finally(() => {
-    if (craftPlanResponseInflight.get(normalizedClaimId)?.promise === promise) craftPlanResponseInflight.delete(normalizedClaimId);
+    if (craftPlanResponseInflight.get(planCacheKey)?.promise === promise) craftPlanResponseInflight.delete(planCacheKey);
   });
-  craftPlanResponseInflight.set(normalizedClaimId, { generation, promise, refreshId: forceRefresh ? refreshId : "" });
+  craftPlanResponseInflight.set(planCacheKey, { generation, promise, refreshId: forceRefresh ? refreshId : "" });
   return promise;
 }
 
 async function computedCraftPlanResponseFresh(claimId = getSettings().claimId, options = {}) {
   const forceRefresh = options.forceRefresh === true;
-  let config = storedCraftPlanConfig();
+  let config = options.planConfig ? normalizeCraftPlanConfig(options.planConfig) : storedCraftPlanConfig();
   if (!config.enabled || !config.targets.length) {
     const plan = computeCraftPlan({ config });
     plan.effortProgress = calculateCraftPlanEffortProgress({ baselinePlan: plan, currentPlan: plan, weights: new Map() });
@@ -2692,6 +2634,7 @@ async function computedCraftPlanResponseFresh(claimId = getSettings().claimId, o
     try {
       const auditResult = craftPlanProgressAudit.recordSuccess(buildCraftPlanProgressSnapshot({
         claimId,
+        planId: auditPlanId,
         plan: livePlan,
         sourceStatus,
         weights,
@@ -2704,7 +2647,7 @@ async function computedCraftPlanResponseFresh(claimId = getSettings().claimId, o
         },
       }));
       const recentBaselineCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const baselineChange = auditResult.baselineChange ?? craftPlanBaselineChangeSince(claimId, recentBaselineCutoff);
+      const baselineChange = auditResult.baselineChange ?? craftPlanBaselineChangeSince(claimId, auditPlanId, recentBaselineCutoff);
       livePlan.effortProgress.baselineChange = baselineChange?.changedAt > recentBaselineCutoff ? baselineChange : null;
       craftPlanProgressAuditWriteWarning = null;
     } catch (error) {
@@ -2716,7 +2659,7 @@ async function computedCraftPlanResponseFresh(claimId = getSettings().claimId, o
     }
   } else {
     try {
-      craftPlanProgressAudit.recordFailure(claimId, sourceFailures, capturedAt);
+      craftPlanProgressAudit.recordFailure(claimId, auditPlanId, sourceFailures, capturedAt);
       craftPlanProgressAuditWriteWarning = null;
     } catch (error) {
       craftPlanProgressAuditWriteWarning = {
@@ -2727,7 +2670,7 @@ async function computedCraftPlanResponseFresh(claimId = getSettings().claimId, o
     }
     let lastSuccess = null;
     try {
-      lastSuccess = craftPlanProgressAudit.latestSuccess(claimId);
+      lastSuccess = craftPlanProgressAudit.latestSuccess(claimId, auditPlanId);
     } catch (error) {
       craftPlanProgressAuditWriteWarning = {
         at: capturedAt,
@@ -2740,6 +2683,7 @@ async function computedCraftPlanResponseFresh(claimId = getSettings().claimId, o
       : unavailableCraftPlanEffortProgress();
     livePlan.effortProgress.baselineChange = craftPlanBaselineChangeSince(
       claimId,
+      auditPlanId,
       new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     );
     livePlan.unavailableSources = [
@@ -2754,7 +2698,7 @@ async function craftPlanDiscordReport(profession = "") {
   try {
     const plan = await computedCraftPlanResponse(getSettings().claimId);
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const reportPlan = craftPlanWithBaselineChange(plan, craftPlanBaselineChangeSince(getSettings().claimId, cutoff));
+    const reportPlan = craftPlanWithBaselineChange(plan, craftPlanBaselineChangeSince(getSettings().claimId, "legacy", cutoff));
     return buildCraftPlanDiscordReport(reportPlan, profession);
   } catch (error) {
     return {
@@ -2808,7 +2752,7 @@ async function dispatchScheduledCraftPlanReports() {
           catch { planUnavailable = true; }
         }
         const lastSent = statements.latestSentDiscordCraftPlanReportOccurrence.get(rule.id);
-        const baselineChange = craftPlanBaselineChangeSince(getSettings().claimId, lastSent?.updated_at ?? "");
+        const baselineChange = craftPlanBaselineChangeSince(getSettings().claimId, "legacy", lastSent?.updated_at ?? "");
         const reportPlan = plan ? craftPlanWithBaselineChange(plan, baselineChange) : null;
         const report = planUnavailable
           ? buildUnavailableCraftPlanDiscordReport()
@@ -3458,8 +3402,6 @@ function originFromRequest(req) {
 function discordOAuthConfig(req) {
   return resolveDiscordOAuthConfig({
     env: process.env,
-    discordSettings: getDiscordSettingsRaw(),
-    storedClientSecret: statements.getSecret.get("discord_oauth_client_secret")?.value,
     origin: originFromRequest(req),
   });
 }
@@ -3507,42 +3449,6 @@ function authStatus(req) {
     legal: user
       ? publicLegalStatus(acceptance, legalSnapshot)
       : { ...legalSnapshot, acceptedAt: null, requiresAcceptance: false },
-  };
-}
-
-function accessControlConfig() {
-  return accessControlConfigForCurrentAccounts(safeJson(statements.getSetting.get("access_control_json")?.value, {}));
-}
-
-function accessControlConfigForCurrentAccounts(value) {
-  const config = normalizeAccessControlConfig(value);
-  const currentDiscordIds = new Set(
-    db.prepare("SELECT discord_id FROM user_accounts").all()
-      .map((account) => String(account.discord_id ?? "").trim())
-      .filter(Boolean),
-  );
-  const rules = Object.fromEntries(Object.entries(config.rules).map(([targetId, rule]) => [
-    targetId,
-    {
-      ...rule,
-      allowedDiscordIds: rule.mode === "specificUsers"
-        ? rule.allowedDiscordIds.filter((discordId) => currentDiscordIds.has(discordId))
-        : [],
-    },
-  ]));
-  return normalizeAccessControlConfig({ rules });
-}
-
-function accessControlSubject(req) {
-  return { user: publicAppUser(getAppUser(req)) };
-}
-
-function adminAccessControlResponse() {
-  return {
-    config: accessControlConfig(),
-    modes: ACCESS_RULE_MODES,
-    targets: ACCESS_CONTROL_TARGETS,
-    accounts: statements.listUserAccounts.all().map(publicAppUser),
   };
 }
 
@@ -3639,6 +3545,59 @@ async function handleDiscordOAuthStart(req, res) {
   }, {
     "set-cookie": authStateCookie(state, body.returnTo, { purpose: "login", legal }),
   });
+}
+
+async function handleAdminDiscordOAuthStart(req, res, url) {
+  if (!sameOriginRequest(req)) return send(res, 403, { error: "Cross-origin administrator sign-in rejected" });
+  const config = discordOAuthConfig(req);
+  if (!config.enabled) return send(res, 503, { error: "Administrator Discord login is not configured on this server" });
+  const state = randomBytes(24).toString("base64url");
+  const returnTo = safeReturnPath(url.searchParams.get("returnTo") ?? "/?page=admin");
+  res.writeHead(302, {
+    location: buildDiscordAuthorizeUrl({ config, state }),
+    "set-cookie": authStateCookie(state, returnTo, { purpose: "admin-login" }),
+  });
+  res.end();
+  return true;
+}
+
+async function handleAdminDiscordOAuthCallback(req, res, url) {
+  const config = discordOAuthConfig(req);
+  const stateCookie = readAuthStateCookie(req);
+  const decision = discordOAuthCallbackDecision({
+    config,
+    stateCookie,
+    state: String(url.searchParams.get("state") ?? ""),
+    code: String(url.searchParams.get("code") ?? ""),
+    error: String(url.searchParams.get("error") ?? ""),
+  });
+  if (!decision.ok || stateCookie?.purpose !== "admin-login") {
+    res.writeHead(302, { location: decision.ok ? "/?page=admin&auth=discord-error" : decision.location, "set-cookie": clearAuthStateCookie() });
+    res.end();
+    return true;
+  }
+  const tokenRequest = discordOAuthTokenRequest({ config, code: decision.code });
+  const tokenResponse = await fetch(tokenRequest.url, tokenRequest.init);
+  if (!tokenResponse.ok) throw new Error(`Discord OAuth token exchange failed: ${tokenResponse.status}`);
+  const tokenJson = await tokenResponse.json();
+  const profileRequest = discordOAuthProfileRequest(tokenJson.access_token);
+  const profileResponse = await fetch(profileRequest.url, profileRequest.init);
+  if (!profileResponse.ok) throw new Error(`Discord profile lookup failed: ${profileResponse.status}`);
+  const profile = await profileResponse.json();
+  const loginAt = new Date().toISOString();
+  const session = createAdminSessionForDiscordProfile(profile, loginAt);
+  if (!session) {
+    statements.insertLoginEvent.run(discordProfileDisplayName(profile), 0, loginAt, "discord-oauth");
+    res.writeHead(302, { location: "/?page=admin&auth=not-authorized", "set-cookie": clearAuthStateCookie() });
+    res.end();
+    return true;
+  }
+  res.writeHead(302, {
+    location: decision.returnTo,
+    "set-cookie": [clearAuthStateCookie(), session.cookie],
+  });
+  res.end();
+  return true;
 }
 
 async function handleDiscordPrivacyReauthStart(req, res) {
@@ -3815,7 +3774,7 @@ function adminStatus(req) {
     csrfToken: user ? csrfToken(req) : null,
     roles: ADMIN_ROLE_LABELS,
     discordLoginEnabled: discordConfig.enabled,
-    discordLoginUrl: `${originFromRequest(req)}/api/local/auth/discord/start?returnTo=${encodeURIComponent("/?page=admin")}`,
+    discordLoginUrl: `${originFromRequest(req)}/api/local/admin/auth/discord/start?returnTo=${encodeURIComponent("/?page=admin")}`,
   };
 }
 
@@ -6508,34 +6467,7 @@ async function regionalEmpireOverview(regionId, options = {}) {
       },
     };
   }, options);
-  const activeSweep = empireHexiteRepository.activeSweep();
-  const bootstrapFailure = activeSweep ? null : empireHexiteRepository.latestBootstrapFailure();
-  return {
-    ...overview,
-    empires: overview.empires.map((empire) => {
-      const snapshot = empireHexiteRepository.snapshotForEmpire(empire.entityId);
-      let hexiteReserves = snapshot
-        ? { ...snapshot, refreshing: Boolean(activeSweep) }
-        : aggregateEmpireHexite({
-          treasury: empire.empireCurrencyTreasury,
-          capsuleEnergyCost: activeSweep?.capsuleEnergyCost ?? null,
-          players: [],
-          claims: [],
-          sweepStartedAt: activeSweep?.startedAt ?? null,
-          calculatedAt: null,
-          refreshing: Boolean(activeSweep),
-        });
-      if (!snapshot && bootstrapFailure) {
-        hexiteReserves = {
-          ...hexiteReserves,
-          status: "error",
-          sweepStartedAt: bootstrapFailure.startedAt,
-          errors: [bootstrapFailure.lastError].filter(Boolean),
-        };
-      }
-      return { ...empire, hexiteReserves };
-    }),
-  };
+  return overview;
 }
 
 function lastLoginMs(value) {
@@ -6596,8 +6528,6 @@ function nestedCoordinate(source, axis) {
 
 function normalizeEmpireMember(member) {
   const permissions = parseMemberPermissions(member);
-  const rawHexiteAccess = member?.canAddHexite ?? member?.addHexitePermission ?? member?.hexitePermission ?? member?.canContributeHexite ?? member?.claimHexitePermission;
-  const canAddHexite = rawHexiteAccess != null ? Boolean(rawHexiteAccess === true || rawHexiteAccess === 1 || String(rawHexiteAccess).toLowerCase() === "true") : Boolean(permissions.coOwnerPermission || permissions.officerPermission || permissions.buildPermission);
   const hasStorage = Boolean(permissions.inventoryPermission);
   return {
     entityId: String(member?.entityId ?? member?.playerEntityId ?? member?.id ?? ""),
@@ -6606,7 +6536,6 @@ function normalizeEmpireMember(member) {
     lastLoginTimestamp: member?.lastLoginTimestamp ?? member?.lastSeenAt ?? member?.lastSeen ?? null,
     signedIn: member?.signedIn === true || member?.online === true,
     hasStorage,
-    canAddHexite,
     permissions,
   };
 }
@@ -6645,32 +6574,6 @@ function compareEmpireMembers(a, b) {
   return lastLoginMs(b.lastLoginTimestamp) - lastLoginMs(a.lastLoginTimestamp) || String(a.username).localeCompare(String(b.username));
 }
 
-function normalizeEmpireTower(tower, empire, inactivity) {
-  const siege = Array.isArray(tower?.siege) ? tower.siege : [];
-  const activeSiegeParticipants = siege.filter((entry) => entry?.active === true);
-  const locationX = nestedCoordinate(tower, "x");
-  const locationZ = nestedCoordinate(tower, "z");
-  return {
-    id: String(tower?.entityId ?? tower?.id ?? ""),
-    towerId: String(tower?.entityId ?? tower?.id ?? ""),
-    empireId: empire.entityId,
-    empireName: empire.name,
-    nickname: String(tower?.nickname ?? tower?.name ?? "Watchtower"),
-    locationX,
-    locationZ,
-    locationDimension: tower?.locationDimension ?? tower?.dimension ?? tower?.location?.dimension ?? null,
-    energy: toNumber(tower?.energy),
-    upkeep: toNumber(tower?.upkeep),
-    active: tower?.active === true,
-    underSiege: activeSiegeParticipants.length > 0,
-    siegeCount: activeSiegeParticipants.length,
-    activeSiegeParticipants,
-    inactiveRisk: inactivity.inactiveRisk,
-    lastLeaderLogin: inactivity.lastLeaderLogin,
-    inactivityReason: inactivity.inactivityReason,
-  };
-}
-
 async function regionalEmpireDetails(empireId, regionId, inactiveDays = 14, options = {}) {
   const days = Math.max(1, Math.min(365, toNumber(inactiveDays) || 14));
   const key = `details:${regionId}:${empireId}:${days}`;
@@ -6678,17 +6581,14 @@ async function regionalEmpireDetails(empireId, regionId, inactiveDays = 14, opti
     const overview = await regionalEmpireOverview(regionId, options);
     const regionalEmpire = overview.empires.find((entry) => String(entry.entityId) === String(empireId));
 
-    const [detailResult, towerResult] = await Promise.allSettled([
+    const detailResult = await Promise.resolve(
       fetchBitjita(`/empires/${encodeURIComponent(empireId)}`, { timeoutMs: Math.min(8000, BITJITA_FETCH_TIMEOUT_MS), forceRefresh: options.forceRefresh === true }),
-      fetchBitjita(`/empires/${encodeURIComponent(empireId)}/towers`, { timeoutMs: Math.min(8000, BITJITA_FETCH_TIMEOUT_MS), forceRefresh: options.forceRefresh === true }),
-    ]);
+    ).then((value) => ({ status: "fulfilled", value }), (reason) => ({ status: "rejected", reason }));
     if (!regionalEmpire && detailResult.status === "rejected") return null;
 
     const errors = [];
     const detailPayload = detailResult.status === "fulfilled" ? detailResult.value : null;
-    const towerPayload = towerResult.status === "fulfilled" ? towerResult.value : null;
     if (detailResult.status === "rejected") errors.push(`Empire members unavailable: ${errorMessage(detailResult.reason)}`);
-    if (towerResult.status === "rejected") errors.push(`Watchtowers unavailable: ${errorMessage(towerResult.reason)}`);
 
     const rawDetailEmpire = detailPayload?.empire ?? (detailPayload?.entityId ? detailPayload : null);
     const baseEmpire = regionalEmpire ?? normalizeEmpireOverviewRow(rawDetailEmpire, []);
@@ -6719,13 +6619,10 @@ async function regionalEmpireDetails(empireId, regionId, inactiveDays = 14, opti
       claims,
     };
     const inactivity = empireInactivity(empire, members, days);
-    const rawTowers = Array.isArray(towerPayload) ? towerPayload : unwrap(towerPayload, "towers", []);
-    const towers = rawTowers.map((tower) => normalizeEmpireTower(tower, empire, inactivity)).filter((tower) => tower.towerId);
     return {
       empire: { ...empire, ...inactivity },
       members,
       claims: empire.claims ?? [],
-      towers,
       activity: empireActivity(members),
       errors,
       partial: errors.length > 0,
@@ -6764,65 +6661,6 @@ async function regionalEmpireClaimMembers(claimId, options = {}) {
   }, options);
 }
 
-async function regionalEmpireWatchtowers(regionId, inactiveDays = 14, options = {}) {
-  const days = Math.max(1, Math.min(365, toNumber(inactiveDays) || 14));
-  const key = `watchtowers:${regionId}:${days}`;
-  return empireCacheLoad(key, async () => {
-    const overview = await regionalEmpireOverview(regionId, options);
-    const errors = [];
-    const startedAt = Date.now();
-    const deadlineMs = Math.max(5000, Math.min(BITJITA_FETCH_TIMEOUT_MS - 1500, 14_000));
-    let deadlineHit = false;
-    const empireRows = await mapWithConcurrency(overview.empires, 2, async (empire) => {
-      if (Date.now() - startedAt > deadlineMs) {
-        deadlineHit = true;
-        return { ...empire, inactiveRisk: false, leaderCount: 0, activeLeaderCount: 0, lastLeaderLogin: null, inactivityReason: "Skipped because the watchtower scan deadline was reached", members: [], accessMembers: [], towerCount: 0, towers: [] };
-      }
-      try {
-        const [detailPayload, towerPayload] = await Promise.all([
-          fetchBitjita(`/empires/${encodeURIComponent(empire.entityId)}`, { timeoutMs: Math.min(8000, BITJITA_FETCH_TIMEOUT_MS), forceRefresh: options.forceRefresh === true }),
-          fetchBitjita(`/empires/${encodeURIComponent(empire.entityId)}/towers`, { timeoutMs: Math.min(8000, BITJITA_FETCH_TIMEOUT_MS), forceRefresh: options.forceRefresh === true }),
-        ]);
-        const detailEmpire = detailPayload?.empire ?? empire;
-        const members = unwrap(detailPayload, "members", []);
-        const towers = Array.isArray(towerPayload) ? towerPayload : unwrap(towerPayload, "towers", []);
-        const inactivity = empireInactivity({ ...empire, ...detailEmpire }, members, days);
-        const normalizedMembers = members.map(normalizeEmpireMember).sort(compareEmpireMembers);
-        const accessMembers = normalizedMembers.filter((member) => member.hasStorage || member.canAddHexite);
-        return {
-          ...empire,
-          ...inactivity,
-          members: normalizedMembers,
-          accessMembers,
-          towerCount: towers.length,
-          towers: towers.map((tower) => normalizeEmpireTower(tower, empire, inactivity)).filter((tower) => tower.towerId),
-        };
-      } catch (error) {
-        errors.push(`${empire.name}: ${error instanceof Error ? error.message : String(error)}`);
-        return { ...empire, inactiveRisk: false, leaderCount: 0, activeLeaderCount: 0, lastLeaderLogin: null, inactivityReason: "Empire detail unavailable", members: [], accessMembers: [], towerCount: 0, towers: [] };
-      }
-    });
-    if (deadlineHit) errors.push("Watchtower scan stopped early to avoid timing out. Showing partial results; retry after the cache refreshes.");
-    const towers = empireRows.flatMap((empire) => empire.towers);
-    return {
-      regionId: String(regionId),
-      inactiveDays: days,
-      fetchedAt: new Date().toISOString(),
-      partial: deadlineHit,
-      unclaimedAvailable: false,
-      unclaimedMessage: "Unclaimed watchtowers are not exposed by the current BitJita public API.",
-      empires: empireRows,
-      towers,
-      errors,
-      summary: {
-        towerCount: towers.length,
-        inactiveRiskEmpires: empireRows.filter((empire) => empire.inactiveRisk).length,
-        underSiege: towers.filter((tower) => tower.underSiege).length,
-        activeTowers: towers.filter((tower) => tower.active).length,
-      },
-    };
-  }, options);
-}
 function buyOrderKey(listing) {
   return String(listing.entityId ?? listing.id ?? `${listing.claimEntityId ?? "claim"}:${listing.itemType ?? ""}:${listing.itemId ?? ""}:${listing.ownerEntityId ?? ""}:${listing.price ?? ""}`);
 }
@@ -7710,8 +7548,7 @@ function claimRegionIdFromKnownData(claim, regionStatusPayload, previousRegionPa
 }
 
 async function fetchCachedActiveRegions(extraRegionIds = [], options = {}) {
-  const settings = getSettings();
-  const overrideIds = parseRegionIds(settings.additionalActiveRegions);
+  const overrideIds = [];
   const includeIds = parseRegionIds(extraRegionIds.join(","));
   const cacheKey = [...overrideIds, ...includeIds].sort((a, b) => toNumber(a) - toNumber(b)).join(",");
   if (!options.forceRefresh && activeRegionsCache && activeRegionsCache.key === cacheKey && activeRegionsCache.expiresAt > Date.now()) return activeRegionsCache.value;
@@ -8713,53 +8550,52 @@ async function runProductionContributionCollector(claimId, currentData, force = 
     throw error;
   }
 }
+
+async function collectPublicClaimHistory(claimId, force = false) {
+  await refreshCurrentClaimState(claimId, { force, allowStaleOnError: false });
+  const currentData = domainRowsToAppData(claimId, readDomainPayloadMap(claimId));
+  const claim = currentData.claim?.claim ?? currentData.claim;
+  const members = unwrap(currentData.members, "members", []);
+  const buildings = unwrap(currentData.buildings, "buildings", []);
+  recordSettlementState({
+    claimId,
+    claim,
+    membersCount: members.length,
+    buildingsCount: buildings.length,
+    market: currentData.market ?? { listings: [] },
+  });
+  await runMarketListingsCollector(claimId, currentData, force);
+  await syncProductionJobActivityForSnapshot(claimId, currentData.crafts, new Date().toISOString());
+  await runProductionContributionCollector(claimId, currentData, force);
+  await collectStorageActivity(claimId, currentData.inventories ?? { buildings: [] }, {
+    budget: storageActivityJobBudget,
+  });
+  await importMemberSellTrades(claimId, members, { budget: marketTradeJobBudget });
+  return currentData;
+}
+
 async function collectServerSnapshot(force = false) {
-  // Polling is a side-effect loop: it records current settlement state, imports activity/trade
-  // history, and drives Discord notifications. Browser tabs should treat this as
-  // supporting data, not as their exclusive source for live settlement state.
+  // Public history is collected only for settlements with a recent visible-tab
+  // heartbeat. Work is rotated fairly by the repository and failures remain
+  // isolated to the affected settlement.
   if ((!serverPollingEnabled && !force) || pollStatus.running) return;
   pollStatus.running = true;
   pollStatus.intervalMs = serverRefreshIntervalMs();
   pollStatus.lastAttemptAt = new Date().toISOString();
   try {
-    const { claimId } = getSettings();
-    await processDiscordTempBans().catch((error) => console.warn(`Discord temporary ban processing failed: ${error instanceof Error ? error.message : String(error)}`));
-    await refreshCurrentClaimState(claimId, { force });
-    const currentData = domainRowsToAppData(claimId, readDomainPayloadMap(claimId));
-    const claim = currentData.claim?.claim ?? currentData.claim;
-    const members = unwrap(currentData.members, "members", []);
-    const buildings = unwrap(currentData.buildings, "buildings", []);
-    await sendScheduledSupplyReportIfDue(claim).catch((error) => console.warn(`Discord supply report failed: ${error instanceof Error ? error.message : String(error)}`));
-    recordSettlementState({
-      claimId,
-      claim,
-      membersCount: members.length,
-      buildingsCount: buildings.length,
-      market: currentData.market ?? { listings: [] },
+    const claims = activeClaims.active({
+      limit: Math.max(1, Math.min(Number(process.env.MAX_ACTIVE_CLAIMS ?? 25), 100)),
     });
-    await runEmpireMembershipCollector(claim, force);
-    await runMarketListingsCollector(claimId, currentData, force);
-    await runProductionActivityCollector(claimId, currentData);
-    await runProductionContributionCollector(claimId, currentData, force);
-    const storageStartedAt = collectorAttempt("storageActivity");
-    pollStatus.storageLastAttemptAt = new Date().toISOString();
-    const storageResult = await collectStorageActivity(claimId, currentData.inventories ?? { buildings: [] }, { budget: storageActivityJobBudget });
-    pollStatus.storageRequests = storageResult.requested;
-    pollStatus.storageInserted = storageResult.inserted;
-    pollStatus.storageProcessed = storageResult.processed;
-    pollStatus.storageComplete = storageResult.complete;
-    pollStatus.storageLastError = storageResult.failures.length ? storageResult.failures.join("; ") : null;
-    pollStatus.storageLastSuccessAt = new Date().toISOString();
-    if (storageResult.failures.length) collectorFailure("storageActivity", storageStartedAt, new Error(storageResult.failures.join("; ")));
-    else collectorSuccess("storageActivity", storageStartedAt);
-    const marketStartedAt = collectorAttempt("marketTrades");
-    const marketTradeResult = await importMemberSellTrades(claimId, members, { budget: marketTradeJobBudget });
-    pollStatus.marketTradesProcessed = marketTradeResult.processed;
-    pollStatus.marketTradesInserted = marketTradeResult.inserted;
-    pollStatus.marketTradesComplete = marketTradeResult.complete;
-    collectorSuccess("marketTrades", marketStartedAt);
+    const result = await collectActiveClaims({
+      claims,
+      concurrency: Math.max(1, Math.min(Number(process.env.ACTIVE_CLAIM_CONCURRENCY ?? 2), 4)),
+      collect: (claimId) => collectPublicClaimHistory(claimId, force),
+      onSuccess: (claimId) => activeClaims.recordSuccess(claimId),
+      onFailure: (claimId, error) => activeClaims.recordFailure(claimId, error),
+    });
+    pollStatus.lastRunMetrics = { ...pollStatus.lastRunMetrics, activeClaims: result };
     pollStatus.lastSuccessAt = new Date().toISOString();
-    pollStatus.lastError = null;
+    pollStatus.lastError = result.failed ? `${result.failed} active settlement collection(s) failed` : null;
   } catch (error) {
     pollStatus.lastError = error instanceof Error ? error.message : String(error);
     console.error(`BitCraft settlement collection failed: ${pollStatus.lastError}`);
@@ -9323,13 +9159,6 @@ function databaseStatus() {
     key,
     toNumber(db.prepare(`SELECT COUNT(*) AS count FROM "${table}"`).get()?.count),
   ]));
-  const discordLastDelivery = safeJson(statements.getSetting.get("discord_last_delivery_json")?.value, { status: "none" });
-  const discordOutboxCounts = Object.fromEntries(statements.discordNotificationOutboxCounts.all().map((row) => [row.status, toNumber(row.count)]));
-  const discordDeliveryLog = statements.recentDiscordDeliveries.all(80).map((row) => ({
-    ...row,
-    metadata: safeJson(row.metadata_json, {}),
-    response: row.response_json ? safeJson(row.response_json, {}) : null,
-  }));
   return {
     version: appVersion,
     environment: isProduction ? "production" : "development",
@@ -9337,7 +9166,6 @@ function databaseStatus() {
     databaseSize: existsSync(databasePath) ? statSync(databasePath).size : 0,
     counts,
     polling: collectorStatusPayload(),
-    discord: { lastDelivery: discordLastDelivery, deliveryLog: discordDeliveryLog, outbox: discordOutboxCounts, gateway: { ...discordGatewayStatus } },
     settings: getSettings(),
   };
 }
@@ -9435,43 +9263,7 @@ function createBackup() {
 }
 
 
-const discordCommands = [
-  { name: "help", description: "Show Timbersteel Trade bot commands and app links." },
-  { name: "supplies", description: "Show settlement supplies, upkeep and runway." },
-  { name: "online", description: "Show which settlement members are online." },
-  {
-    name: "crafts",
-    description: "List current settlement crafts.",
-    options: [{ type: 3, name: "skill", description: "Optional profession/skill filter", required: false }],
-  },
-  {
-    name: "price",
-    description: "Look up recent BitJita sale pricing for an item.",
-    options: [
-      { type: 3, name: "item", description: "Item name", required: true, autocomplete: true },
-      { type: 4, name: "region", description: "Region number, defaults to settlement region", required: false },
-    ],
-  },
-  {
-    name: "craftwatch",
-    description: "Manage your craft profession notification roles.",
-    options: [
-      { type: 1, name: "list", description: "List your current craft notification roles." },
-      { type: 1, name: "clear", description: "Remove all of your craft notification roles." },
-    ],
-  },
-  {
-    name: "craft-plan",
-    description: "Show current Craft Planner progress and shortages.",
-    options: [{
-      type: 3,
-      name: "profession",
-      description: "Optional profession; omit for the settlement overview",
-      required: false,
-      choices: craftPlanReportProfessions.map((name) => ({ name, value: name.toLowerCase() })),
-    }],
-  },
-];
+const discordCommands = [];
 
 function registeredDiscordCommands() {
   return [
@@ -10147,6 +9939,111 @@ function manualRefreshAccess(req, res) {
   return null;
 }
 
+async function publicClaimById(claimId, { forceRefresh = false } = {}) {
+  const id = String(claimId ?? "").trim();
+  if (!/^\d+$/.test(id)) {
+    const error = new Error("A numeric claim ID is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  const cached = claimDirectory.get(id);
+  if (cached && !forceRefresh) return cached;
+  try {
+    const payload = await fetchBitjita(`/claims/${encodeURIComponent(id)}`, { forceRefresh });
+    const claim = payload?.claim ?? payload;
+    const normalized = normalizeDirectoryClaim(claim);
+    if (!normalized || normalized.claimId !== id) {
+      const error = new Error("Settlement not found");
+      error.statusCode = 404;
+      throw error;
+    }
+    return claimDirectory.upsertOne(normalized);
+  } catch (error) {
+    if (cached) return cached;
+    throw error;
+  }
+}
+
+function claimCoverage(claimId) {
+  const id = String(claimId ?? "").trim();
+  const interest = activeClaims.get(id);
+  const domain = db.prepare(`
+    SELECT MIN(collected_at) AS collection_start,
+      MAX(last_success_at) AS last_success_at,
+      MAX(last_attempt_at) AS last_attempt_at,
+      SUM(CASE WHEN last_error IS NOT NULL AND last_error <> '' THEN 1 ELSE 0 END) AS gap_count,
+      COUNT(*) AS domain_count
+    FROM domain_payload_current WHERE claim_id = ?
+  `).get(id);
+  const history = db.prepare(`
+    SELECT MIN(observed_at) AS collection_start FROM (
+      SELECT MIN(occurred_at) AS observed_at FROM activity_events WHERE claim_id = ?
+      UNION ALL
+      SELECT MIN(occurred_at) AS observed_at FROM market_trades WHERE claim_id = ?
+      UNION ALL
+      SELECT MIN(captured_at) AS observed_at FROM craft_plan_progress_audit_snapshots WHERE claim_id = ?
+    )
+  `).get(id, id, id);
+  const lastSuccessAt = domain?.last_success_at ?? interest?.lastSuccessAt ?? null;
+  return {
+    claimId: id,
+    active: Boolean(interest && Date.parse(interest.lastInterestAt) >= Date.now() - 15 * 60 * 1000),
+    firstInterestAt: interest?.firstInterestAt ?? null,
+    lastInterestAt: interest?.lastInterestAt ?? null,
+    collectionStart: history?.collection_start ?? domain?.collection_start ?? null,
+    lastAttemptAt: domain?.last_attempt_at ?? interest?.lastCollectedAt ?? null,
+    lastSuccessAt,
+    lagSeconds: lastSuccessAt ? Math.max(0, Math.floor((Date.now() - Date.parse(lastSuccessAt)) / 1000)) : null,
+    dataGaps: Number(domain?.gap_count ?? 0),
+    coveredDomains: Number(domain?.domain_count ?? 0),
+  };
+}
+
+function planAuthority(req, user = null) {
+  const header = req.headers["x-plan-edit-key"];
+  return {
+    editKey: String(Array.isArray(header) ? header[0] ?? "" : header ?? ""),
+    admin: Boolean(user),
+  };
+}
+
+function expectedPlanRevision(req, body) {
+  const header = req.headers["if-match"];
+  const value = String(Array.isArray(header) ? header[0] ?? "" : header ?? body?.expectedRevision ?? "")
+    .trim()
+    .replace(/^W\//, "")
+    .replace(/^"|"$/g, "");
+  return Number(value);
+}
+
+function sendPlanError(res, error) {
+  return send(res, Number(error?.statusCode ?? 400), {
+    error: error instanceof Error ? error.message : "Unable to manage shared plan",
+  });
+}
+
+function sharedPlanForClaim(claimId, planId) {
+  const id = String(planId ?? "").trim();
+  if (!id) return null;
+  const plan = sharedCraftPlans.get(id);
+  if (!plan) {
+    const error = new Error("Shared plan not found");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (String(plan.claimId) !== String(claimId)) {
+    const error = new Error("Shared plan does not belong to this settlement");
+    error.statusCode = 409;
+    throw error;
+  }
+  if (plan.archivedAt) {
+    const error = new Error("Shared plan is archived");
+    error.statusCode = 410;
+    throw error;
+  }
+  return plan;
+}
+
 const server = createServer(async (req, res) => {
   try {
     // Route order matters: public health/proxy/config endpoints are handled
@@ -10189,7 +10086,136 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname.startsWith("/api/bitjita/")) {
       return proxyBitjita(req, url, res);
     }
-    if (req.method === "GET" && url.pathname === "/api/local/config") return send(res, 200, getSettings());
+    if (req.method === "GET" && url.pathname === "/api/local/config") {
+      const settings = getSettings();
+      return send(res, 200, {
+        ...settings,
+        claimId: null,
+        claimName: null,
+        productName: "BitCraft Settlement Monitor",
+        canonicalUrl: "https://claim-monitor.com",
+      });
+    }
+    if (req.method === "GET" && url.pathname === "/api/local/claims/search") {
+      if (!rateLimit(req, res, "claim-search", RATE_LIMITS.expensiveLocal)) return;
+      return send(res, 200, {
+        claims: claimDirectory.search({
+          query: url.searchParams.get("q") ?? "",
+          regionId: url.searchParams.get("regionId") ?? "",
+          limit: url.searchParams.get("limit") ?? 25,
+        }),
+        directory: claimDirectory.status(),
+      });
+    }
+    const publicClaimMatch = url.pathname.match(/^\/api\/local\/claims\/(\d+)$/);
+    if (req.method === "GET" && publicClaimMatch) {
+      if (!rateLimit(req, res, "claim-detail", RATE_LIMITS.expensiveLocal)) return;
+      try {
+        return send(res, 200, await publicClaimById(publicClaimMatch[1]));
+      } catch (error) {
+        return send(res, Number(error?.statusCode ?? 502), { error: errorMessage(error) });
+      }
+    }
+    const claimInterestMatch = url.pathname.match(/^\/api\/local\/claims\/(\d+)\/interest$/);
+    if (req.method === "POST" && claimInterestMatch) {
+      if (!sameOriginRequest(req)) return send(res, 403, { error: "Cross-origin claim interest rejected" });
+      if (!rateLimit(req, res, "claim-interest", RATE_LIMITS.analytics)) return;
+      try {
+        const claim = await publicClaimById(claimInterestMatch[1]);
+        const interest = activeClaims.registerInterest(claim.claimId);
+        return send(res, 202, { claim, interest, coverage: claimCoverage(claim.claimId) });
+      } catch (error) {
+        return send(res, Number(error?.statusCode ?? 502), { error: errorMessage(error) });
+      }
+    }
+    const claimCoverageMatch = url.pathname.match(/^\/api\/local\/claims\/(\d+)\/coverage$/);
+    if (req.method === "GET" && claimCoverageMatch) {
+      try {
+        await publicClaimById(claimCoverageMatch[1]);
+        return send(res, 200, claimCoverage(claimCoverageMatch[1]));
+      } catch (error) {
+        return send(res, Number(error?.statusCode ?? 502), { error: errorMessage(error) });
+      }
+    }
+    if (req.method === "GET" && url.pathname === "/api/local/craft-plans") {
+      try {
+        return send(res, 200, { plans: sharedCraftPlans.list(String(url.searchParams.get("claimId") ?? "")) });
+      } catch (error) {
+        return sendPlanError(res, error);
+      }
+    }
+    if (req.method === "POST" && url.pathname === "/api/local/craft-plans") {
+      if (!sameOriginRequest(req)) return send(res, 403, { error: "Cross-origin plan creation rejected" });
+      if (!rateLimit(req, res, "craft-plan-create", { windowMs: 60 * 60 * 1000, max: 3 })) return;
+      try {
+        const body = await readJson(req, BODY_LIMITS.settings);
+        await publicClaimById(body.claimId);
+        return send(res, 201, sharedCraftPlans.create({
+          claimId: body.claimId,
+          title: body.title,
+          description: body.description,
+          config: body.config,
+          creatorKey: ipHash(requestAddress(req)),
+        }));
+      } catch (error) {
+        return sendPlanError(res, error);
+      }
+    }
+    const planMatch = url.pathname.match(/^\/api\/local\/craft-plans\/([^/]+)$/);
+    if (req.method === "GET" && planMatch) {
+      const plan = sharedCraftPlans.get(decodeURIComponent(planMatch[1]));
+      return plan ? send(res, 200, plan) : send(res, 404, { error: "Plan not found" });
+    }
+    if (req.method === "PUT" && planMatch) {
+      if (!sameOriginRequest(req)) return send(res, 403, { error: "Cross-origin plan update rejected" });
+      try {
+        const body = await readJson(req, BODY_LIMITS.settings);
+        return send(res, 200, sharedCraftPlans.update(decodeURIComponent(planMatch[1]), {
+          ...body,
+          expectedRevision: expectedPlanRevision(req, body),
+        }, planAuthority(req)));
+      } catch (error) {
+        return sendPlanError(res, error);
+      }
+    }
+    const planEditorMatch = url.pathname.match(/^\/api\/local\/craft-plans\/([^/]+)\/editor$/);
+    if (req.method === "GET" && planEditorMatch) {
+      try {
+        const sharedPlan = sharedCraftPlans.get(decodeURIComponent(planEditorMatch[1]));
+        if (!sharedPlan) return send(res, 404, { error: "Plan not found" });
+        return send(res, 200, await craftPlanAdminResponse(sharedPlan.claimId, sharedPlan.config, sharedPlan));
+      } catch (error) {
+        return sendPlanError(res, error);
+      }
+    }
+    const planPresetMatch = url.pathname.match(/^\/api\/local\/craft-plans\/([^/]+)\/workstation-preset$/);
+    if (req.method === "GET" && planPresetMatch) {
+      if (!sharedCraftPlans.get(decodeURIComponent(planPresetMatch[1]))) return send(res, 404, { error: "Plan not found" });
+      try {
+        return send(res, 200, await resolveCraftPlanWorkstationPreset(url.searchParams.get("tier")));
+      } catch (error) {
+        return send(res, 400, { error: errorMessage(error) });
+      }
+    }
+    const planActionMatch = url.pathname.match(/^\/api\/local\/craft-plans\/([^/]+)\/(rotate-key|archive|report)$/);
+    if (req.method === "POST" && planActionMatch) {
+      if (!sameOriginRequest(req)) return send(res, 403, { error: "Cross-origin plan action rejected" });
+      try {
+        const planId = decodeURIComponent(planActionMatch[1]);
+        const action = planActionMatch[2];
+        const body = await readJson(req, BODY_LIMITS.settings);
+        if (action === "rotate-key") return send(res, 200, sharedCraftPlans.rotateKey(planId, planAuthority(req)));
+        if (action === "archive") return send(res, 200, sharedCraftPlans.archive(planId, planAuthority(req)));
+        if (!rateLimit(req, res, "craft-plan-report", { windowMs: 60 * 60 * 1000, max: 5 })) return;
+        return send(res, 201, sharedCraftPlans.report(planId, {
+          reporterKey: ipHash(requestAddress(req)),
+          reason: body.reason,
+          details: body.details,
+        }));
+      } catch (error) {
+        return sendPlanError(res, error);
+      }
+    }
     if (req.method === "GET" && url.pathname === "/api/local/popups") return send(res, 200, { popups: publicPopups(appPopupConfig()) });
     if (req.method === "GET" && url.pathname === "/api/local/catalog/probabilities.xlsx") {
       if (!rateLimit(req, res, "probability-workbook", RATE_LIMITS.expensiveLocal)) return;
@@ -10218,7 +10244,16 @@ const server = createServer(async (req, res) => {
         const { forceRefresh, refreshId } = refresh;
         const keys = String(url.searchParams.get("keys") ?? "").split(",").map((key) => key.trim()).filter(Boolean).slice(0, 20);
         if (!keys.length) return send(res, 400, { error: "At least one craft plan item key is required" });
-        return send(res, 200, craftPlanDetailResponse(await computedCraftPlanResponse(String(url.searchParams.get("claimId") ?? getSettings().claimId), { forceRefresh, refreshId }), keys));
+        const requestClaimId = String(url.searchParams.get("claimId") ?? "");
+        const sharedPlan = sharedPlanForClaim(requestClaimId, url.searchParams.get("planId"));
+        if (!sharedPlan) return send(res, 400, { error: "Choose a shared plan first" });
+        return send(res, 200, craftPlanDetailResponse(await computedCraftPlanResponse(requestClaimId, {
+          forceRefresh,
+          refreshId,
+          planId: sharedPlan.planId,
+          planRevision: sharedPlan.revision,
+          planConfig: sharedPlan.config,
+        }), keys));
       } catch (error) {
         return send(res, 502, { error: error instanceof Error ? error.message : "Unable to load craft plan details" });
       }
@@ -10228,9 +10263,28 @@ const server = createServer(async (req, res) => {
         const refresh = manualRefreshAccess(req, res);
         if (!refresh) return;
         const { forceRefresh, refreshId } = refresh;
-        const compactPlan = await computedCompactCraftPlanResponse(String(url.searchParams.get("claimId") ?? getSettings().claimId), { forceRefresh, refreshId });
+        const requestClaimId = String(url.searchParams.get("claimId") ?? "");
+        const sharedPlan = sharedPlanForClaim(requestClaimId, url.searchParams.get("planId"));
+        if (!sharedPlan) return send(res, 200, { noPlanSelected: true, claimId: requestClaimId });
+        const compactPlan = await computedCompactCraftPlanResponse(requestClaimId, {
+          forceRefresh,
+          refreshId,
+          planId: sharedPlan.planId,
+          planRevision: sharedPlan.revision,
+          planConfig: sharedPlan.config,
+        });
         plannerTelemetry.lastResponseBytes = Buffer.byteLength(JSON.stringify(compactPlan));
-        return send(res, 200, compactPlan);
+        return send(res, 200, {
+          ...compactPlan,
+          sharedPlan: {
+            planId: sharedPlan.planId,
+            claimId: sharedPlan.claimId,
+            title: sharedPlan.title,
+            description: sharedPlan.description,
+            revision: sharedPlan.revision,
+            updatedAt: sharedPlan.updatedAt,
+          },
+        });
       } catch (error) {
         return send(res, 502, { error: error instanceof Error ? error.message : "Unable to compute craft plan" });
       }
@@ -10260,32 +10314,8 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/local/legal") {
       return send(res, 200, { ...legalPolicy, ...legalDigests });
     }
-    if (req.method === "GET" && url.pathname === "/api/local/auth/me") return send(res, 200, authStatus(req));
-    if (req.method === "GET" && url.pathname === "/api/local/access-control/effective") return send(res, 200, publicEffectiveAccess(accessControlConfig(), accessControlSubject(req)));
-    if (req.method === "GET" && url.pathname === "/api/local/auth/discord/start") {
-      if (!rateLimit(req, res, "auth", RATE_LIMITS.auth)) return;
-      const returnTo = safeReturnPath(url.searchParams.get("returnTo"));
-      res.writeHead(302, { location: `/?legal=required&returnTo=${encodeURIComponent(returnTo)}` });
-      res.end();
-      return;
-    }
-    if (req.method === "POST" && url.pathname === "/api/local/auth/discord/start") {
-      if (!rateLimit(req, res, "auth", RATE_LIMITS.auth)) return;
-      return handleDiscordOAuthStart(req, res);
-    }
-    if (req.method === "GET" && url.pathname === "/api/local/auth/discord/callback") {
-      if (!rateLimit(req, res, "auth", RATE_LIMITS.auth)) return;
-      return handleDiscordOAuthCallback(req, res, url);
-    }
-    if (req.method === "POST" && url.pathname === "/api/local/auth/logout") {
-      if (!sameOriginRequest(req)) return send(res, 403, { error: "Cross-origin sign-out rejected" });
-      return send(res, 200, {
-        ok: true,
-        user: null,
-        csrfToken: null,
-        discordLoginEnabled: discordOAuthConfig(req).enabled,
-        legal: { ...legalSnapshot, acceptedAt: null, requiresAcceptance: false },
-      }, { "set-cookie": clearAppUserSession(req) });
+    if (url.pathname.startsWith("/api/local/auth/") || url.pathname === "/api/discord/interactions") {
+      return send(res, 404, { error: "Public accounts and Discord bot interfaces are not available" });
     }
     if (req.method === "POST" && url.pathname === "/api/local/auth/legal/accept") {
       if (!rateLimit(req, res, "auth", RATE_LIMITS.auth)) return;
@@ -10561,46 +10591,20 @@ const server = createServer(async (req, res) => {
       if (!asset) return send(res, 404, { error: "Brand asset not configured" });
       return sendBinary(res, 200, await readFile(asset.filePath), asset.contentType);
     }
-    if (req.method === "GET" && url.pathname === "/api/local/admin/me") return send(res, 200, adminStatus(req));
-    if (req.method === "POST" && url.pathname === "/api/local/admin/setup") {
-      if (!legacyAdminPasswordAuth) return send(res, 410, { error: "Password administrator setup has been replaced by Discord administrator access" });
-      if (!rateLimit(req, res, "auth", RATE_LIMITS.auth)) return;
-      if (!sameOriginRequest(req)) return send(res, 403, { error: "Cross-origin administrator setup rejected" });
-      if (toNumber(statements.adminCount.get()?.count) > 0) return send(res, 409, { error: "Admin user already exists" });
-      const body = await readJson(req, BODY_LIMITS.auth);
-      if (isProduction && !adminSetupKey) return send(res, 503, { error: "Admin setup is disabled until ADMIN_SETUP_KEY is configured on the server" });
-      if (isProduction && String(body.setupKey ?? "") !== adminSetupKey) return send(res, 403, { error: "Invalid server setup key" });
-      const username = String(body.username ?? "admin").trim();
-      if (!validAdminUsername(username)) return send(res, 400, { error: "Username must be 3-32 letters, numbers, underscores or hyphens" });
-      const password = String(body.password ?? "");
-      if (!validLegacyAdminPassword(password)) return send(res, 400, { error: "Password must be at least 12 characters" });
-      const createdAt = new Date().toISOString();
-      const result = statements.insertAdmin.run(username, await hashPassword(password), "owner", createdAt);
-      statements.updateLastLogin.run(createdAt, result.lastInsertRowid);
-      audit({ id: result.lastInsertRowid, username }, "admin.setup", { username });
-      const session = createSession(result.lastInsertRowid);
-      return send(res, 200, adminStatus({ headers: { cookie: session.cookie } }), { "set-cookie": session.cookie });
+    if (
+      req.method === "POST"
+      && (url.pathname === "/api/local/admin/login" || url.pathname === "/api/local/admin/setup")
+    ) {
+      return send(res, 404, { error: "Administrator access uses the dedicated Discord OAuth flow" });
     }
-    if (req.method === "POST" && url.pathname === "/api/local/admin/login") {
-      if (!legacyAdminPasswordAuth) return send(res, 410, { error: "Administrator sign-in now uses Discord. Sign in with an approved Discord admin account." });
-      if (!rateLimit(req, res, "auth", RATE_LIMITS.auth)) return;
-      if (!sameOriginRequest(req)) return send(res, 403, { error: "Cross-origin administrator sign-in rejected" });
-      const body = await readJson(req, BODY_LIMITS.auth);
-      const username = String(body.username ?? "admin").trim();
-      const attemptKey = loginAttemptKey(requestAddress(req), username);
-      if (adminLoginAttempts.blocked(attemptKey)) return send(res, 429, { error: "Too many failed sign-in attempts. Try again in 15 minutes." });
-      const user = statements.adminByUsername.get(username);
-      const successful = Boolean(user && await verifyPassword(String(body.password ?? ""), user.password_hash));
-      statements.insertLoginEvent.run(username, successful ? 1 : 0, new Date().toISOString(), requestAddress(req));
-      if (!successful) {
-        adminLoginAttempts.recordFailure(attemptKey);
-        return send(res, 401, { error: "Invalid username or password" });
-      }
-      adminLoginAttempts.clear(attemptKey);
-      statements.updateLastLogin.run(new Date().toISOString(), user.id);
-      audit(user, "admin.login");
-      const session = createSession(user.id);
-      return send(res, 200, adminStatus({ headers: { cookie: session.cookie } }), { "set-cookie": session.cookie });
+    if (req.method === "GET" && url.pathname === "/api/local/admin/me") return send(res, 200, adminStatus(req));
+    if (req.method === "GET" && url.pathname === "/api/local/admin/auth/discord/start") {
+      if (!rateLimit(req, res, "admin-auth", RATE_LIMITS.auth)) return;
+      return handleAdminDiscordOAuthStart(req, res, url);
+    }
+    if (req.method === "GET" && url.pathname === "/api/local/admin/auth/discord/callback") {
+      if (!rateLimit(req, res, "admin-auth", RATE_LIMITS.auth)) return;
+      return handleAdminDiscordOAuthCallback(req, res, url);
     }
     if (req.method === "POST" && url.pathname === "/api/local/admin/logout") {
       const user = requireAdmin(req, res);
@@ -10609,12 +10613,93 @@ const server = createServer(async (req, res) => {
       return send(res, 200, { ok: true }, { "set-cookie": clearSession(req) });
     }
     if (url.pathname.startsWith("/api/local/admin/")) {
+      if (
+        url.pathname.startsWith("/api/local/admin/discord/")
+        || url.pathname.startsWith("/api/local/admin/user-accounts")
+        || url.pathname === "/api/local/admin/access-control"
+        || url.pathname === "/api/local/admin/empire-membership"
+      ) return send(res, 404, { error: "This feature is not part of the public application" });
       const user = requireAdmin(req, res);
       if (!user) return;
       if (!requireAdminMutation(req, res, user)) return;
       const requiredPermission = adminPermissionFor(req.method, url.pathname);
       if (!requireAdminPermission(req, res, user, requiredPermission)) return;
       if (req.method === "GET" && url.pathname === "/api/local/admin/status") return send(res, 200, databaseStatus());
+      if (req.method === "GET" && url.pathname === "/api/local/admin/claims") {
+        const active = activeClaims.active({ limit: Number(process.env.MAX_ACTIVE_CLAIMS ?? 25) });
+        return send(res, 200, {
+          directory: claimDirectory.status(),
+          activeClaims: active.map((row) => ({ ...row, coverage: claimCoverage(row.claimId) })),
+        });
+      }
+      if (req.method === "POST" && url.pathname === "/api/local/admin/claims/refresh") {
+        try {
+          const result = await refreshClaimDirectory({
+            repository: claimDirectory,
+            fetchJson: (pathname) => fetchBitjita(pathname, { forceRefresh: true }),
+          });
+          audit(user, "claim_directory.refresh", result);
+          return send(res, 200, result);
+        } catch (error) {
+          return send(res, 502, { error: errorMessage(error), directory: claimDirectory.status() });
+        }
+      }
+      if (req.method === "GET" && url.pathname === "/api/local/admin/craft-plans") {
+        return send(res, 200, {
+          plans: sharedCraftPlans.adminList({
+            claimId: url.searchParams.get("claimId") ?? "",
+            includeArchived: url.searchParams.get("includeArchived") !== "0",
+          }),
+          reports: sharedCraftPlans.reports({ status: url.searchParams.get("reportStatus") ?? "open" }),
+        });
+      }
+      const adminPlanReportMatch = url.pathname.match(/^\/api\/local\/admin\/craft-plan-reports\/(\d+)\/(resolve|dismiss)$/);
+      if (req.method === "POST" && adminPlanReportMatch) {
+        try {
+          const report = sharedCraftPlans.resolveReport(adminPlanReportMatch[1], {
+            adminId: user.id,
+            status: adminPlanReportMatch[2] === "dismiss" ? "dismissed" : "resolved",
+          });
+          audit(user, `craft_plan.report_${report.status}`, { reportId: report.reportId });
+          return send(res, 200, report);
+        } catch (error) {
+          return sendPlanError(res, error);
+        }
+      }
+      const adminPlanMatch = url.pathname.match(/^\/api\/local\/admin\/craft-plans\/([^/]+)$/);
+      if (req.method === "PUT" && adminPlanMatch) {
+        try {
+          const body = await readJson(req, BODY_LIMITS.settings);
+          const plan = sharedCraftPlans.update(decodeURIComponent(adminPlanMatch[1]), {
+            ...body,
+            expectedRevision: expectedPlanRevision(req, body),
+          }, { admin: true });
+          audit(user, "craft_plan.admin_update", { planId: plan.planId, claimId: plan.claimId, revision: plan.revision });
+          return send(res, 200, plan);
+        } catch (error) {
+          return sendPlanError(res, error);
+        }
+      }
+      if (req.method === "DELETE" && adminPlanMatch) {
+        const planId = decodeURIComponent(adminPlanMatch[1]);
+        if (url.searchParams.get("confirm") !== planId) return send(res, 400, { error: "Confirm hard deletion with the exact plan ID" });
+        const deleted = sharedCraftPlans.hardDelete(planId, { admin: true });
+        audit(user, "craft_plan.admin_delete", { planId, deleted });
+        return send(res, deleted ? 200 : 404, { ok: deleted });
+      }
+      const adminPlanActionMatch = url.pathname.match(/^\/api\/local\/admin\/craft-plans\/([^/]+)\/(rotate-key|archive)$/);
+      if (req.method === "POST" && adminPlanActionMatch) {
+        try {
+          const planId = decodeURIComponent(adminPlanActionMatch[1]);
+          const result = adminPlanActionMatch[2] === "rotate-key"
+            ? sharedCraftPlans.rotateKey(planId, { admin: true })
+            : sharedCraftPlans.archive(planId, { admin: true });
+          audit(user, `craft_plan.admin_${adminPlanActionMatch[2].replace("-", "_")}`, { planId });
+          return send(res, 200, result);
+        } catch (error) {
+          return sendPlanError(res, error);
+        }
+      }
       if (req.method === "GET" && url.pathname === "/api/local/admin/empire-membership") {
         return send(res, 200, empireMembershipAdminPayload());
       }
@@ -10896,10 +10981,6 @@ const server = createServer(async (req, res) => {
       if (req.method === "GET" && url.pathname === "/api/local/admin/settings") return send(res, 200, getSettings());
       if (req.method === "PUT" && url.pathname === "/api/local/admin/settings") {
         const body = await readJson(req, BODY_LIMITS.settings);
-        const nextClaimId = String(body.claimId ?? "").trim();
-        const nextSyncUrl = String(body.syncUrl ?? defaultSyncUrl).trim();
-        if (!validClaimId(nextClaimId)) return send(res, 400, { error: "Settlement ID must be a numeric BitCraft claim id" });
-        if (!validBitcraftSyncUrl(nextSyncUrl)) return send(res, 400, { error: "BitCraft Sync URL must be a https://bitcraftsync.app link" });
         const refreshSeconds = Number(body.refreshSeconds ?? 30);
         if (!validRefreshIntervalSeconds(refreshSeconds)) return send(res, 400, { error: "Display refresh interval must be between 15 and 300 seconds" });
         const serverRefreshSeconds = Number(body.serverRefreshSeconds ?? refreshSeconds);
@@ -10909,9 +10990,6 @@ const server = createServer(async (req, res) => {
         if (!validAppPage(defaultPage)) return send(res, 400, { error: "Unknown default page" });
         const defaultRegion = String(body.defaultRegion ?? "").trim();
         if (defaultRegion && !validRegionId(defaultRegion)) return send(res, 400, { error: "Default region must be numeric or blank" });
-        const additionalActiveRegions = parseRegionIds(body.additionalActiveRegions).join(",");
-        if (String(body.additionalActiveRegions ?? "").trim() && !additionalActiveRegions) return send(res, 400, { error: "Additional active regions must be numeric IDs separated by commas or spaces" });
-        const excludedMemberIds = normalizeSubmittedExcludedMemberIds(body.excludedMemberIds);
         const previousVisitorSecurity = visitorSecuritySettings(true);
         const visitorSecurity = normalizeVisitorSecuritySettings(body.visitorSecurity ?? {}, {
           includeSecrets: true,
@@ -10925,44 +11003,29 @@ const server = createServer(async (req, res) => {
           marketSales: body.toastSettings?.marketSales !== false,
           production: body.toastSettings?.production !== false,
         };
-        const marketDealWatch = normalizeMarketDealWatchSettings(body.marketDealWatch ?? {});
-        const craftPlanReportErrors = validateCraftPlanReportSettings(body.discord?.craftPlanReports ?? {});
-        if (craftPlanReportErrors.length) return send(res, 400, { error: craftPlanReportErrors[0], errors: craftPlanReportErrors });
-        const discordSettings = normalizeDiscordSettings(body.discord ?? {});
-        const discordToken = String(body.discord?.botToken ?? "").trim();
-        if (discordSettings.enabled) {
-          if (!discordSettings.applicationId) return send(res, 400, { error: "Discord application ID is required when Discord is enabled" });
-          if (!discordSettings.publicKey) return send(res, 400, { error: "Discord public key is required when Discord is enabled" });
-          if (!discordSettings.channelId) return send(res, 400, { error: "Discord channel ID is required when Discord is enabled" });
-        }
+        const historyRetentionDays = Math.max(7, Math.min(730, Math.round(toNumber(body.historyRetentionDays) || 90)));
+        const tradeRetentionDays = Math.max(30, Math.min(1460, Math.round(toNumber(body.tradeRetentionDays) || 365)));
+        const announcement = String(body.announcement ?? "").trim().slice(0, 1000);
+        const pageFlags = body.pageFlags && typeof body.pageFlags === "object" ? body.pageFlags : {};
         const updatedAt = new Date().toISOString();
-        statements.upsertSetting.run("claim_id", nextClaimId, updatedAt);
-        statements.upsertSetting.run("bitcraft_sync_url", nextSyncUrl, updatedAt);
         statements.upsertSetting.run("theme_json", JSON.stringify(nextTheme), updatedAt);
         statements.upsertSetting.run("refresh_seconds", String(refreshSeconds), updatedAt);
         statements.upsertSetting.run("server_refresh_seconds", String(serverRefreshSeconds), updatedAt);
         statements.upsertSetting.run("collector_settings_json", JSON.stringify(collectorSettings), updatedAt);
         statements.upsertSetting.run("default_page", defaultPage, updatedAt);
         statements.upsertSetting.run("default_region", defaultRegion, updatedAt);
-        statements.upsertSetting.run("active_region_overrides", additionalActiveRegions, updatedAt);
-        statements.upsertSetting.run("excluded_member_ids_json", JSON.stringify(excludedMemberIds), updatedAt);
         statements.upsertSetting.run("visitor_security_json", JSON.stringify(visitorSecurity), updatedAt);
         statements.upsertSetting.run("toast_json", JSON.stringify(toastSettings), updatedAt);
-        statements.upsertSetting.run("market_deal_watch_json", JSON.stringify(marketDealWatch), updatedAt);
-        statements.upsertSetting.run("discord_json", JSON.stringify(discordSettings), updatedAt);
-        const youtubePollSeconds = Math.max(60, Math.round(toNumber(discordSettings.youtube?.pollIntervalMinutes) * 60) || 600);
-        const youtubeSchedule = `interval@${youtubePollSeconds}`;
-        const youtubeJob = statements.getScheduledJob.get("youtube_channel_monitor");
-        if (youtubeJob) statements.updateScheduledJobSettings.run(youtubeSchedule, youtubeJob.enabled === 0 ? 0 : 1, nextScheduledRunIso(youtubeSchedule), updatedAt, "youtube_channel_monitor");
-        if (discordToken) statements.upsertSecret.run("discord_bot_token", discordToken, updatedAt);
-        if (body.discord?.clearBotToken === true) statements.deleteSecret.run("discord_bot_token");
+        statements.upsertSetting.run("history_retention_days", String(historyRetentionDays), updatedAt);
+        statements.upsertSetting.run("trade_retention_days", String(tradeRetentionDays), updatedAt);
+        statements.upsertSetting.run("maintenance_mode", body.maintenanceMode === true ? "1" : "0", updatedAt);
+        statements.upsertSetting.run("public_announcement", announcement, updatedAt);
+        statements.upsertSetting.run("public_page_flags_json", JSON.stringify(pageFlags), updatedAt);
         activeRegionsCache = null;
         pollStatus.intervalMs = serverRefreshSeconds * 1000;
         scheduleServerPolling(serverRefreshSeconds * 1000);
         refreshCollectorStatusSettings();
-        audit(user, "settings.update", { claimId: nextClaimId, refreshSeconds, serverRefreshSeconds, collectorCount: Object.keys(collectorSettings).length, defaultPage, defaultRegion, additionalActiveRegions, excludedMemberCount: excludedMemberIds.length, visitorSecurity: { fullIpRetentionDays: visitorSecurity.fullIpRetentionDays, statsRetentionDays: visitorSecurity.statsRetentionDays, geoipProvider: visitorSecurity.geoipProvider, geoipConfigured: visitorSecurity.geoipProvider === "ipapi" || Boolean(visitorSecurity.geoipSourceUrl) }, discordEnabled: discordSettings.enabled });
-        startDiscordGateway();
-        void announceDiscordAppUpdateIfNeeded().catch((error) => console.warn(`Discord app update announcement failed: ${error instanceof Error ? error.message : String(error)}`));
+        audit(user, "settings.update", { refreshSeconds, serverRefreshSeconds, collectorCount: Object.keys(collectorSettings).length, defaultPage, defaultRegion, historyRetentionDays, tradeRetentionDays });
         return send(res, 200, getSettings());
       }
       if (req.method === "POST" && url.pathname === "/api/local/admin/branding") {
@@ -11015,13 +11078,15 @@ const server = createServer(async (req, res) => {
         return send(res, 202, { ...craftPlanCatalogRefreshStatus(), result: { ok: true, key, started: true } });
       }
       if (req.method === "GET" && url.pathname === "/api/local/admin/craft-plan/progress-audit") {
-        const claimId = getSettings().claimId;
+        const claimId = String(url.searchParams.get("claimId") ?? "").trim();
+        const planId = String(url.searchParams.get("planId") ?? "").trim();
+        if (!validClaimId(claimId) || !planId) return send(res, 400, { error: "Valid claimId and planId are required" });
         return send(res, 200, {
           status: {
-            ...craftPlanProgressAudit.status(claimId),
+            ...craftPlanProgressAudit.status(claimId, planId),
             writeWarning: craftPlanProgressAuditWriteWarning,
           },
-          events: craftPlanProgressAudit.listEvents(claimId, { limit: 100 }),
+          events: craftPlanProgressAudit.listEvents(claimId, planId, { limit: 100 }),
         });
       }
       if (req.method === "GET" && url.pathname === "/api/local/admin/craft-plan/progress-audit/export") {
@@ -11032,7 +11097,10 @@ const server = createServer(async (req, res) => {
         } catch (error) {
           return send(res, 400, { error: error instanceof Error ? error.message : "Invalid audit range." });
         }
-        const bundle = craftPlanProgressAudit.exportRange(getSettings().claimId, range);
+        const claimId = String(url.searchParams.get("claimId") ?? "").trim();
+        const planId = String(url.searchParams.get("planId") ?? "").trim();
+        if (!validClaimId(claimId) || !planId) return send(res, 400, { error: "Valid claimId and planId are required" });
+        const bundle = craftPlanProgressAudit.exportRange(claimId, planId, range);
         const bytes = gzipSync(Buffer.from(JSON.stringify(bundle)));
         return sendBinary(res, 200, bytes, "application/gzip", {
           "cache-control": "no-store",
@@ -11290,44 +11358,18 @@ const server = createServer(async (req, res) => {
         const discordId = String(body.discordId ?? "").trim();
         const displayName = String(body.displayName ?? body.username ?? "").trim();
         const username = displayName || `Discord ${discordId}`;
-        const password = String(body.password ?? "");
         const role = normalizeAdminRole(body.role ?? "admin");
         if (role === "owner" && normalizeAdminRole(user.role) !== "owner") return send(res, 403, { error: "Only owners can create owner administrators" });
-        if (legacyAdminPasswordAuth && !discordId) {
-          if (!validAdminUsername(username)) return send(res, 400, { error: "Username must be 3-32 letters, numbers, underscores or hyphens" });
-          if (!validLegacyAdminPassword(password)) return send(res, 400, { error: "Password must be at least 12 characters" });
-          try {
-            const result = statements.insertAdmin.run(username, await hashPassword(password), role, new Date().toISOString());
-            audit(user, "user.create", { id: result.lastInsertRowid, username, role });
-            return send(res, 201, { ok: true });
-          } catch (error) {
-            if (String(error).includes("UNIQUE")) return send(res, 409, { error: "That username is already in use" });
-            throw error;
-          }
-        }
         if (!validDiscordId(discordId)) return send(res, 400, { error: "Enter a valid Discord user ID" });
         if (username.length < 2 || username.length > 80) return send(res, 400, { error: "Display name must be between 2 and 80 characters" });
         try {
-          const result = statements.insertDiscordAdmin.run(username, "discord-oauth-admin", role, new Date().toISOString(), discordId, "", username, "");
+          const result = statements.insertDiscordAdmin.run(username, role, new Date().toISOString(), discordId, "", username, "");
           audit(user, "user.create", { id: result.lastInsertRowid, username, discordId, role });
           return send(res, 201, { ok: true });
         } catch (error) {
           if (String(error).includes("UNIQUE")) return send(res, 409, { error: "That Discord account is already an administrator" });
           throw error;
         }
-      }
-      if (req.method === "PUT" && url.pathname === "/api/local/admin/user/password") {
-        if (!legacyAdminPasswordAuth) return send(res, 410, { error: "Administrator passwords have been replaced by Discord sign-in" });
-        const body = await readJson(req);
-        const userId = Number(body.userId);
-        const password = String(body.password ?? "");
-        if (!userId || !validLegacyAdminPassword(password)) return send(res, 400, { error: "Select a user and enter a password of at least 12 characters" });
-        const target = db.prepare("SELECT id, username FROM admin_users WHERE id = ?").get(userId);
-        if (!target) return send(res, 404, { error: "Admin user not found" });
-        statements.updatePassword.run(await hashPassword(password), userId);
-        statements.deleteUserSessions.run(userId);
-        audit(user, "user.password_reset", { id: target.id, username: target.username });
-        return send(res, 200, { ok: true, signedOut: userId === user.id });
       }
       if (req.method === "PUT" && url.pathname === "/api/local/admin/user/status") {
         const body = await readJson(req);
@@ -11415,6 +11457,9 @@ const server = createServer(async (req, res) => {
       if (!rateLimit(req, res, "local-snapshot", RATE_LIMITS.expensiveLocal)) return;
       if (isProduction) return send(res, 403, { error: "Browser snapshot collection is disabled in production" });
       return send(res, 200, recordSettlementState(await readJson(req, BODY_LIMITS.snapshot)));
+    }
+    if (url.pathname === "/api/local/market/deal-watches" || url.pathname.startsWith("/api/local/market/deal-watches/") || url.pathname === "/api/local/market/deal-alerts") {
+      return send(res, 404, { error: "Market watches are stored in the browser" });
     }
     if (url.pathname === "/api/local/market/deal-watches") {
       const appUser = req.method === "GET"
@@ -11546,35 +11591,6 @@ const server = createServer(async (req, res) => {
         return send(res, 502, { claim: { claimId, name: `Claim ${claimId}` }, members: [], errors: [errorMessage(error)], fetchedAt: new Date().toISOString() });
       }
     }
-    if (req.method === "GET" && url.pathname === "/api/local/empires/watchtowers") {
-      if (!rateLimit(req, res, "empire-watchtowers", RATE_LIMITS.expensiveLocal)) return;
-      const refresh = manualRefreshAccess(req, res);
-      if (!refresh) return;
-      const { forceRefresh } = refresh;
-      const regionId = String(url.searchParams.get("regionId") ?? "").trim();
-      if (!/^\d+$/.test(regionId)) return send(res, 400, { error: "Region id is required" });
-      const inactiveDays = url.searchParams.get("inactiveDays") ?? 14;
-      try {
-        return send(res, 200, await regionalEmpireWatchtowers(regionId, inactiveDays, { forceRefresh }));
-      } catch (error) {
-        const days = Math.max(1, Math.min(365, toNumber(inactiveDays) || 14));
-        const cached = empireCacheGetAny(`watchtowers:${regionId}:${days}`);
-        if (cached) return send(res, 200, { ...cached, stale: true, errors: [...(cached.errors ?? []), errorMessage(error)] });
-        return send(res, 200, {
-          regionId,
-          inactiveDays: days,
-          fetchedAt: new Date().toISOString(),
-          stale: true,
-          partial: true,
-          unclaimedAvailable: false,
-          unclaimedMessage: "Unclaimed watchtowers are not exposed by the current BitJita public API.",
-          empires: [],
-          towers: [],
-          errors: [errorMessage(error)],
-          summary: { towerCount: 0, inactiveRiskEmpires: 0, underSiege: 0, activeTowers: 0 },
-        });
-      }
-    }
     if (req.method === "GET" && url.pathname === "/api/local/market/overview") {
       if (!rateLimit(req, res, "global-market-overview", RATE_LIMITS.expensiveLocal)) return;
       const regionId = String(url.searchParams.get("regionId") ?? "").trim();
@@ -11591,7 +11607,9 @@ const server = createServer(async (req, res) => {
       return send(res, 200, marketHistory(url.searchParams.get("claimId") ?? "", Number(url.searchParams.get("limit") ?? 100), url.searchParams.get("owner") ?? ""));
     }
     if (req.method === "GET" && url.pathname === "/api/local/market/buy-orders") {
-      return send(res, 200, marketBuyOrders(url.searchParams.get("claimId") ?? getSettings().claimId, Object.fromEntries(url.searchParams.entries())));
+      const claimId = String(url.searchParams.get("claimId") ?? "").trim();
+      if (!validClaimId(claimId)) return send(res, 400, { error: "Valid claimId is required" });
+      return send(res, 200, marketBuyOrders(claimId, Object.fromEntries(url.searchParams.entries())));
     }
     if (req.method === "GET" && url.pathname === "/api/local/leaderboard") {
       const refresh = manualRefreshAccess(req, res);
@@ -11701,13 +11719,22 @@ function scheduleServerPolling(delayMs = 0) {
   }, delayMs);
 }
 
+async function refreshPublicClaimDirectory() {
+  return refreshClaimDirectory({
+    repository: claimDirectory,
+    fetchJson: (pathname) => fetchBitjita(pathname, { forceRefresh: true }),
+  });
+}
+
 function startBackgroundTasks() {
-  startDiscordGateway();
-  void processDiscordNotificationOutbox().catch((error) => console.warn(`Discord notification outbox failed: ${error instanceof Error ? error.message : String(error)}`));
-  setInterval(processDiscordNotificationOutbox, discordNotificationOutboxIntervalMs);
-  setTimeout(() => {
-    void announceDiscordAppUpdateIfNeeded().catch((error) => console.warn(`Discord app update announcement failed: ${error instanceof Error ? error.message : String(error)}`));
-  }, 5000);
+  void refreshPublicClaimDirectory().catch((error) => {
+    console.warn(`Claim directory refresh failed; cached directory retained: ${errorMessage(error)}`);
+  });
+  setInterval(() => {
+    void refreshPublicClaimDirectory().catch((error) => {
+      console.warn(`Claim directory refresh failed; cached directory retained: ${errorMessage(error)}`);
+    });
+  }, 15 * 60 * 1000);
   if (serverPollingEnabled) {
     console.log(`Server settlement collection enabled every ${serverRefreshIntervalMs() / 1000} seconds`);
     scheduleServerPolling(0);
@@ -11716,8 +11743,6 @@ function startBackgroundTasks() {
     console.log("Scheduled jobs enabled; checking every 10 seconds");
     checkScheduledJobs();
     setInterval(checkScheduledJobs, 10 * 1000);
-    void dispatchScheduledCraftPlanReports().catch((error) => console.warn(`Craft Planner report dispatcher failed: ${error instanceof Error ? error.message : String(error)}`));
-    setInterval(dispatchScheduledCraftPlanReports, 60 * 1000);
   }
   if (!isTestRuntime) {
     void evaluateServerHealthIncidents().catch((error) => console.warn(`Server health evaluation failed: ${redactServerHealthText(error.message)}`));
@@ -11751,8 +11776,6 @@ function replayCurrentPrivacyDeletionLedger() {
   });
 }
 
-replayCurrentPrivacyDeletionLedger();
-
 if (processRoleConfig.serveHttp) {
   server.listen(port, host, () => {
     console.log(`BitCraft monitor server listening on http://${host}:${port}${serveFrontend ? " with production frontend" : ""} role=${processRole}`);
@@ -11762,8 +11785,3 @@ if (processRoleConfig.serveHttp) {
   console.log(`BitCraft monitor worker started role=${processRole}`);
   startBackgroundTasks();
 }
-
-
-
-
-

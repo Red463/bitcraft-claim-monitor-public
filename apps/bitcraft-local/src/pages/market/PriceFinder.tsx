@@ -14,12 +14,13 @@ import { unique } from "../../utils/array";
 import { updateQueryState } from "../../navigation";
 import { trackAnalyticsEvent } from "../../utils/analytics";
 import type { LoadState } from "../../types/app";
+import { marketWatchStorageKey, normalizeLocalDealWatches, upsertLocalDealWatch } from "../../market/localDealWatches";
 
 const API = "/api/bitjita";
-const LOCAL_API = "/api/local";
 
-export function PriceFinder({ monitoredRegionId, onDiscordLogin }: { monitoredRegionId: string; onDiscordLogin: (returnTo?: string) => void }) {
+export function PriceFinder({ monitoredRegionId }: { monitoredRegionId: string }) {
   const defaultRegion = monitoredRegionId || "19";
+  const claimId = new URLSearchParams(window.location.search).get("claimId") ?? "";
   const [query, setQuery] = React.useState("");
   const [suggestions, setSuggestions] = React.useState<AnyRecord[]>([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1);
@@ -28,9 +29,7 @@ export function PriceFinder({ monitoredRegionId, onDiscordLogin }: { monitoredRe
   const [regionChoice, setRegionChoice] = usePersistedState("market.price.region", defaultRegion);
   const activeRegions = useActiveRegions(defaultRegion);
   const [priceState, setPriceState] = React.useState<LoadState<AnyRecord>>({ data: null, error: null, loading: false });
-  const [authState, setAuthState] = React.useState<AnyRecord>({ user: null, discordLoginEnabled: false });
-  const [watchState, setWatchState] = React.useState<LoadState<AnyRecord>>({ data: null, error: null, loading: false });
-  const [watchBusy, setWatchBusy] = React.useState("");
+  const [watchRevision, setWatchRevision] = React.useState(0);
   const activeRegion = regionChoice === "All" ? "" : regionChoice;
 
   React.useEffect(() => {
@@ -93,61 +92,26 @@ export function PriceFinder({ monitoredRegionId, onDiscordLogin }: { monitoredRe
     return () => controller.abort();
   }, [selectedItem, activeRegion, regionChoice]);
 
-  const refreshDealWatches = React.useCallback(() => {
-    const controller = new AbortController();
-    setWatchState((current) => ({ ...current, error: null, loading: true }));
-    fetch(`${LOCAL_API}/market/deal-watches`, { signal: controller.signal })
-      .then((response) => response.status === 401 ? { watches: [], settings: null, signedOut: true } : response.ok ? response.json() : Promise.reject(new Error(`deal watches HTTP ${response.status}`)))
-      .then((payload) => setWatchState({ data: payload, error: null, loading: false }))
-      .catch((error) => {
-        if (!controller.signal.aborted) setWatchState({ data: null, error: error instanceof Error ? error.message : String(error), loading: false });
-      });
-    return () => controller.abort();
-  }, []);
-
-  React.useEffect(() => {
-    const controller = new AbortController();
-    fetch(`${LOCAL_API}/auth/me`, { signal: controller.signal })
-      .then((response) => response.ok ? response.json() : { user: null, discordLoginEnabled: false })
-      .then((payload) => setAuthState(payload ?? { user: null, discordLoginEnabled: false }))
-      .catch(() => {
-        if (!controller.signal.aborted) setAuthState({ user: null, discordLoginEnabled: false });
-      });
-    return () => controller.abort();
-  }, []);
-
-  React.useEffect(() => refreshDealWatches(), [refreshDealWatches]);
-
-  async function addDealWatch() {
+  function addDealWatch() {
     if (!selectedItem || !activeRegion) return;
-    setWatchBusy("add");
     try {
-      const response = await fetch(`${LOCAL_API}/market/deal-watches`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-csrf-token": String(authState.csrfToken ?? "") },
-        body: JSON.stringify({
-          regionId: activeRegion,
-          itemId: selectedItem.id,
-          itemType: toNumber(selectedItem.itemType),
-          itemName: selectedItem.name,
-          tier: selectedItem.tier ?? selectedItem.itemTier,
-          rarity: selectedItem.rarityStr ?? selectedItem.rarity ?? selectedItem.itemRarityStr,
-          iconAssetName: selectedItem.iconAssetName ?? selectedItem.assetName ?? selectedItem.itemIconAssetName,
-        }),
+      const key = marketWatchStorageKey(claimId);
+      const current = normalizeLocalDealWatches(JSON.parse(localStorage.getItem(key) ?? "[]"));
+      const next = upsertLocalDealWatch(current, {
+        regionId: activeRegion,
+        itemId: String(selectedItem.id),
+        itemType: toNumber(selectedItem.itemType),
+        itemName: String(selectedItem.name),
+        tier: selectedItem.tier ?? selectedItem.itemTier,
+        rarity: selectedItem.rarityStr ?? selectedItem.rarity ?? selectedItem.itemRarityStr,
+        iconAssetName: selectedItem.iconAssetName ?? selectedItem.assetName ?? selectedItem.itemIconAssetName,
+        thresholdPercent: 30,
+        enabled: true,
       });
-      if (response.status === 401) {
-        onDiscordLogin(`${window.location.pathname}${window.location.search}`);
-        return;
-      }
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error ?? `deal watch HTTP ${response.status}`);
-      }
-      refreshDealWatches();
-    } catch (error) {
-      setWatchState((current) => ({ ...current, error: error instanceof Error ? error.message : String(error) }));
-    } finally {
-      setWatchBusy("");
+      localStorage.setItem(key, JSON.stringify(next));
+      setWatchRevision((value) => value + 1);
+    } catch {
+      // A disabled storage context simply leaves the watch unsaved.
     }
   }
 
@@ -192,12 +156,18 @@ export function PriceFinder({ monitoredRegionId, onDiscordLogin }: { monitoredRe
     regionChoice !== "All" ? regionChoice : "",
     ...activeRegions.map((region) => String(region.regionId ?? "")).filter(Boolean),
   ].filter(Boolean)).sort((a, b) => toNumber(a) - toNumber(b));
-  const dealWatches: AnyRecord[] = Array.isArray(watchState.data?.watches) ? watchState.data.watches : [];
-  const dealSettings = watchState.data?.settings ?? {};
+  const dealWatches = (() => {
+    try {
+      void watchRevision;
+      return normalizeLocalDealWatches(JSON.parse(localStorage.getItem(marketWatchStorageKey(claimId)) ?? "[]"));
+    } catch {
+      return [];
+    }
+  })();
   const selectedWatch = selectedItem && activeRegion
     ? dealWatches.find((watch) => String(watch.regionId) === String(activeRegion) && String(watch.itemId) === String(selectedItem.id) && toNumber(watch.itemType) === toNumber(selectedItem.itemType))
     : null;
-  const maxWatches = toNumber(dealSettings.maxWatchesPerUser) || 10;
+  const maxWatches = 50;
   return (
     <section className="price-finder">
       <div className="command-filter-header price-finder-header">
@@ -244,16 +214,14 @@ export function PriceFinder({ monitoredRegionId, onDiscordLogin }: { monitoredRe
                 <small>{suggestedWindow ? `Based on ${suggestedWindow.toLowerCase()} average` : "No completed trades in this selection"}</small>
               </div>
               <div className="deal-watch-action">
-                {!authState.user ? (
-                  <button className="toolbar-button" onClick={() => onDiscordLogin()}><Bell size={15} /> Sign in to watch</button>
-                ) : selectedWatch ? (
+                {selectedWatch ? (
                   <button className="toolbar-button" type="button" disabled><CheckCircle2 size={15} /> Watching deals</button>
                 ) : (
-                  <button className="toolbar-button primary" type="button" onClick={addDealWatch} disabled={!activeRegion || watchBusy === "add"} title={!activeRegion ? "Choose a single region before watching an item." : "Watch this item for below-average regional sell listings."}>
-                    <Bell size={15} /> {watchBusy === "add" ? "Adding..." : "Watch for deals"}
+                  <button className="toolbar-button primary" type="button" onClick={addDealWatch} disabled={!activeRegion} title={!activeRegion ? "Choose a single region before watching an item." : "Save a browser-local watch for this item."}>
+                    <Bell size={15} /> Watch for deals
                   </button>
                 )}
-                <small>{activeRegion ? `${formatNumber(dealWatches.length)} / ${formatNumber(maxWatches)} watches used` : "Choose one region to watch for deals."}</small>
+                <small>{activeRegion ? `${formatNumber(dealWatches.length)} / ${formatNumber(maxWatches)} local watches` : "Choose one region to watch for deals."}</small>
               </div>
             </div>
             <div className="metric-grid">
