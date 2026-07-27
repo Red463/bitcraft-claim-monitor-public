@@ -1,0 +1,23 @@
+{
+  "name": "workspace",
+  "version": "0.0.0",
+  "packageManager": "pnpm@11.1.3",
+  "license": "MIT",
+  "scripts": {
+    "preinstall": "node ./scripts/verify-pnpm.mjs",
+    "dev": "node ./scripts/dev.mjs",
+    "dev:app": "corepack pnpm --filter @workspace/bitcraft-local run dev",
+    "dev:web": "corepack pnpm --filter @workspace/bitcraft-local run dev:web",
+    "dev:api": "corepack pnpm --filter @workspace/bitcraft-local run dev:db",
+    "build": "corepack pnpm run typecheck && corepack pnpm -r --if-present run build",
+    "typecheck:libs": "tsc --build --force",
+    "typecheck": "corepack pnpm run typecheck:libs && corepack pnpm --filter @workspace/bitcraft-local run typecheck && corepack pnpm -r --filter \"./scripts\" --if-present run typecheck"
+  },
+  "private": true,
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "prettier": "^3.8.3",
+    "typescript": "~5.9.3",
+    "ws": "^8.21.0"
+  }
+}

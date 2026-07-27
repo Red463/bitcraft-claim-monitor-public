@@ -1,0 +1,98 @@
+import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
+import test from "node:test";
+
+import { applySchemaBootstrap, schemaBootstrapSql } from "../src/server/schemaBootstrap.mjs";
+
+test("schemaBootstrapSql preserves critical release tables and indexes", () => {
+  for (const fragment of [
+    "CREATE TABLE IF NOT EXISTS settlement_state_current",
+    "CREATE TABLE IF NOT EXISTS app_settings",
+    "CREATE TABLE IF NOT EXISTS admin_users",
+    "CREATE TABLE IF NOT EXISTS user_accounts",
+    "CREATE TABLE IF NOT EXISTS user_legal_acceptances",
+    "CREATE TABLE IF NOT EXISTS market_deal_alerts",
+    "CREATE TABLE IF NOT EXISTS craft_plan_settings",
+    "CREATE TABLE IF NOT EXISTS craft_plan_progress_audit_snapshots",
+    "CREATE TABLE IF NOT EXISTS craft_plan_progress_audit_events",
+    "CREATE TABLE IF NOT EXISTS craft_plan_progress_audit_state",
+    "CREATE TABLE IF NOT EXISTS production_jobs",
+    "CREATE TABLE IF NOT EXISTS discord_delivery_log",
+    "CREATE TABLE IF NOT EXISTS discord_notification_outbox",
+    "CREATE TABLE IF NOT EXISTS discord_craft_plan_report_occurrences",
+    "CREATE TABLE IF NOT EXISTS discord_youtube_channels",
+    "discord_channel_id TEXT",
+    "CREATE TABLE IF NOT EXISTS discord_youtube_videos",
+    "CREATE TABLE IF NOT EXISTS empire_hexite_sweeps",
+    "CREATE TABLE IF NOT EXISTS empire_hexite_sweep_empires",
+    "CREATE TABLE IF NOT EXISTS empire_hexite_targets",
+    "CREATE TABLE IF NOT EXISTS empire_hexite_sources",
+    "CREATE TABLE IF NOT EXISTS empire_hexite_snapshots",
+    "CREATE TABLE IF NOT EXISTS empire_membership_tracking",
+    "CREATE TABLE IF NOT EXISTS empire_membership_periods",
+    "CREATE INDEX IF NOT EXISTS idx_market_events_claim_time",
+    "CREATE INDEX IF NOT EXISTS idx_user_legal_acceptances_user_time",
+    "CREATE INDEX IF NOT EXISTS idx_activity_claim_time",
+    "CREATE INDEX IF NOT EXISTS idx_discord_notification_outbox_status",
+    "CREATE INDEX IF NOT EXISTS idx_discord_craft_plan_report_occurrences_time",
+    "CREATE INDEX IF NOT EXISTS idx_domain_payload_claim",
+    "CREATE INDEX IF NOT EXISTS idx_craft_plan_settings_updated",
+    "CREATE INDEX IF NOT EXISTS idx_craft_plan_progress_snapshots_claim_time",
+    "CREATE INDEX IF NOT EXISTS idx_craft_plan_progress_events_claim_time",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_empire_membership_active_tracking",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_empire_membership_open_period",
+    "CREATE INDEX IF NOT EXISTS idx_empire_membership_current",
+    "CREATE INDEX IF NOT EXISTS idx_empire_membership_departures",
+    "CREATE INDEX IF NOT EXISTS idx_empire_membership_retention",
+  ]) {
+    assert.match(schemaBootstrapSql, new RegExp(fragment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.doesNotMatch(schemaBootstrapSql, /CREATE TABLE IF NOT EXISTS snapshots/);
+  assert.doesNotMatch(schemaBootstrapSql, /idx_snapshots_/);
+});
+
+test("applySchemaBootstrap executes the complete bootstrap SQL once", () => {
+  const statements = [];
+  const db = { exec: (sql) => statements.push(sql) };
+
+  applySchemaBootstrap(db);
+
+  assert.deepEqual(statements, [schemaBootstrapSql]);
+});
+
+test("membership history schema is additive and preserves existing data", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec("CREATE TABLE app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL)");
+  db.prepare("INSERT INTO app_settings VALUES (?, ?, ?)").run("claim_id", "123", "2026-07-24T00:00:00.000Z");
+
+  applySchemaBootstrap(db);
+  applySchemaBootstrap(db);
+
+  assert.equal(db.prepare("SELECT value FROM app_settings WHERE key = 'claim_id'").get().value, "123");
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM empire_membership_tracking").get().count, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM empire_membership_periods").get().count, 0);
+  db.close();
+});
+
+test("legal acceptance schema enforces one exact document snapshot per user", () => {
+  const db = new DatabaseSync(":memory:");
+  applySchemaBootstrap(db);
+
+  const userId = Number(db.prepare(`
+    INSERT INTO user_accounts (discord_id, character_status, settings_json, created_at)
+    VALUES ('legal-user', 'unlinked', '{}', '2026-07-25T00:00:00.000Z')
+    RETURNING id
+  `).get().id);
+  const insert = db.prepare(`
+    INSERT INTO user_legal_acceptances (
+      user_id, legal_version, terms_digest, privacy_digest,
+      age_confirmed, accepted_at, source
+    ) VALUES (?, ?, ?, ?, 1, ?, 'oauth')
+  `);
+  insert.run(userId, "2026-07-25", "terms", "privacy", "2026-07-25T00:00:00.000Z");
+  assert.throws(
+    () => insert.run(userId, "2026-07-25", "terms", "privacy", "2026-07-25T00:00:01.000Z"),
+    /UNIQUE constraint failed/,
+  );
+  db.close();
+});
