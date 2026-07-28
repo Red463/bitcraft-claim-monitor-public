@@ -34,8 +34,27 @@ test("BODY_LIMITS preserves the public route body size policies", () => {
   assert.equal(BODY_LIMITS.auth, 8 * 1024);
   assert.equal(BODY_LIMITS.analytics, 8 * 1024);
   assert.equal(BODY_LIMITS.json, 64 * 1024);
+  assert.equal(BODY_LIMITS.claimHelper, 256 * 1024);
   assert.equal(BODY_LIMITS.settings, 256 * 1024);
   assert.equal(BODY_LIMITS.branding, 2 * 1024 * 1024);
   assert.equal(BODY_LIMITS.snapshot, 1024 * 1024);
   assert.equal(BODY_LIMITS.discordInteraction, 256 * 1024);
+});
+
+test("legacy large-claim helper bodies fit only the route-specific compatibility limit", async () => {
+  const legacyBody = JSON.stringify({
+    claimId: "1369094286737286086",
+    members: [{ userName: "x".repeat(77 * 1024) }],
+  });
+  assert.ok(Buffer.byteLength(legacyBody) > BODY_LIMITS.json);
+  assert.ok(Buffer.byteLength(legacyBody) < BODY_LIMITS.claimHelper);
+
+  assert.deepEqual(
+    await readJson(chunks([legacyBody]), BODY_LIMITS.claimHelper),
+    JSON.parse(legacyBody),
+  );
+  await assert.rejects(
+    readJson(chunks([legacyBody]), BODY_LIMITS.json),
+    RequestBodyTooLargeError,
+  );
 });

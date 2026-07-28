@@ -2,6 +2,7 @@ export const BODY_LIMITS = {
   auth: 8 * 1024,
   analytics: 8 * 1024,
   json: 64 * 1024,
+  claimHelper: 256 * 1024,
   settings: 256 * 1024,
   branding: 2 * 1024 * 1024,
   snapshot: 1024 * 1024,

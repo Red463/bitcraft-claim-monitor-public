@@ -11553,7 +11553,7 @@ const server = createServer(async (req, res) => {
       const refresh = manualRefreshAccess(req, res);
       if (!refresh) return;
       const { forceRefresh } = refresh;
-      const body = await readJson(req, BODY_LIMITS.json);
+      const body = await readJson(req, BODY_LIMITS.claimHelper);
       return send(res, 200, await passiveCraftSummaries({ claimId: body?.claimId, forceRefresh }));
     }
     if (req.method === "POST" && url.pathname === "/api/local/player-details") {
@@ -11561,7 +11561,7 @@ const server = createServer(async (req, res) => {
       const refresh = manualRefreshAccess(req, res);
       if (!refresh) return;
       const { forceRefresh } = refresh;
-      const body = await readJson(req, BODY_LIMITS.json);
+      const body = await readJson(req, BODY_LIMITS.claimHelper);
       return send(res, 200, await playerDetailSummaries({ claimId: body?.claimId, forceRefresh }));
     }
     if (req.method === "POST" && url.pathname === "/api/local/production/crafts") {
@@ -11569,7 +11569,7 @@ const server = createServer(async (req, res) => {
       const refresh = manualRefreshAccess(req, res);
       if (!refresh) return;
       const { forceRefresh } = refresh;
-      const body = await readJson(req, BODY_LIMITS.json);
+      const body = await readJson(req, BODY_LIMITS.claimHelper);
       return send(res, 200, await settlementProductionCrafts({ claimId: body?.claimId, forceRefresh }));
     }
     if (req.method === "GET" && url.pathname === "/api/local/dashboard-data") {
