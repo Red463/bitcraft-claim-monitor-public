@@ -9,6 +9,12 @@ Historical release headings have been migrated to `0.MINOR.PATCH-beta.N`. Existi
 
 ## [Unreleased]
 
+## [0.48.1-beta.3] - 2026-07-28
+
+### Fixed
+
+- Fixed administrator Discord sign-in when a Discord display name matches another administrator's stable account name.
+
 ## [0.48.1-beta.2] - 2026-07-28
 
 ### Fixed

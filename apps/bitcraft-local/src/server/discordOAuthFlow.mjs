@@ -1,5 +1,4 @@
 import { safeReturnPath } from "./httpRequests.mjs";
-import { discordProfileDisplayName } from "./authIdentity.mjs";
 import {
   ADMIN_SESSION_COOKIE_NAME,
   ADMIN_SESSION_MAX_AGE_SECONDS,
@@ -101,7 +100,7 @@ export function persistDiscordAdminOAuthSession({
   const admin = statements.adminByDiscordId.get(discordId);
   if (!admin) return null;
   statements.updateAdminDiscordProfile.run(
-    discordProfileDisplayName(profile),
+    admin.username,
     String(profile?.username ?? ""),
     String(profile?.global_name ?? ""),
     String(profile?.avatar ?? ""),

@@ -34,6 +34,15 @@ test("administrator OAuth persists a real session without personal data in login
     "",
     "",
   );
+  statements.insertDiscordAdmin.run(
+    "Secret Display Name",
+    "operator",
+    "2026-07-28T12:00:00.000Z",
+    "987654321098765432",
+    "",
+    "",
+    "",
+  );
 
   const session = discordOAuthFlow.persistDiscordAdminOAuthSession({
     statements,
@@ -50,8 +59,10 @@ test("administrator OAuth persists a real session without personal data in login
   assert.ok(session?.token);
   assert.match(session.cookie, /^bitcraft_admin_session=/);
   const savedSession = db.prepare("SELECT user_id FROM admin_sessions").get();
-  const savedAdmin = db.prepare("SELECT id, discord_username, discord_global_name FROM admin_users").get();
+  const savedAdmin = db.prepare("SELECT id, username, discord_username, discord_global_name FROM admin_users WHERE discord_id = ?")
+    .get("123456789012345678");
   assert.equal(savedSession.user_id, savedAdmin.id);
+  assert.equal(savedAdmin.username, "Existing Admin");
   assert.equal(savedAdmin.discord_username, "secret-username");
   assert.equal(savedAdmin.discord_global_name, "Secret Display Name");
 
