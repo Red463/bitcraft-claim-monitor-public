@@ -82,8 +82,8 @@ test("directory refresh walks every region and replaces stale rows atomically", 
   const requested = [];
   const payloads = new Map([
     ["/regions", { regions: [{ id: 7, name: "West" }, { id: 8, name: "East" }] }],
-    ["/claims?regionId=7&limit=100&offset=0", { claims: [{ entityId: 101, name: "Oakheart", tier: 4, owner: { username: "Ada" } }] }],
-    ["/claims?regionId=8&limit=100&offset=0", { claims: [{ entityId: 202, name: "Ironhome", tier: 3 }] }],
+    ["/claims?regionId=7&limit=100&page=1", { claims: [{ entityId: 101, name: "Oakheart", tier: 4, owner: { username: "Ada" } }] }],
+    ["/claims?regionId=8&limit=100&page=1", { claims: [{ entityId: 202, name: "Ironhome", tier: 3 }] }],
   ]);
 
   const result = await refreshClaimDirectory({
@@ -97,8 +97,8 @@ test("directory refresh walks every region and replaces stale rows atomically", 
   assert.equal(result.claimCount, 2);
   assert.deepEqual(requested, [
     "/regions",
-    "/claims?regionId=7&limit=100&offset=0",
-    "/claims?regionId=8&limit=100&offset=0",
+    "/claims?regionId=7&limit=100&page=1",
+    "/claims?regionId=8&limit=100&page=1",
   ]);
   assert.equal(repository.get("999"), null);
   assert.deepEqual(repository.get("101"), {
@@ -110,5 +110,71 @@ test("directory refresh walks every region and replaces stale rows atomically", 
     ownerName: "Ada",
     refreshedAt: "2026-07-27T12:00:00.000Z",
   });
+  db.close();
+});
+
+test("directory refresh advances through BitJita claim pages", async () => {
+  const db = openDatabase();
+  const repository = createClaimDirectoryRepository({
+    db,
+    now: () => "2026-07-27T12:00:00.000Z",
+  });
+  const requested = [];
+  const payloads = new Map([
+    ["/regions", [{ regionId: 7, regionName: "West" }]],
+    ["/claims?regionId=7&limit=2&page=1", { claims: [
+      { entityId: 101, name: "Oakheart" },
+      { entityId: 102, name: "Oakwatch" },
+    ] }],
+    ["/claims?regionId=7&limit=2&page=2", { claims: [
+      { entityId: 103, name: "Oakrest" },
+    ] }],
+  ]);
+
+  const result = await refreshClaimDirectory({
+    repository,
+    pageSize: 2,
+    fetchJson: async (path) => {
+      requested.push(path);
+      return payloads.get(path);
+    },
+  });
+
+  assert.equal(result.claimCount, 3);
+  assert.deepEqual(requested, [
+    "/regions",
+    "/claims?regionId=7&limit=2&page=1",
+    "/claims?regionId=7&limit=2&page=2",
+  ]);
+  db.close();
+});
+
+test("directory refresh rejects a repeated full claim page instead of looping", async () => {
+  const db = openDatabase();
+  const repository = createClaimDirectoryRepository({
+    db,
+    now: () => "2026-07-27T12:00:00.000Z",
+  });
+  let claimRequests = 0;
+
+  await assert.rejects(
+    refreshClaimDirectory({
+      repository,
+      pageSize: 2,
+      fetchJson: async (path) => {
+        if (path === "/regions") return [{ regionId: 7, regionName: "West" }];
+        claimRequests += 1;
+        if (claimRequests > 2) throw new Error("test stopped an unbounded pagination loop");
+        return { claims: [
+          { entityId: 101, name: "Oakheart" },
+          { entityId: 102, name: "Oakwatch" },
+        ] };
+      },
+    }),
+    /repeated claim page/i,
+  );
+
+  assert.equal(claimRequests, 2);
+  assert.match(repository.status().lastError, /repeated claim page/i);
   db.close();
 });

@@ -390,7 +390,7 @@ install_release_config() {
   install -m 0644 "$release_dir/deploy/Caddyfile.example" /etc/caddy/Caddyfile
   install -d -o root -g "$RUN_USER" -m 0750 "$DATA_DIR/monitoring"
   systemctl daemon-reload
-  systemctl enable "$WEB_SERVICE" "$WORKER_SERVICE" bitcraft-claim-monitor-public-collector.timer >>"$LOG_FILE" 2>&1
+  systemctl enable --now "$WEB_SERVICE" "$WORKER_SERVICE" bitcraft-claim-monitor-public-collector.timer >>"$LOG_FILE" 2>&1
   systemctl reload caddy
 }
 

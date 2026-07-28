@@ -181,9 +181,17 @@ export async function refreshClaimDirectory({
     for (const region of regions) {
       const regionId = text(region?.regionId ?? region?.id ?? region?.entityId);
       if (!/^\d+$/.test(regionId)) continue;
-      for (let offset = 0; ; offset += pageSize) {
-        const payload = await fetchJson(`/claims?regionId=${encodeURIComponent(regionId)}&limit=${pageSize}&offset=${offset}`);
+      const seenPages = new Set();
+      for (let pageNumber = 1; ; pageNumber += 1) {
+        const payload = await fetchJson(`/claims?regionId=${encodeURIComponent(regionId)}&limit=${pageSize}&page=${pageNumber}`);
         const page = rowsFrom(payload, "claims");
+        const pageSignature = page
+          .map((claim) => text(claim?.entityId ?? claim?.claimId ?? claim?.id))
+          .join(",");
+        if (page.length === pageSize && seenPages.has(pageSignature)) {
+          throw new Error(`BitJita returned a repeated claim page for region ${regionId}; cached claim directory retained`);
+        }
+        seenPages.add(pageSignature);
         for (const claim of page) claims.push({ ...normalizeDirectoryClaim(claim, region), refreshedAt: undefined });
         if (page.length < pageSize) break;
       }
