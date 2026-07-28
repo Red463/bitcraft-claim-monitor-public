@@ -14,7 +14,7 @@ function rowsFrom(payload, key) {
 
 export function normalizeDirectoryClaim(claim, region = {}, refreshedAt = new Date().toISOString()) {
   const claimId = text(claim?.entityId ?? claim?.claimId ?? claim?.id);
-  const name = text(claim?.name ?? claim?.claimName) || `Settlement ${claimId}`;
+  const name = text(claim?.name ?? claim?.claimName) || `Claim ${claimId}`;
   const regionId = text(claim?.regionId ?? claim?.region?.id ?? region?.regionId ?? region?.id) || null;
   const regionName = text(claim?.regionName ?? claim?.region?.name ?? region?.regionName ?? region?.name) || null;
   const ownerName = text(

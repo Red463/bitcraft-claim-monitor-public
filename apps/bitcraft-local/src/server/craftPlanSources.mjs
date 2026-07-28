@@ -210,8 +210,8 @@ export function settlementStorageSourcesFromInventories(inventories = {}, allowe
     const sourceId = String(building.entityId ?? building.id ?? building.buildingName ?? "").trim();
     return {
       sourceId,
-      label: String(building.buildingNickname ?? building.buildingName ?? (sourceId || "Settlement storage")),
-      type: "Settlement storage",
+      label: String(building.buildingNickname ?? building.buildingName ?? (sourceId || "Claim storage")),
+      type: "Claim storage",
       items: sourceItemsFromSlots(building.inventory, lookup),
     };
   }).filter((source) => source.sourceId && (!allowed.size || allowed.has(source.sourceId)));

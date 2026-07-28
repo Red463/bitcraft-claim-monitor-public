@@ -9,6 +9,6 @@ test("global Buy Orders uses the item-first live market browser", () => {
   assert.doesNotMatch(marketPage, /from "\.\/market\/BuyOrderFinder"/);
   assert.match(marketPage, /<MarketBrowse[^>]*mode="buy"/);
   assert.match(marketBrowse, /Find an item with buy orders/);
-  assert.match(marketBrowse, /no monitored-settlement cache is used/);
+  assert.match(marketBrowse, /no monitored-claim cache is used/);
   assert.doesNotMatch(marketBrowse, /\/api\/local\/market\/buy-orders/);
 });

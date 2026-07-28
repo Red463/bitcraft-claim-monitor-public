@@ -2,7 +2,7 @@ import type { AnyRecord } from "../main-app-data";
 
 export function craftDisplayName(job: AnyRecord, craftsPayload?: AnyRecord): string {
   const item = craftOutputItem(job, craftsPayload);
-  return String(item?.name ?? job.recipeName ?? `${job.buildingName ?? "Settlement"} craft`);
+  return String(item?.name ?? job.recipeName ?? `${job.buildingName ?? "Claim"} craft`);
 }
 
 export function craftOutputItem(job: AnyRecord, craftsPayload?: AnyRecord): AnyRecord | null {

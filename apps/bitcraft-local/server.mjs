@@ -64,6 +64,12 @@ import {
   createManualRefreshGuard,
 } from "./src/server/manualRefreshGuard.mjs";
 import { createRequestCoordinator } from "./src/server/requestCoordinator.mjs";
+import {
+  createClaimRosterEnrichment,
+  enrichClaimPassiveCrafts,
+  enrichClaimPlayerDetails,
+  enrichClaimProductionCrafts,
+} from "./src/server/claimRosterEnrichment.mjs";
 import { ADMIN_ROLE_LABELS, adminHasPermission, adminPermissionFor, normalizeAdminRole } from "./src/server/adminPermissions.mjs";
 import { discordAvatarUrl, publicAdminUser } from "./src/server/publicUsers.mjs";
 import { adminMutationRejection } from "./src/server/adminRequestGuards.mjs";
@@ -273,7 +279,7 @@ const privacyLedgerPath = process.env.PRIVACY_LEDGER_PATH
 const readCachedServerHealthFiles = createCachedServerHealthReader(() => readServerHealthFiles(dataDir), { ttlMs: 30_000 });
 const packageJson = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 const appVersion = String(packageJson.version ?? "0.0.0-dev");
-const appIdentifier = process.env.BITJITA_APP_IDENTIFIER ?? "BitCraft Settlement Monitor (github.com/Red463/bitcraft-claim-monitor-public)";
+const appIdentifier = process.env.BITJITA_APP_IDENTIFIER ?? "BitCraft Claim Monitor (github.com/Red463/bitcraft-claim-monitor-public)";
 const ipHash = createIpHasher(appIdentifier);
 const changelogUrl = "https://github.com/Red463/bitcraft-claim-monitor-public/blob/main/CHANGELOG.md";
 const changelogPath = path.resolve(root, "..", "..", "CHANGELOG.md");
@@ -1890,6 +1896,7 @@ const passiveCraftSummariesCache = new Map();
 const passiveCraftSummariesInflight = new Map();
 const productionCraftsCache = new Map();
 const productionCraftsInflight = new Map();
+const claimRosterEnrichment = createClaimRosterEnrichment();
 let mapCatalogCache = null;
 const dashboardDataCache = new Map();
 const dashboardDataInflight = new Map();
@@ -2475,11 +2482,11 @@ async function computedCraftPlanResponseFresh(claimId = getSettings().claimId, o
   );
   const [inventoriesResult, publicCraftsResult, membersPayload] = await Promise.all([
     craftPlanSourceResult(
-      { sourceId: String(claimId), label: "Settlement inventories", type: "Settlement storage" },
+      { sourceId: String(claimId), label: "Claim inventories", type: "Claim storage" },
       () => fetchBitjita(`/claims/${encodeURIComponent(claimId)}/inventories`, { forceRefresh }),
     ),
     craftPlanSourceResult(
-      { sourceId: String(claimId), label: "Settlement active crafts", type: "Tracked crafts" },
+      { sourceId: String(claimId), label: "Claim active crafts", type: "Tracked crafts" },
       () => fetchBitjita(`/crafts?claimEntityId=${encodeURIComponent(claimId)}&completed=false`, { forceRefresh }),
     ),
     fetchBitjita(`/claims/${encodeURIComponent(claimId)}/members`, { forceRefresh }).catch(() => ({ members: [] })),
@@ -5530,7 +5537,7 @@ async function runDiscordAppUpdateAnnouncementJob() {
 function discordSupplyEmbed(claim) {
   const supplies = toNumber(claim.supplies);
   const supplyMeta = supplyRunwayMetadata(claim, supplies);
-  return discordCommandEmbed("Settlement Supplies", `**${claim.name ?? "Monitored settlement"}** supply status`, [
+  return discordCommandEmbed("Claim Supplies", `**${claim.name ?? "Monitored claim"}** supply status`, [
     { name: "Current stock", value: supplies.toLocaleString(), inline: true },
     { name: "Upkeep", value: supplyMeta.upkeep, inline: true },
     { name: "Runway", value: supplyMeta.runway, inline: true },
@@ -6677,7 +6684,7 @@ function normalizeRegionalBuyOrder(listing, regionId, regionName, fallbackClaim 
     regionId: String(listing.regionId ?? regionId ?? "").trim(),
     regionName: String(listing.regionName ?? regionName ?? ""),
     marketClaimId,
-    marketClaimName: String(listing.claimName ?? listing.claim?.name ?? fallbackClaim.name ?? fallbackClaim.claimName ?? "Unknown settlement"),
+    marketClaimName: String(listing.claimName ?? listing.claim?.name ?? fallbackClaim.name ?? fallbackClaim.claimName ?? "Unknown claim"),
     buyerEntityId: String(listing.ownerEntityId ?? listing.ownerId ?? ""),
     buyerName: String(listing.ownerUsername ?? listing.ownerName ?? listing.owner ?? "Unknown buyer"),
     itemId: String(listing.itemId ?? listing.item_id ?? ""),
@@ -6731,7 +6738,7 @@ function normalizeRegionalSellListing(listing, regionId, regionName, fallbackCla
     regionId: String(listing.regionId ?? regionId ?? "").trim(),
     regionName: String(listing.regionName ?? regionName ?? ""),
     marketClaimId,
-    marketClaimName: String(listing.claimName ?? listing.claim?.name ?? fallbackClaim.name ?? fallbackClaim.claimName ?? "Unknown settlement"),
+    marketClaimName: String(listing.claimName ?? listing.claim?.name ?? fallbackClaim.name ?? fallbackClaim.claimName ?? "Unknown claim"),
     sellerName: String(listing.ownerUsername ?? listing.ownerName ?? listing.owner ?? "Unknown seller"),
     itemId: String(listing.itemId ?? listing.item_id ?? base.itemId ?? "").trim(),
     itemType,
@@ -6918,7 +6925,7 @@ async function fetchRegionalBuyOrders(claimId, regionIds) {
   const failures = [];
   const orders = [];
   for (const [regionIndex, regionId] of uniqueRegionIds.entries()) {
-    collectorProgress("buyOrders", `Loading R${regionId} settlements`, { current: regionIndex + 1, total: uniqueRegionIds.length });
+    collectorProgress("buyOrders", `Loading R${regionId} claims`, { current: regionIndex + 1, total: uniqueRegionIds.length });
     let claimPayload;
     try {
       claimPayload = await fetchRegionClaimList(regionId);
@@ -7667,7 +7674,8 @@ function withServerFreshness(value, cacheState, cachedAt, stale = false) {
 async function loadHelperCached(cache, inflight, key, ttlMs, loader, options = {}) {
   const now = Date.now();
   const cached = cache.get(key);
-  if (!options.forceRefresh && cached && cached.expiresAt > now) return withServerFreshness(cached.value, "hit", cached.cachedAt);
+  const refreshIncomplete = options.refreshIncomplete === true && cached?.value?.coverage?.complete === false;
+  if (!options.forceRefresh && !refreshIncomplete && cached && cached.expiresAt > now) return withServerFreshness(cached.value, "hit", cached.cachedAt);
   const pending = !options.forceRefresh ? inflight.get(key) : null;
   if (pending) {
     const entry = await pending;
@@ -7705,166 +7713,82 @@ async function loadHelperCached(cache, inflight, key, ttlMs, loader, options = {
   return withServerFreshness(entry.value, entry.stale ? "stale-if-error" : "miss", entry.cachedAt, entry.stale);
 }
 
-function uniqueSummaryMembers(body, maxMembers) {
-  const members = Array.isArray(body?.members) ? body.members : [];
-  return [...new Map(members
-    .filter((member) => member && (member.playerEntityId ?? member.entityId))
-    .slice(0, maxMembers)
-    .map((member) => [String(member.playerEntityId ?? member.entityId), member])).values()];
-}
-
-function summaryMemberCacheKey(members) {
-  return members.map((member) => String(member.playerEntityId ?? member.entityId ?? "")).filter(Boolean).sort().join(",") || "empty";
+function loadProgressiveHelperCached(cache, inflight, key, ttlMs, loader, options = {}) {
+  return loadHelperCached(cache, inflight, key, ttlMs, loader, { ...options, refreshIncomplete: true });
 }
 
 async function passiveCraftSummaries(body) {
-  const uniqueMembers = uniqueSummaryMembers(body, 50);
-  const cacheKey = summaryMemberCacheKey(uniqueMembers);
-  return loadHelperCached(passiveCraftSummariesCache, passiveCraftSummariesInflight, cacheKey, PASSIVE_CRAFT_SUMMARY_CACHE_TTL_MS, async () => {
-    const results = await mapWithConcurrency(uniqueMembers, 4, async (member) => {
-      try {
-        return await fetchCachedPassiveCrafts(member, { forceRefresh: body?.forceRefresh === true });
-      } catch (error) {
-        return {
-          ok: false,
-          playerId: String(member.playerEntityId ?? member.entityId ?? ""),
-          memberName: member.userName ?? member.username ?? member.name ?? "Unknown member",
-          error: error instanceof Error ? error.message : String(error),
-        };
-      }
+  const claimId = String(body?.claimId ?? "").trim();
+  return loadProgressiveHelperCached(passiveCraftSummariesCache, passiveCraftSummariesInflight, claimId, PASSIVE_CRAFT_SUMMARY_CACHE_TTL_MS, async () => {
+    const members = await fetchClaimRoster(claimId, { forceRefresh: body?.forceRefresh === true });
+    return enrichClaimPassiveCrafts({
+      claimId,
+      members,
+      forceRefresh: body?.forceRefresh === true,
+      enrichment: claimRosterEnrichment,
+      fetchPassiveCrafts: (_playerId, member, options) => fetchCachedPassiveCrafts(member, options),
     });
-    const rows = results
-      .flatMap((result) => result.ok ? result.rows.map((row) => ({ ...row, playerId: result.playerId, memberName: result.memberName })) : [])
-      .sort((a, b) => b.sortTimestamp - a.sortTimestamp)
-      .slice(0, 18);
-    return {
-      rows,
-      requested: uniqueMembers.length,
-      failed: results.filter((result) => !result.ok).length,
-    };
   }, { forceRefresh: body?.forceRefresh === true });
+}
+
+async function fetchClaimRoster(claimId, options = {}) {
+  const id = String(claimId ?? "").trim();
+  if (!validClaimId(id)) {
+    const error = new Error("Choose a valid BitCraft claim ID");
+    error.statusCode = 400;
+    throw error;
+  }
+  const payload = await fetchBitjita(`/claims/${encodeURIComponent(id)}/members`, {
+    timeoutMs: Math.min(8_000, BITJITA_FETCH_TIMEOUT_MS),
+    forceRefresh: options.forceRefresh === true,
+  });
+  return unwrap(payload, "members", []);
 }
 
 async function playerDetailSummaries(body) {
-  const uniqueMembers = uniqueSummaryMembers(body, 100);
-  const cacheKey = summaryMemberCacheKey(uniqueMembers);
-  return loadHelperCached(playerDetailSummariesCache, playerDetailSummariesInflight, cacheKey, PLAYER_DETAIL_SUMMARY_CACHE_TTL_MS, async () => {
-    const results = await mapWithConcurrency(uniqueMembers, 6, async (member) => {
-      const playerId = String(member.playerEntityId ?? member.entityId ?? "");
-      try {
-        const player = await fetchCachedPlayerDetail(playerId, { forceRefresh: body?.forceRefresh === true });
-        return { ok: true, player: { ...player, detailAvailable: true } };
-      } catch (error) {
-        return { ok: false, playerId, player: fallbackPlayerFromMember(member, error), error: error instanceof Error ? error.message : String(error) };
-      }
+  const claimId = String(body?.claimId ?? "").trim();
+  return loadProgressiveHelperCached(playerDetailSummariesCache, playerDetailSummariesInflight, claimId, PLAYER_DETAIL_SUMMARY_CACHE_TTL_MS, async () => {
+    const members = await fetchClaimRoster(claimId, { forceRefresh: body?.forceRefresh === true });
+    return enrichClaimPlayerDetails({
+      claimId,
+      members,
+      forceRefresh: body?.forceRefresh === true,
+      enrichment: claimRosterEnrichment,
+      fetchPlayerDetail: fetchCachedPlayerDetail,
+      fallbackPlayer: (member) => fallbackPlayerFromMember(member),
     });
-    return {
-      players: results.map((result) => result.player),
-      requested: uniqueMembers.length,
-      failed: results.filter((result) => !result.ok).length,
-      failures: results.filter((result) => !result.ok).map((result) => ({ playerId: result.playerId, error: result.error })).slice(0, 20),
-    };
   }, { forceRefresh: body?.forceRefresh === true });
-}
-function itemCatalogKey(item) {
-  const id = item?.id ?? item?.entityId ?? item?.itemId;
-  return id == null ? "" : String(id);
-}
-
-function mergeCraftCatalogs(payloads) {
-  const items = new Map();
-  const cargos = new Map();
-  const claims = new Map();
-  for (const payload of payloads) {
-    for (const item of unwrap(payload, "items", [])) {
-      const key = itemCatalogKey(item);
-      if (key) items.set(key, item);
-    }
-    for (const cargo of unwrap(payload, "cargos", [])) {
-      const key = itemCatalogKey(cargo);
-      if (key) cargos.set(key, cargo);
-    }
-    for (const claim of unwrap(payload, "claims", [])) {
-      const key = itemCatalogKey(claim);
-      if (key) claims.set(key, claim);
-    }
-  }
-  return {
-    items: [...items.values()],
-    cargos: [...cargos.values()],
-    claims: [...claims.values()],
-  };
-}
-
-function craftClaimId(craft) {
-  return String(craft?.claimEntityId ?? craft?.claim_entity_id ?? craft?.claim?.entityId ?? craft?.claimId ?? "");
-}
-
-function productionCraftCacheKey(claimId, members) {
-  const ids = members.map((member) => String(member.playerEntityId ?? member.entityId ?? "")).filter(Boolean).sort();
-  return `${claimId}:${ids.join(",")}`;
 }
 
 async function settlementProductionCrafts(body) {
   const claimId = String(body?.claimId ?? "").trim();
-  if (!claimId) return withServerFreshness({ craftResults: [], items: [], cargos: [], claims: [], count: 0, publicCount: 0, privateCount: 0, failedMemberRequests: 0 }, "miss", new Date().toISOString());
-  const uniqueMembers = uniqueSummaryMembers(body, 50);
-  const cacheKey = productionCraftCacheKey(claimId, uniqueMembers);
-  return loadHelperCached(productionCraftsCache, productionCraftsInflight, cacheKey, PRODUCTION_CRAFT_CACHE_TTL_MS, async () => {
+  return loadProgressiveHelperCached(productionCraftsCache, productionCraftsInflight, claimId, PRODUCTION_CRAFT_CACHE_TTL_MS, async () => {
+    const members = await fetchClaimRoster(claimId, { forceRefresh: body?.forceRefresh === true });
     let publicFetchError = "";
     const publicPayload = await fetchBitjita(`/crafts?claimEntityId=${encodeURIComponent(claimId)}&completed=false`, { timeoutMs: PRODUCTION_CRAFT_TIMEOUT_MS, cache: body?.forceRefresh !== true }).catch((error) => {
       publicFetchError = error instanceof Error ? error.message : String(error);
       return { craftResults: [] };
     });
-    const publicCrafts = unwrap(publicPayload, "craftResults", []);
-    const publicIds = new Set(publicCrafts.map((craft) => String(craft.entityId ?? "")).filter(Boolean));
-    const memberResults = await mapWithConcurrency(uniqueMembers, 8, async (member) => {
-      const playerId = String(member.playerEntityId ?? member.entityId ?? "");
-      try {
-        return { ok: true, payload: await fetchBitjita(`/players/${encodeURIComponent(playerId)}/crafts?completed=false`, { timeoutMs: PRODUCTION_MEMBER_CRAFT_TIMEOUT_MS, cache: body?.forceRefresh !== true }) };
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : String(error) };
-      }
+    const enriched = await enrichClaimProductionCrafts({
+      claimId,
+      members,
+      publicPayload,
+      forceRefresh: body?.forceRefresh === true,
+      enrichment: claimRosterEnrichment,
+      fetchMemberCrafts: (playerId, options) => fetchBitjita(`/players/${encodeURIComponent(playerId)}/crafts?completed=false`, {
+        timeoutMs: PRODUCTION_MEMBER_CRAFT_TIMEOUT_MS,
+        cache: options.forceRefresh !== true,
+      }),
     });
-    const memberPayloads = memberResults.filter((result) => result.ok).map((result) => result.payload);
-    const merged = new Map();
-
-    for (const craft of publicCrafts) {
-      if (!craft?.entityId || craftClaimId(craft) !== claimId) continue;
-      merged.set(String(craft.entityId), { ...craft, isPublic: craft.isPublic !== false, visibilitySource: "claim-public" });
-    }
-
-    for (const payload of memberPayloads) {
-      for (const craft of unwrap(payload, "craftResults", [])) {
-        if (!craft?.entityId || craftClaimId(craft) !== claimId) continue;
-        const id = String(craft.entityId);
-        const existing = merged.get(id) ?? {};
-        const isPublic = craft.isPublic === false ? false : publicIds.has(id) || craft.isPublic === true;
-        merged.set(id, {
-          ...existing,
-          ...craft,
-          isPublic,
-          visibilitySource: isPublic ? existing.visibilitySource ?? "player-public" : "player-private",
-        });
-      }
-    }
-
-    const catalog = mergeCraftCatalogs([publicPayload, ...memberPayloads]);
-    const craftResults = [...merged.values()].sort((a, b) => toNumber(b.totalActionsRequired) - toNumber(a.totalActionsRequired));
     const partialErrors = [
       publicFetchError ? `Public craft refresh failed: ${publicFetchError}` : "",
-      ...memberResults.filter((result) => !result.ok).map((result) => `Member craft refresh failed: ${result.error}`),
+      ...(enriched.partialErrors ?? []),
     ].filter(Boolean);
-    if (publicFetchError && !memberPayloads.length) {
+    if (publicFetchError && !enriched.coverage?.covered) {
       throw new Error(`Production refresh failed: ${publicFetchError}`);
     }
     return {
-      craftResults,
-      ...catalog,
-      count: craftResults.length,
-      publicCount: craftResults.filter((craft) => craft.isPublic !== false).length,
-      privateCount: craftResults.filter((craft) => craft.isPublic === false).length,
-      failedMemberRequests: memberResults.filter((result) => !result.ok).length,
+      ...enriched,
       partialError: partialErrors[0] ?? null,
       partialErrors,
     };
@@ -7892,7 +7816,7 @@ function storedDashboardDataFallback(claimId, error) {
 async function dashboardData(claimId, options = {}) {
   const id = String(claimId ?? "").trim();
   if (!/^\d{8,}$/.test(id)) {
-    const error = new Error("Choose a valid BitCraft settlement ID");
+    const error = new Error("Choose a valid BitCraft claim ID");
     error.statusCode = 400;
     throw error;
   }
@@ -7939,7 +7863,7 @@ async function dashboardData(claimId, options = {}) {
 async function dashboardDataFresh(claimId, options = {}) {
   const id = String(claimId ?? "").trim();
   if (!/^\d{8,}$/.test(id)) {
-    const error = new Error("Choose a valid BitCraft settlement ID");
+    const error = new Error("Choose a valid BitCraft claim ID");
     error.statusCode = 400;
     throw error;
   }
@@ -7959,7 +7883,7 @@ async function dashboardDataFresh(claimId, options = {}) {
   const members = unwrap(membersPayload, "members", []);
   const crafts = unwrap(craftsPayload, "craftResults", []);
   const [playerPayload, contributionEntries, region, tradeVolume] = await Promise.all([
-    playerDetailSummaries({ members, forceRefresh }),
+    playerDetailSummaries({ claimId: id, forceRefresh }),
     mapWithConcurrency(crafts.filter((craft) => craft.entityId), 4, async (craft) => {
       try {
         return [String(craft.entityId), await fetchCachedCraftContributions(craft.entityId, { forceRefresh })];
@@ -8307,7 +8231,7 @@ async function fetchDomainPayload(previous, domain, fallback, label, load) {
 async function buildCurrentClaimData(claimId, options = {}) {
   const id = String(claimId ?? "").trim();
   if (!/^\d{8,}$/.test(id)) {
-    const error = new Error("Choose a valid BitCraft settlement ID");
+    const error = new Error("Choose a valid BitCraft claim ID");
     error.statusCode = 400;
     throw error;
   }
@@ -8342,12 +8266,12 @@ async function buildCurrentClaimData(claimId, options = {}) {
     collectorDue(id, "research", "research", options) ? fetchDomainPayload(previous, "research", { research: [] }, "Research", () => timedCollectorFetch(metrics, "research", "research", () => fetchBitjita(`/claims/${id}/research`))) : Promise.resolve(previousPayload(previous, "research", { research: [] })),
     collectorDue(id, "market", "market", options) ? fetchDomainPayload(previous, "market", { listings: [] }, "Market", () => timedCollectorFetch(metrics, "market", "market listings", () => fetchAllClaimListings(id, { cache: options.force !== true }))) : Promise.resolve(previousPayload(previous, "market", { listings: [] })),
     collectorDue(id, "production", "crafts", options)
-      ? timedCollectorFetch(metrics, "production", "production crafts", () => settlementProductionCrafts({ claimId: id, members, forceRefresh: true })).catch((error) => {
+      ? timedCollectorFetch(metrics, "production", "production crafts", () => settlementProductionCrafts({ claimId: id, forceRefresh: true })).catch((error) => {
         const fallback = previousPayload(previous, "crafts", { craftResults: [] });
         return { ...fallback, partialError: error instanceof Error ? error.message : String(error) };
       })
       : Promise.resolve(previousPayload(previous, "crafts", { craftResults: [] })),
-    collectorDue(id, "players", "players", options) ? fetchDomainPayload(previous, "players", { players: [] }, "Player details", () => timedCollectorFetch(metrics, "players", "player details", () => playerDetailSummaries({ members }))) : Promise.resolve(previousPayload(previous, "players", { players: [] })),
+    collectorDue(id, "players", "players", options) ? fetchDomainPayload(previous, "players", { players: [] }, "Player details", () => timedCollectorFetch(metrics, "players", "player details", () => playerDetailSummaries({ claimId: id }))) : Promise.resolve(previousPayload(previous, "players", { players: [] })),
     collectorDue(id, "inventory", "inventories", options) ? fetchDomainPayload(previous, "inventories", { buildings: [] }, "Inventories", () => timedCollectorFetch(metrics, "inventory", "inventories", () => fetchBitjita(`/claims/${id}/inventories`))) : Promise.resolve(previousPayload(previous, "inventories", { buildings: [] })),
     collectorDue(id, "inventory", "recruitment", options) ? fetchDomainPayload(previous, "recruitment", { applications: [] }, "Recruitment", () => timedCollectorFetch(metrics, "inventory", "recruitment", () => fetchBitjita(`/claims/${id}/recruitment`))) : Promise.resolve(previousPayload(previous, "recruitment", { applications: [] })),
     collectorDue(id, "inventory", "layout", options) ? fetchDomainPayload(previous, "layout", {}, "Layout", () => timedCollectorFetch(metrics, "inventory", "layout", () => fetchBitjita(`/claims/${id}/layout`))) : Promise.resolve(previousPayload(previous, "layout", {})),
@@ -8595,10 +8519,10 @@ async function collectServerSnapshot(force = false) {
     });
     pollStatus.lastRunMetrics = { ...pollStatus.lastRunMetrics, activeClaims: result };
     pollStatus.lastSuccessAt = new Date().toISOString();
-    pollStatus.lastError = result.failed ? `${result.failed} active settlement collection(s) failed` : null;
+    pollStatus.lastError = result.failed ? `${result.failed} active claim collection(s) failed` : null;
   } catch (error) {
     pollStatus.lastError = error instanceof Error ? error.message : String(error);
-    console.error(`BitCraft settlement collection failed: ${pollStatus.lastError}`);
+    console.error(`BitCraft claim collection failed: ${pollStatus.lastError}`);
   } finally {
     pollStatus.running = false;
   }
@@ -9173,7 +9097,7 @@ function databaseStatus() {
 async function apiDiagnostics() {
   const { claimId } = getSettings();
   const checks = [
-    ["Settlement", `/claims/${claimId}`],
+    ["Claim", `/claims/${claimId}`],
     ["Members", `/claims/${claimId}/members`],
     ["Structures", `/claims/${claimId}/buildings`],
     ["Inventory", `/claims/${claimId}/inventories`],
@@ -9327,7 +9251,7 @@ function discordCommandEmbed(title, description, fields = [], color = 0xf0c64f) 
     color,
     fields: fields.slice(0, 10),
     timestamp: new Date().toISOString(),
-    footer: { text: "BitCraft settlement monitor" },
+    footer: { text: "BitCraft claim monitor" },
   };
 }
 
@@ -9476,10 +9400,10 @@ async function discordAutocomplete(interaction) {
 
 function discordHelpCommand() {
   const appUrl = "https://app.timbersteeltrade.com";
-  return discordCommandEmbed("Timbersteel Trade Help", `[Open the dashboard](${appUrl}) for settlement monitoring, market analytics, public craft finding and bot settings.`, [
-    { name: "/supplies", value: "Current settlement supplies, upkeep and runway.", inline: false },
-    { name: "/online", value: "Shows which settlement members are currently online.", inline: false },
-    { name: "/crafts", value: "Lists current settlement crafts. Optional skill filter supported.", inline: false },
+  return discordCommandEmbed("Timbersteel Trade Help", `[Open the dashboard](${appUrl}) for claim monitoring, market analytics, public craft finding and bot settings.`, [
+    { name: "/supplies", value: "Current claim supplies, upkeep and runway.", inline: false },
+    { name: "/online", value: "Shows which claim members are currently online.", inline: false },
+    { name: "/crafts", value: "Lists current claim crafts. Optional skill filter supported.", inline: false },
     { name: "/price", value: "Looks up recent BitJita sale prices for an item.", inline: false },
     { name: "/craftwatch", value: "Shows and clears your profession notification roles.", inline: false },
     { name: "/craft-plan", value: "Shows Craft Planner progress. Choose a profession for a focused report.", inline: false },
@@ -9802,7 +9726,7 @@ async function discordOnlineCommand() {
     }
   });
   const online = details.filter((entry) => entry?.online);
-  return discordCommandEmbed("Members Online", online.length ? `**${online.length}/${members.length}** settlement members are online.` : `No settlement members appear online right now.`, [
+  return discordCommandEmbed("Members Online", online.length ? `**${online.length}/${members.length}** claim members are online.` : `No claim members appear online right now.`, [
     { name: "Online", value: online.length ? online.map((entry) => entry.name).join(", ").slice(0, 1024) : "None", inline: false },
     { name: "Tracked members", value: String(members.length), inline: true },
   ], online.length ? 0x4ee28a : 0x838e9e);
@@ -9815,7 +9739,7 @@ async function discordCraftsCommand(skillFilter = "") {
   const jobs = unwrap(payload, "craftResults", [])
     .filter((job) => !filter || JSON.stringify(job.levelRequirements ?? job.experiencePerProgress ?? "").toLowerCase().includes(filter) || String(job.recipeName ?? "").toLowerCase().includes(filter))
     .slice(0, 8);
-  if (!jobs.length) return discordCommandEmbed("Active Crafts", filter ? `No active settlement crafts matched **${skillFilter}**.` : "No active settlement crafts found.", [], 0x838e9e);
+  if (!jobs.length) return discordCommandEmbed("Active Crafts", filter ? `No active claim crafts matched **${skillFilter}**.` : "No active claim crafts found.", [], 0x838e9e);
   return discordCommandEmbed("Active Crafts", `${jobs.length} craft${jobs.length === 1 ? "" : "s"}${filter ? ` matching **${skillFilter}**` : ""}`, jobs.map((job) => {
     const remaining = toNumber(job.remainingCraftWork ?? job.actionsRemaining ?? job.effortRemaining ?? job.remainingEffort);
     return {
@@ -9953,7 +9877,7 @@ async function publicClaimById(claimId, { forceRefresh = false } = {}) {
     const claim = payload?.claim ?? payload;
     const normalized = normalizeDirectoryClaim(claim);
     if (!normalized || normalized.claimId !== id) {
-      const error = new Error("Settlement not found");
+      const error = new Error("Claim not found");
       error.statusCode = 404;
       throw error;
     }
@@ -10032,7 +9956,7 @@ function sharedPlanForClaim(claimId, planId) {
     throw error;
   }
   if (String(plan.claimId) !== String(claimId)) {
-    const error = new Error("Shared plan does not belong to this settlement");
+    const error = new Error("Shared plan does not belong to this claim");
     error.statusCode = 409;
     throw error;
   }
@@ -10092,7 +10016,7 @@ const server = createServer(async (req, res) => {
         ...settings,
         claimId: null,
         claimName: null,
-        productName: "BitCraft Settlement Monitor",
+        productName: "BitCraft Claim Monitor",
         canonicalUrl: "https://claim-monitor.com",
       });
     }
@@ -11629,24 +11553,24 @@ const server = createServer(async (req, res) => {
       const refresh = manualRefreshAccess(req, res);
       if (!refresh) return;
       const { forceRefresh } = refresh;
-      const body = await readJson(req, BODY_LIMITS.json);
-      return send(res, 200, await passiveCraftSummaries({ ...body, forceRefresh }));
+      const body = await readJson(req, BODY_LIMITS.claimHelper);
+      return send(res, 200, await passiveCraftSummaries({ claimId: body?.claimId, forceRefresh }));
     }
     if (req.method === "POST" && url.pathname === "/api/local/player-details") {
       if (!rateLimit(req, res, "player-details", RATE_LIMITS.expensiveLocal)) return;
       const refresh = manualRefreshAccess(req, res);
       if (!refresh) return;
       const { forceRefresh } = refresh;
-      const body = await readJson(req, BODY_LIMITS.json);
-      return send(res, 200, await playerDetailSummaries({ ...body, forceRefresh }));
+      const body = await readJson(req, BODY_LIMITS.claimHelper);
+      return send(res, 200, await playerDetailSummaries({ claimId: body?.claimId, forceRefresh }));
     }
     if (req.method === "POST" && url.pathname === "/api/local/production/crafts") {
       if (!rateLimit(req, res, "production-crafts", RATE_LIMITS.expensiveLocal)) return;
       const refresh = manualRefreshAccess(req, res);
       if (!refresh) return;
       const { forceRefresh } = refresh;
-      const body = await readJson(req, BODY_LIMITS.json);
-      return send(res, 200, await settlementProductionCrafts({ ...body, forceRefresh }));
+      const body = await readJson(req, BODY_LIMITS.claimHelper);
+      return send(res, 200, await settlementProductionCrafts({ claimId: body?.claimId, forceRefresh }));
     }
     if (req.method === "GET" && url.pathname === "/api/local/dashboard-data") {
       if (!rateLimit(req, res, "dashboard-data", RATE_LIMITS.expensiveLocal)) return;
@@ -11724,7 +11648,7 @@ function scheduleServerPolling(delayMs = 0) {
       const message = error instanceof Error ? error.message : String(error);
       pollStatus.lastAttemptAt = new Date().toISOString();
       pollStatus.lastError = message;
-      if (!isTestRuntime) console.warn(`Server settlement collection failed: ${message}`);
+      if (!isTestRuntime) console.warn(`Server claim collection failed: ${message}`);
     } finally {
       scheduleServerPolling(serverRefreshIntervalMs());
     }
@@ -11748,7 +11672,7 @@ function startBackgroundTasks() {
     });
   }, 15 * 60 * 1000);
   if (serverPollingEnabled) {
-    console.log(`Server settlement collection enabled every ${serverRefreshIntervalMs() / 1000} seconds`);
+    console.log(`Server claim collection enabled every ${serverRefreshIntervalMs() / 1000} seconds`);
     scheduleServerPolling(0);
   }
   if (scheduledJobsEnabled && !isTestRuntime) {

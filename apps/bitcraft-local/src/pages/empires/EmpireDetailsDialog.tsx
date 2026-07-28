@@ -78,7 +78,7 @@ export function EmpireDetailsDialog({ empireId, regionId, inactiveDays, onClose,
   ];
 
   return (
-    <Dialog open title={String(empire.name ?? "Empire Details")} description="Empire activity, members, and settlement overview." onClose={onClose} className="help-dialog empire-details-dialog">
+    <Dialog open title={String(empire.name ?? "Empire Details")} description="Empire activity, members, and claim overview." onClose={onClose} className="help-dialog empire-details-dialog">
       <header>
         <div><Landmark /><h2>{empire.name ?? "Empire Details"}</h2></div>
         <button type="button" onClick={onClose} aria-label="Close empire details"><X size={16} /></button>

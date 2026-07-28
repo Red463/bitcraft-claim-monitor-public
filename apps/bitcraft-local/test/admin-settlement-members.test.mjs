@@ -5,7 +5,7 @@ const { loadAdminSettlementMembers } = await import(
   new URL("../src/components/admin/adminSettlementMembers.ts", import.meta.url).href,
 );
 
-test("loads members from the configured settlement through the BitJita proxy", async () => {
+test("loads members from the configured claim through the BitJita proxy", async () => {
   const requestedUrls = [];
   const members = await loadAdminSettlementMembers("North & West/2", async (url) => {
     requestedUrls.push(url);
@@ -35,7 +35,7 @@ test("returns an empty array for a successful response without a member array", 
 test("rejects non-successful responses with the HTTP status", async () => {
   await assert.rejects(
     loadAdminSettlementMembers("claim-1", async () => new Response(null, { status: 503 })),
-    new Error("Unable to load settlement characters (HTTP 503)."),
+    new Error("Unable to load claim characters (HTTP 503)."),
   );
 });
 

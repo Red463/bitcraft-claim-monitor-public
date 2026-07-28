@@ -64,7 +64,7 @@ export function Research({ data }: { data: ReturnType<typeof normalizeData> }) {
       <div className="summary-grid research-summary">
         <MiniStat icon={<CheckCircle2 />} label="Researched" value={formatNumber(totalResearched)} />
         <MiniStat icon={<Lock />} label="Available" value={formatNumber(totalAvailable)} />
-        <MiniStat icon={<Crown />} label="Settlement Tier" value={`T${settlementTier || "-"}`} />
+        <MiniStat icon={<Crown />} label="Claim Tier" value={`T${settlementTier || "-"}`} />
         <MiniStat icon={<Box />} label="Supply Cap" value={maxSupplies ? formatNumber(maxSupplies) : "-"} />
         <MiniStat icon={<MapPin />} label="Tile Cap" value={maxTiles ? formatNumber(maxTiles) : "-"} />
       </div>

@@ -111,7 +111,7 @@ function usefulMarketLabel(...values: unknown[]): string | null {
     if (value == null) continue;
     const normalized = String(value).trim();
     if (!normalized) continue;
-    if (/^unknown(?:\s+(?:seller|buyer|item|settlement))?$/i.test(normalized)) continue;
+    if (/^unknown(?:\s+(?:seller|buyer|item|claim|settlement))?$/i.test(normalized)) continue;
     return normalized;
   }
   return null;
@@ -178,7 +178,7 @@ function productionToastBody(_status: ProductionCraftToastStatus, details: AnyRe
   const quantity = productionToastCraftCount(details);
   const itemLabel = quantity ? `${quantity.toLocaleString()}x ${itemName}` : itemName;
   const crafterName = productionToastCrafterName(details);
-  const buildingName = firstNonEmptyString(details.buildingName, details.structureName, raw.buildingName, raw.structureName, "Settlement production");
+  const buildingName = firstNonEmptyString(details.buildingName, details.structureName, raw.buildingName, raw.structureName, "Claim production");
   return `${itemLabel}${crafterName ? ` by ${crafterName}` : ""} at ${buildingName}`;
 }
 

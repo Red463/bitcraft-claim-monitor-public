@@ -859,12 +859,94 @@
   color: var(--text);
 }
 
+.craft-plan-create-dialog {
+  width: min(560px, calc(100vw - 28px));
+  max-height: calc(100vh - 36px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid rgba(139, 159, 184, 0.34);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(16, 23, 33, 0.99), rgba(7, 11, 17, 0.99));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.62);
+}
+
+.craft-plan-create-dialog .modal-header {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 18px 54px 14px 18px;
+  border-bottom: 1px solid rgba(139, 159, 184, 0.18);
+}
+
+.craft-plan-create-dialog .modal-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.craft-plan-create-dialog .modal-header p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.craft-plan-create-dialog .modal-header .icon-button {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.craft-plan-create-dialog .modal-header .icon-button:hover,
+.craft-plan-create-dialog .modal-header .icon-button:focus-visible {
+  border-color: var(--active-border);
+  color: var(--active-color);
+}
+
 .craft-plan-create-dialog .modal-body {
   display: grid;
   gap: 14px;
+  min-height: 0;
+  padding: 18px;
+  overflow-y: auto;
 }
 
 .craft-plan-create-dialog textarea {
   min-height: 100px;
   resize: vertical;
+}
+
+.craft-plan-create-dialog .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  border-top: 1px solid rgba(139, 159, 184, 0.18);
+  padding: 14px 18px 16px;
+}
+
+@media (max-width: 640px) {
+  .craft-plan-create-dialog {
+    width: min(100%, calc(100vw - 20px));
+    max-height: calc(100vh - 20px);
+  }
+  .craft-plan-create-dialog .modal-header { padding: 16px 50px 12px 15px; }
+  .craft-plan-create-dialog .modal-body { padding: 15px; }
+  .craft-plan-create-dialog .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 12px 15px 15px;
+  }
+  .craft-plan-create-dialog .modal-actions .toolbar-button { width: 100%; }
 }

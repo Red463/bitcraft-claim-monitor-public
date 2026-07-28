@@ -177,7 +177,7 @@ export function MapPanel({ data, focus, onClearFocus }: { data: ReturnType<typeo
   }, []);
   const current = React.useMemo(() => currentMapPlayerSelection(selectedIds, roster), [selectedIds, roster]);
   const defaultFocus = data.claim.locationX != null && data.claim.locationZ != null ? {
-    name: data.claim.name ?? "Monitored settlement",
+    name: data.claim.name ?? "Monitored claim",
     locationX: toNumber(data.claim.locationX),
     locationZ: toNumber(data.claim.locationZ),
   } : null;

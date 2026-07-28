@@ -105,7 +105,7 @@ export function BuyOrderFinder({ monitoredRegionId }: { monitoredRegionId: strin
       <div className="price-finder-controls">
         <label className="research-filter-field price-item-search">
           <span>Search buy orders</span>
-          <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Item, buyer, settlement, rarity..." />
+          <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Item, buyer, claim, rarity..." />
         </label>
         <label className="research-filter-field price-region-field">
           <span>Region</span>
@@ -165,7 +165,7 @@ export function BuyOrderFinder({ monitoredRegionId }: { monitoredRegionId: strin
                 <th><SortHeader id="rarity">Rarity</SortHeader></th>
                 <th><SortHeader id="region">Region</SortHeader></th>
                 <th><SortHeader id="buyer">Buyer</SortHeader></th>
-                <th><SortHeader id="settlement">Settlement</SortHeader></th>
+                <th><SortHeader id="settlement">Claim</SortHeader></th>
                 <th><SortHeader id="quantity">Qty</SortHeader></th>
                 <th><SortHeader id="unitPrice">Unit Price</SortHeader></th>
                 <th><SortHeader id="totalValue">Total Value</SortHeader></th>

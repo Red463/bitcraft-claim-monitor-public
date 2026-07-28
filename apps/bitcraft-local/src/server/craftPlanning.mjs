@@ -1,6 +1,6 @@
 import { plannerOverrideKeyFor } from "../pages/craftPlanningTaxonomyData.mjs";
 
-const DEFAULT_PLAN_NAME = "Settlement craft plan";
+const DEFAULT_PLAN_NAME = "Claim craft plan";
 const PLAN_SECTIONS = new Set([
   "Carpentry",
   "Construction",
@@ -1595,7 +1595,7 @@ export function computeCraftPlan({
   }
   const availableTotals = new Map();
   const unavailableSources = [];
-  addSourceTotals(availableTotals, storageSources, "Settlement storage", unavailableSources);
+  addSourceTotals(availableTotals, storageSources, "Claim storage", unavailableSources);
   addSourceTotals(availableTotals, playerSources, "Player inventory", unavailableSources);
   addSourceTotals(availableTotals, bankSources, "Player bank", unavailableSources);
   addSourceTotals(availableTotals, deployableSources, "Player deployable", unavailableSources);

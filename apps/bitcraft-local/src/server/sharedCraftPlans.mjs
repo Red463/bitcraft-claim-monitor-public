@@ -162,7 +162,7 @@ export function createSharedCraftPlanRepository({
     const active = Number(db.prepare(`
       SELECT COUNT(*) AS count FROM craft_plans WHERE claim_id = ? AND archived_at IS NULL
     `).get(id)?.count ?? 0);
-    if (active >= MAX_ACTIVE_PLANS) throw new CraftPlanLimitError("A settlement may have at most 25 active plans");
+    if (active >= MAX_ACTIVE_PLANS) throw new CraftPlanLimitError("A claim may have at most 25 active plans");
 
     const planId = randomToken("plan");
     const editKey = randomToken("edit");

@@ -77,13 +77,13 @@ export function ActivityPanel({ activity, activityTotal, claimId, error }: { act
   const storageMoves = memberActivity.filter((item) => item.event_type === "storage").length;
   const settlementChanges = memberActivity.length - storageMoves;
   const latestEvent = memberActivity[0]?.occurred_at ?? memberActivity[0]?.occurredAt;
-  const scopeLabel = memberFilter === "All" ? "settlement" : memberFilter;
+  const scopeLabel = memberFilter === "All" ? "claim" : memberFilter;
   return (
     <div className="panel activity-panel">
       <header className="members-topbar activity-topbar">
         <div>
           <h2>Activity</h2>
-          <p>A live audit trail of settlement updates and owned-storage movements.</p>
+          <p>A live audit trail of claim updates and owned-storage movements.</p>
         </div>
         <div className="dashboard-top-meta" aria-label="Activity status">
           <div className="dashboard-meta-cluster">
@@ -100,7 +100,7 @@ export function ActivityPanel({ activity, activityTotal, claimId, error }: { act
       {searchState.error ? <div className="error">Activity search failed: {searchState.error}</div> : null}
       <div className="activity-overview">
         <MiniStat icon={<Activity />} label={searching ? "Search Matches" : memberFilter === "All" ? "Total History" : "Member Events"} value={formatNumber(memberFilter === "All" ? sourceTotal : memberActivity.length)} title={searching ? `${formatNumber(combined.length)} matching rows loaded from full database search` : memberFilter === "All" ? `${formatNumber(combined.length)} recent events loaded` : `Attributed to ${memberFilter}`} />
-        <MiniStat icon={<Box />} label="Storage Moves" value={formatNumber(storageMoves)} title="Settlement containers only" />
+        <MiniStat icon={<Box />} label="Storage Moves" value={formatNumber(storageMoves)} title="Claim containers only" />
         <MiniStat icon={<Building2 />} label={memberFilter === "All" ? "System Changes" : "Other Changes"} value={formatNumber(settlementChanges)} title={memberFilter === "All" ? "Within loaded history" : "Not attributed to members"} />
         <MiniStat icon={<RefreshCw />} label="Latest Event" value={latestEvent ? timeAgo(latestEvent) : "-"} title={latestEvent ? dateLabel(latestEvent) : "Awaiting activity"} />
       </div>
@@ -136,7 +136,7 @@ export function ActivityPanel({ activity, activityTotal, claimId, error }: { act
         </div>
         <div className="activity-options">
           <label className="check-control"><input type="checkbox" checked={compact} onChange={(event) => setCompact(event.target.checked)} /> Combine repeated treasury changes</label>
-          <span>{searching ? `Searching all stored activity for "${searchState.query || trimmedSearch}". Showing up to 500 newest matches.` : memberFilter !== "All" ? "Member filtering only includes attributed storage and market events." : "Activity is limited to monitored settlement history."}</span>
+          <span>{searching ? `Searching all stored activity for "${searchState.query || trimmedSearch}". Showing up to 500 newest matches.` : memberFilter !== "All" ? "Member filtering only includes attributed storage and market events." : "Activity is limited to monitored claim history."}</span>
           {searching ? <button className="toolbar-button" onClick={() => setSearchQuery("")}>Clear search</button> : null}
         </div>
       </section>

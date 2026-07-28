@@ -18,7 +18,7 @@ test("every non-sensitive navigation route has concise purpose and next-action h
 
 test("active route selects its own contextual help", () => {
   assert.deepEqual(routeHelpFor("planning"), {
-    purpose: "Turn settlement goals into tracked material and production needs.",
+    purpose: "Turn claim goals into tracked material and production needs.",
     nextAction: "Review the Needs Board, then open a material to see where to get it.",
   });
 });
@@ -28,7 +28,7 @@ test("palette page commands are contextual and restricted commands open their ac
   const dashboard = commands.find((command) => command.panel === "dashboard");
   const planning = commands.find((command) => command.panel === "planning");
   const activated = [];
-  assert.match(dashboard.description, /Scan current settlement attention signals/);
+  assert.match(dashboard.description, /Scan current claim attention signals/);
   assert.equal(activatePagePaletteCommand(planning, (panel) => activated.push(panel)), true);
   assert.deepEqual(activated, ["planning"]);
   assert.match(planning.description, /Open to see access requirements/);

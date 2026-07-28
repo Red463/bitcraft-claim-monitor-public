@@ -18,9 +18,12 @@ test("server propagates a request-scoped bypass to live aggregate caches", () =>
   assert.match(server, /dashboardData\([^\n]+\{\s*forceRefresh\s*\}/);
   assert.match(server, /computedCompactCraftPlanResponse\(requestClaimId,\s*\{\s*forceRefresh,\s*refreshId,/);
   assert.match(server, /computedCraftPlanResponse\(requestClaimId,\s*\{\s*forceRefresh,\s*refreshId,/);
-  assert.match(server, /settlementProductionCrafts\(\{\s*\.\.\.body,\s*forceRefresh\s*\}\)/);
-  assert.match(server, /passiveCraftSummaries\(\{\s*\.\.\.body,\s*forceRefresh\s*\}\)/);
-  assert.match(server, /playerDetailSummaries\(\{\s*\.\.\.body,\s*forceRefresh\s*\}\)/);
+  assert.match(server, /settlementProductionCrafts\(\{\s*claimId:\s*body\?\.claimId,\s*forceRefresh\s*\}\)/);
+  assert.match(server, /passiveCraftSummaries\(\{\s*claimId:\s*body\?\.claimId,\s*forceRefresh\s*\}\)/);
+  assert.doesNotMatch(server, /settlementProductionCrafts\(\{\s*\.\.\.body/);
+  assert.doesNotMatch(server, /passiveCraftSummaries\(\{\s*\.\.\.body/);
+  assert.match(server, /playerDetailSummaries\(\{\s*claimId:\s*body\?\.claimId,\s*forceRefresh\s*\}\)/);
+  assert.doesNotMatch(server, /playerDetailSummaries\(\{\s*\.\.\.body/);
   assert.match(server, /fetchCachedActiveRegions\(include,\s*\{\s*forceRefresh\s*\}\)/);
   assert.match(server, /regionalEmpireOverview\(regionId,\s*\{\s*forceRefresh\s*\}\)/);
   assert.match(server, /regionalEmpireDetails\(empireId,\s*regionId,\s*inactiveDays,\s*\{\s*forceRefresh\s*\}\)/);

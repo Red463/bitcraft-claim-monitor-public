@@ -57,7 +57,7 @@ export function settlementListingState({
     return { kind: "error", title: "Unable to load live listings", detail: errorMessage };
   }
   if (loading && totalListings === 0) return { kind: "loading", title: "Loading live listings…" };
-  if (totalListings === 0) return { kind: "empty", title: "This settlement has no live listings." };
+  if (totalListings === 0) return { kind: "empty", title: "This claim has no live listings." };
   if (visibleListings === 0) return { kind: "no-match", title: "No listings match the current filters." };
   return null;
 }

@@ -60,7 +60,7 @@ export function ApiStatusBanner({ warnings, lastUpdated, diagnostics }: { warnin
         <summary>Details</summary>
         <div className="api-status-diagnostic-grid">
           <Info label="Page" value={diagnostics.page} />
-          <Info label="Settlement ID" value={diagnostics.claimId} />
+          <Info label="Claim ID" value={diagnostics.claimId} />
           <Info label="Warnings" value={formatNumber(uniqueWarnings.length)} />
           <Info label="Refresh state" value={diagnostics.loading ? "Refreshing" : "Idle"} />
           <Info label="Members loaded" value={formatNumber(diagnostics.dataCounts.members)} />

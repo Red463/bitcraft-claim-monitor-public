@@ -29,7 +29,7 @@ export function buildProfessionCapability({ id, name, settlementTier, members }:
   const tier = Math.max(0, Math.min(10, Math.floor(Number(settlementTier) || 0)));
   const sorted = [...members].sort((a, b) => b.level - a.level || a.name.localeCompare(b.name));
   const lead = sorted[0] ?? { name: "No member", level: 0 };
-  if (!tier) return { id, name, settlementTier: 0, nextTier: null, currentStatus: "unknown", dependencyRisk: "unknown", nextOutlook: "unknown", currentCapableCount: 0, nextCapableCount: 0, leadName: lead.name, leadLevel: lead.level, nextLevelGap: 0, explanation: "Settlement tier is unavailable, so readiness cannot be assessed." };
+  if (!tier) return { id, name, settlementTier: 0, nextTier: null, currentStatus: "unknown", dependencyRisk: "unknown", nextOutlook: "unknown", currentCapableCount: 0, nextCapableCount: 0, leadName: lead.name, leadLevel: lead.level, nextLevelGap: 0, explanation: "Claim tier is unavailable, so readiness cannot be assessed." };
   const currentLevel = tierRequiredLevel(tier);
   const nextTier = tier < 10 ? tier + 1 : null;
   const nextLevel = nextTier ? tierRequiredLevel(nextTier) : currentLevel;

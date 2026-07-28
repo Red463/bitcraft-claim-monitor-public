@@ -40,7 +40,7 @@ export function SettlementPicker({
         if (regionId.trim()) params.set("regionId", regionId.trim());
         const response = await fetch(`/api/local/claims/search?${params}`, { signal: controller.signal });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error ?? "Unable to search settlements");
+        if (!response.ok) throw new Error(payload.error ?? "Unable to search claims");
         setClaims(Array.isArray(payload.claims) ? payload.claims : []);
       } catch (reason) {
         if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason));
@@ -62,7 +62,7 @@ export function SettlementPicker({
     try {
       const response = await fetch(`/api/local/claims/${encodeURIComponent(id)}`);
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Unable to validate that settlement");
+      if (!response.ok) throw new Error(payload.error ?? "Unable to validate that claim");
       onSelect(payload);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -76,22 +76,22 @@ export function SettlementPicker({
     <div className={`settlement-picker-layer ${mode === "welcome" ? "is-welcome" : ""}`} role="dialog" aria-modal="true" aria-labelledby="settlement-picker-title">
       <section className="settlement-picker">
         {mode === "switch" && onCancel ? (
-          <button className="settlement-picker-close" type="button" onClick={onCancel} aria-label="Close settlement switcher"><X size={18} /></button>
+          <button className="settlement-picker-close" type="button" onClick={onCancel} aria-label="Close claim switcher"><X size={18} /></button>
         ) : null}
         <header>
           <span className="settlement-picker-mark"><Building2 size={26} /></span>
           <div>
-            <p className="eyebrow">{mode === "welcome" ? "Welcome to" : "Change settlement"}</p>
-            <h1 id="settlement-picker-title">BitCraft Settlement Monitor</h1>
+            <p className="eyebrow">{mode === "welcome" ? "Welcome to" : "Change claim"}</p>
+            <h1 id="settlement-picker-title">BitCraft Claim Monitor</h1>
             <p>{mode === "welcome"
-              ? "Monitor the dashboard, members, professions, production, construction, markets and activity for any public BitCraft settlement."
-              : "Choose another settlement. Current requests will be cancelled and settlement-specific views will reset safely."}</p>
+              ? "Monitor the dashboard, members, professions, production, construction, markets and activity for any public BitCraft claim."
+              : "Choose another claim. Current requests will be cancelled and claim-specific views will reset safely."}</p>
           </div>
         </header>
         <div className="settlement-picker-controls">
           <label>
-            <span>Settlement name or claim ID</span>
-            <span className="settlement-search-input"><Search size={17} /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search every settlement…" /></span>
+            <span>Claim name or claim ID</span>
+            <span className="settlement-search-input"><Search size={17} /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search every claim…" /></span>
           </label>
           <label>
             <span>Region ID <small>(optional)</small></span>
@@ -100,7 +100,7 @@ export function SettlementPicker({
         </div>
         {error ? <p className="settlement-picker-error" role="alert">{error}</p> : null}
         <div className="settlement-results" aria-busy={loading}>
-          {loading ? <p className="settlement-picker-status">Searching the settlement directory…</p> : null}
+          {loading ? <p className="settlement-picker-status">Searching the claim directory…</p> : null}
           {!loading && numericSearch && !claims.some((claim) => claim.claimId === numericSearch) ? (
             <button className="settlement-result direct-id" type="button" onClick={() => void choose(numericSearch)} disabled={Boolean(selectingId)}>
               <span><strong>Claim #{numericSearch}</strong><small>Validate this claim ID directly</small></span><ArrowRight size={17} />
@@ -119,11 +119,11 @@ export function SettlementPicker({
               <ArrowRight size={17} />
             </button>
           )) : null}
-          {!loading && !claims.length && !numericSearch ? <p className="settlement-picker-status">No settlements match this search. Try a name, numeric claim ID, or remove the region filter.</p> : null}
+          {!loading && !claims.length && !numericSearch ? <p className="settlement-picker-status">No claims match this search. Try a name, numeric claim ID, or remove the region filter.</p> : null}
         </div>
         <footer>
-          <span>No account is required. Your selected settlement and preferences stay in this browser.</span>
-          <a href="https://bitjita.com/docs/api" target="_blank" rel="noreferrer">Settlement data is provided by BitJita.</a>
+          <span>No account is required. Your selected claim and preferences stay in this browser.</span>
+          <a href="https://bitjita.com/docs/api" target="_blank" rel="noreferrer">Claim data is provided by BitJita.</a>
         </footer>
       </section>
     </div>

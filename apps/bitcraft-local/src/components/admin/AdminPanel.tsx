@@ -46,7 +46,7 @@ type AdminTab = "operations" | "claims" | "plans" | "settings" | "administrators
 
 const TABS: Array<{ id: AdminTab; label: string; icon: React.ComponentType<{ size?: number }> }> = [
   { id: "operations", label: "Operations", icon: Activity },
-  { id: "claims", label: "Active settlements", icon: Server },
+  { id: "claims", label: "Active claims", icon: Server },
   { id: "plans", label: "Shared plans", icon: FileWarning },
   { id: "settings", label: "Public settings", icon: Settings },
   { id: "administrators", label: "Administrators", icon: Users },
@@ -259,7 +259,7 @@ export function AdminPanel({
       <header className="members-topbar admin-topbar">
         <div>
           <span className="eyebrow">Protected console</span>
-          <Heading>Settlement Monitor Admin</Heading>
+          <Heading>Claim Monitor Admin</Heading>
           <p>{auth.user?.username} · {role}</p>
         </div>
         <button className="toolbar-button" onClick={() => void mutate("/admin/logout", { method: "POST", body: "{}" }, "")}>
@@ -291,11 +291,11 @@ export function AdminPanel({
       {!loading && tab === "claims" ? (
         <div className="admin-section-stack">
           <div className="split-header">
-            <div><h3>Claim directory and active collection</h3><p className="legend">Only recently interested settlements receive server-backed history collection.</p></div>
+            <div><h3>Claim directory and active collection</h3><p className="legend">Only recently interested claims receive server-backed history collection.</p></div>
             {canChange ? <button disabled={busy} className="toolbar-button primary" onClick={() => void mutate("/admin/claims/refresh", { method: "POST", body: "{}" }, "Claim directory refreshed.")}><RefreshCw size={14} /> Refresh directory</button> : null}
           </div>
           <DataPairs value={data?.directory ?? null} />
-          <div className="table-wrap"><table><thead><tr><th>Settlement</th><th>Last interest</th><th>Last success</th><th>Lag</th><th>Gaps</th></tr></thead><tbody>
+          <div className="table-wrap"><table><thead><tr><th>Claim</th><th>Last interest</th><th>Last success</th><th>Lag</th><th>Gaps</th></tr></thead><tbody>
             {activeClaims.map((claim) => <tr key={claim.claimId}><td>{claim.claimName ?? `Claim ${claim.claimId}`} <small>#{claim.claimId}</small></td><td>{timeAgo(claim.lastInterestAt)}</td><td>{timeAgo(claim.coverage?.lastSuccessAt)}</td><td>{valueLabel(claim.coverage?.lagSeconds)}</td><td>{valueLabel(claim.coverage?.dataGaps)}</td></tr>)}
           </tbody></table></div>
         </div>
@@ -306,12 +306,12 @@ export function AdminPanel({
           <h3>Shared-plan moderation</h3>
           {reports.length ? <p className="error">{reports.length} open abuse report{reports.length === 1 ? "" : "s"}</p> : <p className="legend">No open abuse reports.</p>}
           {reports.length ? <div className="table-wrap"><table><thead><tr><th>Report</th><th>Plan</th><th>Reason</th><th>Submitted</th><th /></tr></thead><tbody>
-            {reports.map((report) => <tr key={report.reportId}><td>#{report.reportId}</td><td>{report.planId}<br /><small>Settlement #{report.claimId}</small></td><td>{report.reason}{report.details ? <><br /><small>{report.details}</small></> : null}</td><td>{dateLabel(report.createdAt)}</td><td className="table-actions">
+            {reports.map((report) => <tr key={report.reportId}><td>#{report.reportId}</td><td>{report.planId}<br /><small>Claim #{report.claimId}</small></td><td>{report.reason}{report.details ? <><br /><small>{report.details}</small></> : null}</td><td>{dateLabel(report.createdAt)}</td><td className="table-actions">
               {canChange ? <button className="toolbar-button" onClick={() => void mutate(`/admin/craft-plan-reports/${report.reportId}/resolve`, { method: "POST", body: "{}" }, "Report resolved.")}>Resolve</button> : null}
               {canChange ? <button className="toolbar-button" onClick={() => void mutate(`/admin/craft-plan-reports/${report.reportId}/dismiss`, { method: "POST", body: "{}" }, "Report dismissed.")}>Dismiss</button> : null}
             </td></tr>)}
           </tbody></table></div> : null}
-          <div className="table-wrap"><table><thead><tr><th>Plan</th><th>Settlement</th><th>Revision</th><th>Updated</th><th>Status</th><th /></tr></thead><tbody>
+          <div className="table-wrap"><table><thead><tr><th>Plan</th><th>Claim</th><th>Revision</th><th>Updated</th><th>Status</th><th /></tr></thead><tbody>
             {plans.map((plan) => <tr key={plan.planId}><td><strong>{plan.title}</strong><br /><small>{plan.planId}</small></td><td>#{plan.claimId}</td><td>{plan.revision}</td><td>{dateLabel(plan.updatedAt)}</td><td>{plan.archivedAt ? "Archived" : "Active"}</td><td className="table-actions">
               {canChange && !plan.archivedAt ? <button className="icon-button" title="Archive" onClick={() => void mutate(`/admin/craft-plans/${encodeURIComponent(plan.planId)}/archive`, { method: "POST", body: "{}" }, "Plan archived.")}><Archive size={14} /></button> : null}
               {canChange ? <button className="icon-button" title="Rotate edit key" onClick={() => void rotateAdminPlanKey(plan)}><KeyRound size={14} /></button> : null}
@@ -334,7 +334,7 @@ export function AdminPanel({
           })();
         }}>
           <h3>Public application settings</h3>
-          <p className="legend">These defaults apply to anonymous visitors. Settlement choice and personal display preferences stay in each browser.</p>
+          <p className="legend">These defaults apply to anonymous visitors. Claim choice and personal display preferences stay in each browser.</p>
           <div className="form-grid">
             <label>Default page<select value={draft.defaultPage} onChange={(event) => setDraft((current) => ({ ...current, defaultPage: event.target.value as AppSettings["defaultPage"] }))}><option value="dashboard">Dashboard</option><option value="members">Members</option><option value="market">Market</option><option value="map">Map</option></select></label>
             <label>Default region<input inputMode="numeric" value={draft.defaultRegion ?? ""} onChange={(event) => setDraft((current) => ({ ...current, defaultRegion: event.target.value }))} placeholder="Optional region ID" /></label>

@@ -47,7 +47,7 @@ function useEmpireRegions(includeRegionId?: string): ActiveRegion[] {
 }
 
 function regionLabel(region: ActiveRegion, monitoredRegionId?: string) {
-  const suffix = String(region.regionId) === String(monitoredRegionId ?? "") ? " (settlement)" : "";
+  const suffix = String(region.regionId) === String(monitoredRegionId ?? "") ? " (claim)" : "";
   return `R${region.regionId}${region.regionName ? ` — ${region.regionName}` : ""}${suffix}`;
 }
 
@@ -121,7 +121,7 @@ export function Empires({ monitoredRegionId }: { monitoredRegionId: string; acce
       <header className="page-title-row" data-tour="empires-page">
         <div>
           <h2>Empires</h2>
-          <p>Regional empire overview with settlement and leadership detail.</p>
+          <p>Regional empire overview with claim and leadership detail.</p>
         </div>
         <div className="page-title-actions">
           <label className="field compact-field">

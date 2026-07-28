@@ -230,11 +230,11 @@ test("Craft Planning manager owns full admin editing controls", () => {
   assert.match(server, /techType === "settlement"/);
   assert.match(manager, /Target items/);
   assert.doesNotMatch(manager, /craft-plan-item-icon"><ItemIcon item=\{target\} \/><\/span><ItemLabel item=\{target\} \/>/);
-  assert.match(manager, /Settlement storage/);
+  assert.match(manager, /Claim storage/);
   assert.match(manager, /Players & deployables/);
   assert.match(manager, /bankPlayerIds/);
   assert.match(manager, />Banks<\/span>/);
-  assert.match(manager, /all BitJita-visible settlement banks/i);
+  assert.match(manager, /all BitJita-visible claim banks/i);
   assert.match(manager, /craft-plan-player-source-card/);
   assert.match(styles, /\.craft-plan-player-source-toggles\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(100px,\s*1fr\)\)/s);
   assert.match(styles, /\.craft-plan-player-source-card\s+header\s*\{[^}]*display:\s*grid/s);

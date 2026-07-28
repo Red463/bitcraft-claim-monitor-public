@@ -376,7 +376,7 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
   }
 
   async function archivePlan() {
-    if (!selectedPlanId || !storedEditKey || !window.confirm(`Archive “${selectedSharedPlan?.title ?? selectedPlanId}”? Viewers will no longer see it in the settlement list.`)) return;
+    if (!selectedPlanId || !storedEditKey || !window.confirm(`Archive “${selectedSharedPlan?.title ?? selectedPlanId}”? Viewers will no longer see it in the claim list.`)) return;
     const response = await fetch(`${LOCAL_API}/craft-plans/${encodeURIComponent(selectedPlanId)}/archive`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-plan-edit-key": storedEditKey },
@@ -678,7 +678,7 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
             : { "x-plan-edit-key": storedEditKey }),
         },
         body: JSON.stringify({
-          title: selectedSharedPlan.title ?? nextConfig.name ?? "Settlement craft plan",
+          title: selectedSharedPlan.title ?? nextConfig.name ?? "Claim craft plan",
           description: selectedSharedPlan.description ?? "",
           config: nextConfig,
           expectedRevision: Number(selectedSharedPlan.revision ?? plan?.sharedPlan?.revision ?? 1),
@@ -773,7 +773,7 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
       <header className="page-header split-header craft-plan-page-header">
         <div>
           <h2><ClipboardList size={24} /> Craft Planning</h2>
-          <p>{selectedSharedPlan?.description || (selectedPlanId ? String(config.name ?? selectedSharedPlan?.title ?? "Settlement craft plan") : "Choose a settlement plan to view its shared targets and Needs Board.")}</p>
+          <p>{selectedSharedPlan?.description || (selectedPlanId ? String(config.name ?? selectedSharedPlan?.title ?? "Claim craft plan") : "Choose a claim plan to view its shared targets and Needs Board.")}</p>
         </div>
         <div className="dashboard-top-meta">
           <a className="toolbar-button" href={`${LOCAL_API}/catalog/probabilities.xlsx`}><Download size={15} aria-hidden="true" /> Download probabilities</a>
@@ -785,7 +785,7 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
         </div>
       </header>
 
-      <section className="craft-plan-shared-toolbar" aria-label="Shared settlement plan">
+      <section className="craft-plan-shared-toolbar" aria-label="Shared claim plan">
         <label>
           <span>Shared plan</span>
           <select value={selectedPlanId} disabled={plansLoading} onChange={(event) => choosePlan(event.target.value)}>
@@ -804,7 +804,7 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
         <div className="empty-state">
           <Target size={36} />
           <strong>Choose a shared plan</strong>
-          <span>Select a plan created for this settlement, or create one and share its viewer link with other members.</span>
+          <span>Select a plan created for this claim, or create one and share its viewer link with other members.</span>
         </div>
       ) : !hasPlan ? (
         <div className="empty-state">
@@ -964,14 +964,14 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
           planId: selectedPlanId,
           editKey: storedEditKey,
           revision: Number(selectedSharedPlan.revision ?? plan?.sharedPlan?.revision ?? 1),
-          title: String(selectedSharedPlan.title ?? config.name ?? "Settlement craft plan"),
+          title: String(selectedSharedPlan.title ?? config.name ?? "Claim craft plan"),
           description: selectedSharedPlan.description,
         }}
         onSaved={() => setManagerRefreshToken((value) => value + 1)}
       /> : null}
       <Dialog open={createPlanOpen} title="Create shared plan" closeOnBackdrop={false} onClose={() => setCreatePlanOpen(false)} className="modal craft-plan-create-dialog">
         <header className="modal-header">
-          <div><h2><ClipboardList size={21} /> Create a settlement plan</h2><p>The plan will be publicly viewable for this settlement. You receive one private recovery key for editing.</p></div>
+          <div><h2><ClipboardList size={21} /> Create a claim plan</h2><p>The plan will be publicly viewable for this claim. You receive one private recovery key for editing.</p></div>
           <button className="icon-button" type="button" onClick={() => setCreatePlanOpen(false)} aria-label="Close create plan dialog"><X size={18} /></button>
         </header>
         <div className="modal-body">

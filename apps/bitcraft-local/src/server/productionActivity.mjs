@@ -41,7 +41,7 @@ export function craftOutputItem(job, craftsPayload = {}) {
 
 export function craftDisplayName(job, craftsPayload = {}) {
   const item = craftOutputItem(job, craftsPayload);
-  return String(item?.name ?? job.recipeName ?? job.name ?? `${job.buildingName ?? "Settlement"} craft`);
+  return String(item?.name ?? job.recipeName ?? job.name ?? `${job.buildingName ?? "Claim"} craft`);
 }
 
 export function normalizeProductionJob(job, craftsPayload = {}) {
@@ -50,7 +50,7 @@ export function normalizeProductionJob(job, craftsPayload = {}) {
   const output = job.craftedItem?.[0] ?? {};
   const itemId = output.item_id ?? output.itemId ?? output.id ?? job.outputItemId ?? job.itemId ?? null;
   const itemType = output.item_type ?? output.itemType ?? item?.itemType ?? job.outputItemType ?? job.itemType ?? null;
-  const label = String(item?.name ?? job.itemName ?? job.label ?? job.recipeName ?? job.name ?? `${job.buildingName ?? "Settlement"} craft`);
+  const label = String(item?.name ?? job.itemName ?? job.label ?? job.recipeName ?? job.name ?? `${job.buildingName ?? "Claim"} craft`);
   return {
     key: craftJobKey(job),
     label,

@@ -69,7 +69,7 @@ test("admin console is operations-focused and exposes public edition roles", asy
   const panel = await source("src/components/admin/AdminPanel.tsx");
   const permissions = await source("src/server/adminPermissions.mjs");
 
-  for (const section of ["Active settlements", "Shared plans", "Retention", "Administrators", "Audit"]) {
+  for (const section of ["Active claims", "Shared plans", "Retention", "Administrators", "Audit"]) {
     assert.match(panel, new RegExp(section, "i"));
   }
   assert.match(permissions, /owner/);

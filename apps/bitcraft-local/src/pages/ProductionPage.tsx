@@ -19,35 +19,34 @@ import type { LoadState } from "../types/app";
 import { useManualRefresh } from "../refresh/ManualRefreshContext";
 import { manualRefreshHeaders } from "../refresh/manualRefresh.mjs";
 import { craftProgressKey, hasRecentCraftContribution, productionMetrics } from "./production/productionUtils";
+import { claimHelperRequestBody } from "../api/claimHelperRequests";
 
 const API = "/api/bitjita";
 const LOCAL_API = "/api/local";
 
-export function MemberPassiveCrafts({ members, refreshToken }: { members: AnyRecord[]; refreshToken: number }) {
+export function MemberPassiveCrafts({ claimId, refreshToken }: { claimId: string; refreshToken: number }) {
   const { request, trackPromise } = useManualRefresh();
   const [state, setState] = React.useState<LoadState<AnyRecord[]>>({ data: null, error: null, loading: true });
-  const memberKey = members.map((member) => String(member.playerEntityId ?? "")).filter(Boolean).join(",");
+  const [coverage, setCoverage] = React.useState<AnyRecord | null>(null);
   React.useEffect(() => {
-    if (!memberKey) {
+    if (!claimId.trim()) {
       setState({ data: [], error: null, loading: false });
+      setCoverage(null);
       return;
     }
     const controller = new AbortController();
     setState((previous) => previous.data ? { ...previous, loading: true, error: null } : { data: null, error: null, loading: true });
-    const memberEntries = members.filter((member) => member.playerEntityId);
     const refresh = fetch(`${LOCAL_API}/passive-crafts`, {
       method: "POST",
       headers: { "content-type": "application/json", ...manualRefreshHeaders(request, "production") },
-      body: JSON.stringify({ members: memberEntries.map((member) => ({
-        playerEntityId: member.playerEntityId,
-        userName: member.userName ?? member.username,
-      })) }),
+      body: claimHelperRequestBody(claimId),
       signal: controller.signal,
     }).then((response) => response.ok ? response.json() : Promise.reject(new Error(`passive crafts HTTP ${response.status}`)))
       .then((payload) => {
       if (controller.signal.aborted) return;
       const rows = (payload.rows ?? []) as AnyRecord[];
       const failures = toNumber(payload.failed);
+      setCoverage(payload.coverage ?? null);
       setState({
         data: rows,
         error: failures ? `${failures} member${failures === 1 ? "" : "s"} could not be loaded.` : null,
@@ -63,20 +62,21 @@ export function MemberPassiveCrafts({ members, refreshToken }: { members: AnyRec
       }));
     });
     return () => controller.abort();
-  }, [memberKey, refreshToken, request?.sequence, trackPromise]);
+  }, [claimId, refreshToken, request?.sequence, trackPromise]);
   const rows = state.data ?? [];
   return (
     <section className="settlement-passive-crafts">
       <div className="split-header">
         <div className="dashboard-section-heading">
           <h3><Factory size={15} /> Member Passive Crafts</h3>
-          <p>Recent public passive output for current settlement members. BitJita does not report craft location, so entries may have been performed elsewhere.</p>
+          <p>Recent public passive output for current claim members. BitJita does not report craft location, so entries may have been performed elsewhere.</p>
         </div>
         {state.loading && rows.length ? <span className="refreshing-label">Updating...</span> : null}
       </div>
       {state.error ? <p className="legend">{state.error}</p> : null}
+      {coverage && coverage.complete === false ? <p className="claim-enrichment-progress" role="status">Updating details for {toNumber(coverage.covered)} of {toNumber(coverage.rosterTotal)} claim members.</p> : null}
       {state.loading && !state.data ? <p className="legend">Loading passive craft history...</p> : null}
-      {!state.loading && rows.length === 0 ? <div className="empty-state"><Factory />No passive craft history reported for settlement members.</div> : null}
+      {!state.loading && rows.length === 0 ? <div className="empty-state"><Factory />No passive craft history reported for claim members.</div> : null}
       {rows.length ? <DataTable rows={rows} scrollLabel="Production jobs table" emptyState="No production jobs match the current filters." columns={[
         ["Output", (row) => <strong>{row.recipe}</strong>],
         ["Tier", (row) => row.tier ? <TierBadge tier={row.tier} /> : "-"],
@@ -332,7 +332,7 @@ export function Production({ data, refreshToken, selectedMemberId, onSelectMembe
           );
         })}
       </div>
-      <MemberPassiveCrafts members={data.members} refreshToken={refreshToken} />
+      <MemberPassiveCrafts claimId={String(data.claim?.entityId ?? "")} refreshToken={refreshToken} />
     </div>
   );
 }

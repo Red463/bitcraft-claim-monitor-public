@@ -75,3 +75,17 @@ test("sidebar overview label preserves the existing command group key", () => {
   assert.doesNotMatch(navigation, /\{\s*id:\s*"overview"/);
   assert.doesNotMatch(navigation, /label:\s*"Command"/);
 });
+
+test("history coverage is an inline warning and never reuses the fixed API banner", () => {
+  const appShell = readFileSync(new URL("../src/AppShell.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../src/styles/app-chrome.css", import.meta.url), "utf8");
+  const coverageComponent = appShell.match(/function CollectionCoverage[\s\S]*?\n\}/)?.[0] ?? "";
+  const warningRule = css.match(/\.history-coverage-warning\s*\{(?<body>[^}]+)\}/)?.groups?.body ?? "";
+
+  assert.match(appShell, /coveragePresentation/);
+  assert.match(coverageComponent, /history-coverage-warning/);
+  assert.doesNotMatch(coverageComponent, /api-status-banner/);
+  assert.match(css, /\.history-coverage-warning/);
+  assert.doesNotMatch(warningRule, /position:\s*fixed/);
+  assert.doesNotMatch(warningRule, /z-index/);
+});

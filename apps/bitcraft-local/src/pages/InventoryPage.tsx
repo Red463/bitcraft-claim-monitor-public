@@ -225,7 +225,7 @@ export function Inventory({ data }: { data: ReturnType<typeof normalizeData> }) 
         </div>
       </div>
       <div className="container-list">
-        {filteredContainers.length === 0 ? <AsyncState kind={containers.length ? "no-match" : "empty"} title={containers.length ? "No containers match these filters" : "No storage containers available"} detail={containers.length ? "Clear a material, item, container, tier, rarity, or storage filter to broaden the results." : "Containers appear when BitJita returns settlement storage data."} /> : null}
+        {filteredContainers.length === 0 ? <AsyncState kind={containers.length ? "no-match" : "empty"} title={containers.length ? "No containers match these filters" : "No storage containers available"} detail={containers.length ? "Clear a material, item, container, tier, rarity, or storage filter to broaden the results." : "Containers appear when BitJita returns claim storage data."} /> : null}
         {filteredContainers.map((container) => {
           const quantity = container.items.reduce((total: number, item: AnyRecord) => total + toNumber(item.quantity), 0);
           return (

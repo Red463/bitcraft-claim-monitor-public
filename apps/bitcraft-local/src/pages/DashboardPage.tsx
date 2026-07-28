@@ -62,7 +62,7 @@ export function Dashboard({ data, activity, marketHistory, dashboardSummary, las
   const regionSettlements = data.region;
   const regionWealth = regionSettlements.reduce((total, row) => total + toNumber(row.treasury), 0);
   const regionWealthDetail = regionSettlements.length
-    ? `${formatNumber(regionSettlements.length)} settlement${regionSettlements.length === 1 ? "" : "s"} in region`
+    ? `${formatNumber(regionSettlements.length)} claim${regionSettlements.length === 1 ? "" : "s"} in region`
     : "Region data loading";
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -160,13 +160,13 @@ export function Dashboard({ data, activity, marketHistory, dashboardSummary, las
     <div className="dashboard-page">
       <PageHeader
         title="Dashboard"
-        description={`Real-time summary of ${claim.name ?? "the monitored settlement"}`}
+        description={`Real-time summary of ${claim.name ?? "the monitored claim"}`}
         meta={<div className="dashboard-top-meta">
           <div className="dashboard-meta-cluster">
             <span className="dashboard-region-line"><Globe2 size={15} /> {claim.regionName ?? "Unknown"} <span className="dashboard-region-badge">R{claim.regionId ?? "?"}</span></span>
             <span className="dashboard-refresh-line"><span className="online-dot is-online" /> Last updated {lastUpdated ? lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "waiting"}</span>
           </div>
-          <span className="dashboard-claim-link"><TierBadge tier={claim.tier} /> {claim.name ?? "Monitored Settlement"}</span>
+          <span className="dashboard-claim-link"><TierBadge tier={claim.tier} /> {claim.name ?? "Monitored Claim"}</span>
         </div>}
       />
 
@@ -276,7 +276,7 @@ export function Dashboard({ data, activity, marketHistory, dashboardSummary, las
                 <small>{item.body}</small>
                 <ArrowUp size={14} />
               </button>
-            )) : <div className="dashboard-empty">No urgent settlement issues detected.</div>}
+            )) : <div className="dashboard-empty">No urgent claim issues detected.</div>}
           </div>
         </article>
       </section>

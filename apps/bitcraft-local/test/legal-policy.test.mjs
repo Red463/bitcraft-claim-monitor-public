@@ -9,10 +9,10 @@ test("default policy identifies the public application and operator", () => {
   assert.equal(policy.version, LEGAL_VERSION);
   assert.equal(policy.effectiveDate, LEGAL_EFFECTIVE_DATE);
   assert.equal(policy.operator.controllerName, "Thomas Bush");
-  assert.equal(policy.operator.projectName, "BitCraft Settlement Monitor");
+  assert.equal(policy.operator.projectName, "BitCraft Claim Monitor");
   assert.equal(policy.operator.privacyEmail, "privacy@timbersteeltrade.com");
   assert.equal(policy.operator.minimumAge, 18);
-  assert.equal(policy.operator.status, "BitCraft Settlement Monitor is operated by Thomas Bush.");
+  assert.equal(policy.operator.status, "BitCraft Claim Monitor is operated by Thomas Bush.");
 });
 
 test("policy describes anonymous browsing, local preferences, shared plans, and admin-only Discord", () => {

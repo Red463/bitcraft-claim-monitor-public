@@ -303,7 +303,7 @@ export function SettlementMarket({ data, history, claimId, locationSearch, listi
           </div>
           <div className="dashboard-settlement-pill">
             <span className="status-pill">R{data.claim?.regionId ?? "?"}</span>
-            <span>{data.claim?.name ?? "Settlement market"}</span>
+            <span>{data.claim?.name ?? "Claim market"}</span>
           </div>
         </div>
       </header>
@@ -315,8 +315,8 @@ export function SettlementMarket({ data, history, claimId, locationSearch, listi
       </div>
       <section className="command-filter-panel market-command-panel" data-tour="market-tools">
         <div className="command-filter-header">
-          <span className="command-filter-title"><CircleDollarSign size={15} /> Settlement market</span>
-          <span className="market-command-note">Browse only the configured settlement's monitored listings and confirmed sales.</span>
+          <span className="command-filter-title"><CircleDollarSign size={15} /> Claim market</span>
+          <span className="market-command-note">Browse only the configured claim's monitored listings and confirmed sales.</span>
         </div>
         <div className="market-tool-row">
           <div className="tabs primary-tabs market-tabs">
@@ -333,7 +333,7 @@ export function SettlementMarket({ data, history, claimId, locationSearch, listi
       </section>
       {currentView === "analytics" ? (
         <>
-          <p className="legend market-legend">Completed sales for orders listed at this settlement market, confirmed from BitJita trade records.</p>
+          <p className="legend market-legend">Completed sales for orders listed at this claim market, confirmed from BitJita trade records.</p>
           <div className="metric-grid market-analytics-metrics">
             <MiniStat icon={<CheckCircle2 />} label="Confirmed Sales" value={formatNumber(confirmedSales)} />
             <MiniStat icon={<Package />} label="Units Sold" value={formatNumber(unitsSold)} />
@@ -363,7 +363,7 @@ export function SettlementMarket({ data, history, claimId, locationSearch, listi
           </div>
           <section className="market-section">
             <h3><CheckCircle2 size={17} /> Recent Confirmed Sales</h3>
-            <p className="legend">Imported completed sales retained in this monitor's history for the selected current settlement member(s).</p>
+            <p className="legend">Imported completed sales retained in this monitor's history for the selected current claim member(s).</p>
             <DataTable rows={apiTrades} scrollLabel="Completed market trades table" emptyState="No completed trades were returned for this window." columns={[
               ["When", r => dateLabel(r.timestamp ?? r.createdAt)],
               ["Item", r => <ItemLabel item={r} name={r.itemName ?? "-"} />],

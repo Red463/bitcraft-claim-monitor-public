@@ -75,7 +75,7 @@ test("Market tab locations canonicalize aliases and clean invalid values", () =>
 test("route shell restores history and announces explicit route changes", () => {
   assert.match(appShell, /window\.addEventListener\("popstate", restoreFromHistory\)/);
   assert.match(appShell, /function restoreFromHistory\(\) \{[\s\S]*?setRouteStatus\(""\)/);
-  assert.match(appShell, /document\.title = `\$\{[^}]+\} — BitCraft Settlement Monitor`/);
+  assert.match(appShell, /document\.title = `\$\{[^}]+\} — BitCraft Claim Monitor`/);
   assert.match(appShell, /role="status" aria-live="polite"/);
   assert.match(appShell, /mainRef\.current\?\.focus\(\)/);
   assert.match(appShell, /updateQueryState\(\{[\s\S]*?page: panel,[\s\S]*?\}, "push"\)/);
@@ -119,16 +119,16 @@ test("navigation retains existing groups and non-admin route IDs", () => {
   }
 });
 
-test("settlement navigation labels derive from the configured claim name", () => {
+test("claim navigation labels derive from the configured claim name", () => {
   assert.equal(typeof navigationLabelsModule.settlementNavigationLabel, "function");
   assert.equal(typeof navigationLabelsModule.settlementMarketTitle, "function");
   assert.equal(navigationLabelsModule.settlementNavigationLabel(" Timbersteel Trade "), "Timbersteel Trade");
-  assert.equal(navigationLabelsModule.settlementNavigationLabel(""), "Settlement");
+  assert.equal(navigationLabelsModule.settlementNavigationLabel(""), "Claim");
   assert.equal(navigationLabelsModule.settlementMarketTitle(" Timbersteel Trade "), "Timbersteel Trade Market");
-  assert.equal(navigationLabelsModule.settlementMarketTitle(null), "Settlement Market");
+  assert.equal(navigationLabelsModule.settlementMarketTitle(null), "Claim Market");
 });
 
-test("navigation and page headings use the approved settlement naming", () => {
+test("navigation and page headings use the approved claim naming", () => {
   assert.match(navigation, /\["craft-monitor", "Craft Monitor", Factory\]/);
   assert.match(navigation, /\["settlement-market", "Local Market", CircleDollarSign\]/);
   assert.match(navigation, /\["region", "Region", Globe2\]/);
