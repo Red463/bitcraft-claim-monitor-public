@@ -5,6 +5,7 @@ import "./styles/notifications.css";
 import "./styles/app-popups.css";
 import "./styles/first-run-tour.css";
 import {
+  AlertTriangle,
   ArrowDown,
   Bell,
   Building2,
@@ -62,6 +63,7 @@ import { applyTheme, DEFAULT_THEME, type ThemeSettings } from "./theme";
 import { ManualRefreshProvider, type ManualRefreshRequest } from "./refresh/ManualRefreshContext";
 import { cooldownRemainingMs, createManualRefreshRequest, createManualRefreshTaskCoordinator, manualRefreshApplies } from "./refresh/manualRefresh.mjs";
 import { SettlementPicker } from "./settlements/SettlementPicker";
+import { coveragePresentation } from "./history/coveragePresentation";
 import {
   SELECTED_SETTLEMENT_STORAGE_KEY,
   initialSettlementId,
@@ -116,14 +118,15 @@ function CollectionCoverage({ claimId, page }: { claimId: string; page: string }
       });
     return () => controller.abort();
   }, [claimId, page]);
-  if (!coverage) return null;
-  const lagMinutes = Math.max(0, Math.round(toNumber(coverage.lagSeconds) / 60));
+  const presentation = coveragePresentation(coverage);
+  if (!presentation) return null;
   return (
-    <div className={`api-status-banner ${toNumber(coverage.dataGaps) > 0 || lagMinutes > 15 ? "warning" : ""}`} role="status">
-      <strong>History coverage</strong>
-      <span>Collecting since {coverage.collectionStart ? new Date(coverage.collectionStart).toLocaleString() : "first successful refresh"}</span>
-      <span>Last success {coverage.lastSuccessAt ? new Date(coverage.lastSuccessAt).toLocaleString() : "pending"}</span>
-      <span>{lagMinutes}m lag · {toNumber(coverage.dataGaps)} data gap{toNumber(coverage.dataGaps) === 1 ? "" : "s"}</span>
+    <div className="history-coverage-warning" role="status">
+      <AlertTriangle aria-hidden="true" size={17} />
+      <div>
+        <strong>{presentation.summary}</strong>
+        <span>{presentation.detail}</span>
+      </div>
     </div>
   );
 }
