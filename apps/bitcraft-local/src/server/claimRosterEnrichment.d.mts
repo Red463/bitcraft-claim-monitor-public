@@ -78,3 +78,41 @@ export function enrichClaimPlayerDetails<
   failures: Array<{ playerId: string; error: string }>;
   coverage: ClaimRosterCoverage;
 }>;
+
+export function enrichClaimProductionCrafts<TMember extends ClaimRosterMember>(options: {
+  claimId: string;
+  members: TMember[];
+  publicPayload?: Record<string, unknown>;
+  forceRefresh?: boolean;
+  enrichment: ReturnType<typeof createClaimRosterEnrichment>;
+  fetchMemberCrafts: (
+    playerId: string,
+    options: { forceRefresh: boolean },
+  ) => Promise<Record<string, unknown>>;
+  maxAgeMs?: number;
+}): Promise<Record<string, unknown> & {
+  craftResults: Array<Record<string, unknown>>;
+  items: Array<Record<string, unknown>>;
+  cargos: Array<Record<string, unknown>>;
+  claims: Array<Record<string, unknown>>;
+  coverage: ClaimRosterCoverage;
+}>;
+
+export function enrichClaimPassiveCrafts<TMember extends ClaimRosterMember>(options: {
+  claimId: string;
+  members: TMember[];
+  forceRefresh?: boolean;
+  enrichment: ReturnType<typeof createClaimRosterEnrichment>;
+  fetchPassiveCrafts: (
+    playerId: string,
+    member: TMember,
+    options: { forceRefresh: boolean },
+  ) => Promise<Record<string, unknown>>;
+  maxAgeMs?: number;
+}): Promise<{
+  rows: Array<Record<string, unknown>>;
+  requested: number;
+  failed: number;
+  failures: Array<{ playerId: string; error: string }>;
+  coverage: ClaimRosterCoverage;
+}>;

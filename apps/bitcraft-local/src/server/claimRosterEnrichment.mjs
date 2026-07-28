@@ -176,3 +176,139 @@ export async function enrichClaimPlayerDetails({
     coverage: result.coverage,
   };
 }
+
+function payloadRows(payload, key) {
+  const rows = payload?.[key];
+  return Array.isArray(rows) ? rows : [];
+}
+
+function catalogId(entry) {
+  const id = entry?.id ?? entry?.entityId ?? entry?.itemId;
+  return id == null ? "" : String(id);
+}
+
+function mergeCatalogPayloads(payloads) {
+  const groups = {
+    items: new Map(),
+    cargos: new Map(),
+    claims: new Map(),
+  };
+  for (const payload of payloads) {
+    for (const key of Object.keys(groups)) {
+      for (const entry of payloadRows(payload, key)) {
+        const id = catalogId(entry);
+        if (id) groups[key].set(id, entry);
+      }
+    }
+  }
+  return Object.fromEntries(Object.entries(groups).map(([key, entries]) => [key, [...entries.values()]]));
+}
+
+function craftClaimId(craft) {
+  return String(craft?.claimEntityId ?? craft?.claim_entity_id ?? craft?.claim?.entityId ?? craft?.claimId ?? "");
+}
+
+export async function enrichClaimProductionCrafts({
+  claimId,
+  members,
+  publicPayload = {},
+  forceRefresh = false,
+  enrichment,
+  fetchMemberCrafts,
+  maxAgeMs = 5 * 60_000,
+}) {
+  const result = await enrichment.runBatch({
+    claimId,
+    family: "production-crafts",
+    members,
+    batchSize: 50,
+    concurrency: 8,
+    maxAgeMs,
+    forceRefresh,
+    loadMember: (member, options) => fetchMemberCrafts(playerIdFor(member), options),
+    fallback: () => null,
+  });
+  const publicCrafts = payloadRows(publicPayload, "craftResults");
+  const publicIds = new Set(publicCrafts.map((craft) => String(craft?.entityId ?? "")).filter(Boolean));
+  const memberPayloads = result.entries
+    .filter((entry) => entry.state !== "fallback" && entry.value)
+    .map((entry) => entry.value);
+  const merged = new Map();
+
+  for (const craft of publicCrafts) {
+    if (!craft?.entityId || craftClaimId(craft) !== String(claimId)) continue;
+    merged.set(String(craft.entityId), { ...craft, isPublic: craft.isPublic !== false, visibilitySource: "claim-public" });
+  }
+  for (const payload of memberPayloads) {
+    for (const craft of payloadRows(payload, "craftResults")) {
+      if (!craft?.entityId || craftClaimId(craft) !== String(claimId)) continue;
+      const id = String(craft.entityId);
+      const existing = merged.get(id) ?? {};
+      const isPublic = craft.isPublic === false ? false : publicIds.has(id) || craft.isPublic === true;
+      merged.set(id, {
+        ...existing,
+        ...craft,
+        isPublic,
+        visibilitySource: isPublic ? existing.visibilitySource ?? "player-public" : "player-private",
+      });
+    }
+  }
+
+  const craftResults = [...merged.values()].sort((left, right) => (
+    Number(right?.totalActionsRequired ?? 0) - Number(left?.totalActionsRequired ?? 0)
+  ));
+  const catalog = mergeCatalogPayloads([publicPayload, ...memberPayloads]);
+  return {
+    craftResults,
+    ...catalog,
+    count: craftResults.length,
+    publicCount: craftResults.filter((craft) => craft.isPublic !== false).length,
+    privateCount: craftResults.filter((craft) => craft.isPublic === false).length,
+    failedMemberRequests: result.coverage.failedThisRequest,
+    partialError: result.failures[0]?.error ?? null,
+    partialErrors: result.failures.map((failure) => `Member craft refresh failed: ${failure.error}`),
+    failures: result.failures,
+    coverage: result.coverage,
+  };
+}
+
+export async function enrichClaimPassiveCrafts({
+  claimId,
+  members,
+  forceRefresh = false,
+  enrichment,
+  fetchPassiveCrafts,
+  maxAgeMs = 5 * 60_000,
+}) {
+  const result = await enrichment.runBatch({
+    claimId,
+    family: "passive-crafts",
+    members,
+    batchSize: 50,
+    concurrency: 4,
+    maxAgeMs,
+    forceRefresh,
+    loadMember: async (member, options) => {
+      const value = await fetchPassiveCrafts(playerIdFor(member), member, options);
+      if (value?.ok === false) throw new Error(value.error ?? "Passive craft refresh failed");
+      return value;
+    },
+    fallback: () => null,
+  });
+  const rows = result.entries
+    .filter((entry) => entry.state !== "fallback" && entry.value)
+    .flatMap((entry) => payloadRows(entry.value, "rows").map((row) => ({
+      ...row,
+      playerId: entry.value.playerId ?? entry.playerId,
+      memberName: entry.value.memberName ?? entry.member?.userName ?? entry.member?.username ?? "Unknown member",
+    })))
+    .sort((left, right) => Number(right?.sortTimestamp ?? 0) - Number(left?.sortTimestamp ?? 0))
+    .slice(0, 18);
+  return {
+    rows,
+    requested: result.coverage.rosterTotal,
+    failed: result.coverage.failedThisRequest,
+    failures: result.failures,
+    coverage: result.coverage,
+  };
+}
