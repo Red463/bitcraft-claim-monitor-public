@@ -9,6 +9,7 @@ const web = read("deploy/bitcraft-claim-monitor-public.service");
 const worker = read("deploy/bitcraft-claim-monitor-public-worker.service");
 const collector = read("deploy/bitcraft-claim-monitor-public-collector.service");
 const caddy = read("deploy/Caddyfile.example");
+const httpRoutes = read("apps/bitcraft-local/src/server/httpRoutes.mjs");
 const workflow = read(".github/workflows/deploy-production.yml");
 const environment = read(".env.example");
 
@@ -34,6 +35,15 @@ test("Caddy owns the canonical HTTPS host, redirects www, and returns maintenanc
   assert.match(caddy, /handle_errors/);
   assert.match(caddy, /503/);
   assert.match(caddy, /Strict-Transport-Security/);
+});
+
+test("Caddy leaves the application as the single Content Security Policy owner", () => {
+  assert.doesNotMatch(caddy, /Content-Security-Policy/i);
+});
+
+test("the application Content Security Policy permits the configured web fonts", () => {
+  assert.match(httpRoutes, /style-src 'self' 'unsafe-inline' https:\/\/fonts\.googleapis\.com/);
+  assert.match(httpRoutes, /font-src 'self' data: https:\/\/fonts\.gstatic\.com/);
 });
 
 test("the updater builds immutable releases and rolls code back after failed health", () => {
