@@ -9,6 +9,13 @@ Historical release headings have been migrated to `0.MINOR.PATCH-beta.N`. Existi
 
 ## [Unreleased]
 
+## [0.48.1-beta.2] - 2026-07-28
+
+### Fixed
+
+- Fixed administrator Discord sign-in hanging on stalled token or profile requests by applying a 10-second timeout without retrying authorization-code exchanges.
+- Prevented administrator OAuth callback credentials and personal Discord data from appearing in request logs or visitor-security telemetry, while ensuring failures clear OAuth state and return safely to the Admin page.
+
 ## [0.48.1-beta.1] - 2026-07-28
 
 ### Changed

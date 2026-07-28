@@ -18,7 +18,9 @@ export function originFromRequest(req, { isProduction = false } = {}) {
 }
 
 export function safeReturnPath(value) {
-  const text = String(value ?? "/?page=dashboard").trim() || "/?page=dashboard";
+  const raw = String(value ?? "/?page=dashboard");
+  if (/[\u0000-\u001f\u007f]/.test(raw)) return "/?page=dashboard";
+  const text = raw.trim() || "/?page=dashboard";
   if (!text.startsWith("/") || text.startsWith("//") || text.includes("\\")) return "/?page=dashboard";
   return text.slice(0, 500);
 }

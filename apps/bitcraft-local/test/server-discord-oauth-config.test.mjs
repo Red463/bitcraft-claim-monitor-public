@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveDiscordOAuthConfig } from "../src/server/discordOAuthConfig.mjs";
+import { ADMIN_DISCORD_OAUTH_CALLBACK_PATH, resolveDiscordOAuthConfig } from "../src/server/discordOAuthConfig.mjs";
 
 test("administrator OAuth reads only its dedicated environment variables", () => {
   assert.deepEqual(resolveDiscordOAuthConfig({
@@ -34,6 +34,7 @@ test("administrator OAuth defaults to the isolated admin callback", () => {
     redirectUri: "https://claim-monitor.com/api/local/admin/auth/discord/callback",
     enabled: true,
   });
+  assert.equal(ADMIN_DISCORD_OAUTH_CALLBACK_PATH, "/api/local/admin/auth/discord/callback");
 });
 
 test("administrator OAuth is disabled when either dedicated credential is absent", () => {

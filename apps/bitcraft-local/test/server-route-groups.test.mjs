@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { mimeType, securityHeaders, staticCacheControl, routeGroup, shouldLogVisitor } from "../src/server/httpRoutes.mjs";
+import { ADMIN_DISCORD_OAUTH_CALLBACK_PATH } from "../src/server/discordOAuthConfig.mjs";
+import { mimeType, requestLogPolicy, securityHeaders, staticCacheControl, routeGroup, shouldLogVisitor } from "../src/server/httpRoutes.mjs";
 
 test("routeGroup classifies public API, admin, auth, Discord, static, and app routes", () => {
   assert.equal(routeGroup("/api/local/admin/settings"), "admin");
@@ -16,11 +17,49 @@ test("routeGroup classifies public API, admin, auth, Discord, static, and app ro
   assert.equal(routeGroup("/terms"), "app");
 });
 
-test("shouldLogVisitor skips only static assets", () => {
+test("shouldLogVisitor skips static assets and OAuth callbacks", () => {
   assert.equal(shouldLogVisitor("/assets/index.css"), false);
   assert.equal(shouldLogVisitor("/favicon.ico"), false);
+  assert.equal(shouldLogVisitor(ADMIN_DISCORD_OAUTH_CALLBACK_PATH), false);
   assert.equal(shouldLogVisitor("/api/local/health"), true);
   assert.equal(shouldLogVisitor("/"), true);
+});
+
+test("requestLogPolicy suppresses sensitive administrator OAuth callback logging", () => {
+  const callback = `${ADMIN_DISCORD_OAUTH_CALLBACK_PATH}?code=secret-code&state=secret-state`;
+
+  assert.deepEqual(requestLogPolicy(callback, "slow"), {
+    logGeneric: false,
+    recordTelemetry: false,
+    discordDiagnostic: null,
+    failureReturnTo: "/?page=admin",
+  });
+  assert.deepEqual(requestLogPolicy(callback, "closed"), {
+    logGeneric: false,
+    recordTelemetry: false,
+    discordDiagnostic: null,
+    failureReturnTo: "/?page=admin",
+  });
+  assert.deepEqual(requestLogPolicy(callback, "exception"), {
+    logGeneric: false,
+    recordTelemetry: false,
+    discordDiagnostic: {
+      stage: "callback",
+      event: "failure",
+      reason: "local",
+    },
+    failureReturnTo: "/?page=admin",
+  });
+  assert.deepEqual(requestLogPolicy("/api/local/health?probe=1", "slow"), {
+    logGeneric: true,
+    recordTelemetry: true,
+    discordDiagnostic: null,
+    failureReturnTo: null,
+  });
+  assert.doesNotMatch(
+    JSON.stringify(requestLogPolicy(callback, "exception")),
+    /secret-code|secret-state|callback\?/,
+  );
 });
 test("securityHeaders applies public release browser protections and preserves explicit response headers", () => {
   const headers = securityHeaders({ "content-type": "application/json", "cache-control": "no-store" });

@@ -53,6 +53,30 @@ export function routeGroup(pathname) {
   return "app";
 }
 
+function isAdminDiscordOAuthCallbackPath(pathname) {
+  return pathname === ADMIN_DISCORD_OAUTH_CALLBACK_PATH;
+}
+
+export function requestLogPolicy(requestTarget, event) {
+  let pathname = "/";
+  try {
+    pathname = new URL(String(requestTarget ?? "/"), "http://localhost").pathname;
+  } catch {
+    // Malformed non-callback request targets retain the existing generic logging.
+  }
+  const isAdminDiscordCallback = isAdminDiscordOAuthCallbackPath(pathname);
+  return {
+    logGeneric: !isAdminDiscordCallback,
+    recordTelemetry: !isAdminDiscordCallback,
+    discordDiagnostic: isAdminDiscordCallback && event === "exception"
+      ? { stage: "callback", event: "failure", reason: "local" }
+      : null,
+    failureReturnTo: isAdminDiscordCallback ? "/?page=admin" : null,
+  };
+}
+
 export function shouldLogVisitor(pathname) {
+  if (isAdminDiscordOAuthCallbackPath(pathname)) return false;
   return routeGroup(pathname) !== "static";
 }
+import { ADMIN_DISCORD_OAUTH_CALLBACK_PATH } from "./discordOAuthConfig.mjs";
