@@ -228,6 +228,29 @@ test("Craft planning targets default collapsed and expose an accessible persiste
   assert.match(css, /\.craft-plan-targets-toggle\[aria-expanded="true"\][^{]*\.craft-plan-targets-chevron\s*\{/);
 });
 
+test("Create Claim Plan uses a complete scoped responsive dialog surface", () => {
+  const css = readFileSync(new URL("../src/styles/craft-planning.css", import.meta.url), "utf8");
+  const surface = css.match(/\.craft-plan-create-dialog\s*\{(?<body>[^}]+)\}/)?.groups?.body ?? "";
+  const body = css.match(/\.craft-plan-create-dialog \.modal-body\s*\{(?<body>[^}]+)\}/)?.groups?.body ?? "";
+  const footer = css.match(/\.craft-plan-create-dialog \.modal-actions\s*\{(?<body>[^}]+)\}/)?.groups?.body ?? "";
+
+  assert.match(surface, /width:\s*min\(560px,\s*calc\(100vw - 28px\)\)/);
+  assert.match(surface, /max-height:\s*calc\(100vh - 36px\)/);
+  assert.match(surface, /overflow:\s*hidden/);
+  assert.match(surface, /border:/);
+  assert.match(surface, /border-radius:/);
+  assert.match(surface, /background:/);
+  assert.match(surface, /box-shadow:/);
+  assert.match(css, /\.craft-plan-create-dialog \.modal-header\s*\{/);
+  assert.match(css, /\.craft-plan-create-dialog \.modal-header \.icon-button\s*\{/);
+  assert.match(body, /padding:/);
+  assert.match(body, /overflow-y:\s*auto/);
+  assert.match(footer, /display:\s*flex/);
+  assert.match(footer, /border-top:/);
+  assert.match(footer, /padding:/);
+  assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.craft-plan-create-dialog/);
+});
+
 test("Craft planning targets use safe container-responsive columns", () => {
   const css = readFileSync(new URL("../src/styles/craft-planning.css", import.meta.url), "utf8");
   const listRule = css.match(/\.craft-plan-target-list\s*\{([^}]+)\}/)?.[1] ?? "";
