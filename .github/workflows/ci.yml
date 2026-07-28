@@ -40,6 +40,7 @@ jobs:
           bash -n deploy/backup-bitcraft-claim-monitor-public
       - name: Validate systemd units
         run: |
+          test -x /usr/bin/node || sudo ln -s "$(command -v node)" /usr/bin/node
           sudo install -m 0755 deploy/backup-bitcraft-claim-monitor-public /usr/local/bin/backup-bitcraft-claim-monitor-public
           systemd-analyze verify \
             deploy/bitcraft-claim-monitor-public.service \
