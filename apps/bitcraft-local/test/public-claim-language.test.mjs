@@ -28,9 +28,9 @@ function technicalCompatibilityLiteral(text, relativeFile) {
     || (text === "settlement" && new Set([
       "AppShell.tsx",
       "navigation.ts",
-      "pages\\market\\BuyOrderFinder.tsx",
-      "pages\\PublicCraftFinderPage.tsx",
-      "pages\\ResearchPage.tsx",
+      "pages/market/BuyOrderFinder.tsx",
+      "pages/PublicCraftFinderPage.tsx",
+      "pages/ResearchPage.tsx",
     ]).has(relativeFile));
 }
 
@@ -61,7 +61,7 @@ function renderableSettlementLiterals(file) {
     file.endsWith(".tsx") ? ts.ScriptKind.TSX : file.endsWith(".ts") ? ts.ScriptKind.TS : ts.ScriptKind.JS,
   );
   const failures = [];
-  const relativeFile = path.relative(srcRoot, file);
+  const relativeFile = path.relative(srcRoot, file).replaceAll(path.sep, "/");
 
   function inspect(node) {
     const isTextNode = ts.isStringLiteral(node)
