@@ -1,7 +1,3 @@
-{
-	email {$ACME_EMAIL}
-}
-
 claim-monitor.com {
 	encode zstd gzip
 	header {
