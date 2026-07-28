@@ -69,7 +69,7 @@ export function readOAuthStateCookie(req, secret, { now = () => new Date() } = {
     const createdAt = Date.parse(payload.createdAt);
     const ageMs = now().getTime() - createdAt;
     if (!Number.isFinite(createdAt) || ageMs < -30_000 || ageMs > DISCORD_OAUTH_STATE_MAX_AGE_SECONDS * 1000) return null;
-    if (!["login", "privacy-delete"].includes(payload.purpose)) return null;
+    if (!["login", "admin-login", "privacy-delete"].includes(payload.purpose)) return null;
     return payload;
   } catch {
     return null;

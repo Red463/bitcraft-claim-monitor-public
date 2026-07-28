@@ -9,6 +9,12 @@ Historical release headings have been migrated to `0.MINOR.PATCH-beta.N`. Existi
 
 ## [Unreleased]
 
+## [0.48.1-beta.5] - 2026-07-28
+
+### Fixed
+
+- Fixed administrator Discord authorization state being rejected before the callback could exchange the code and create a session.
+
 ## [0.48.1-beta.4] - 2026-07-28
 
 ### Fixed
