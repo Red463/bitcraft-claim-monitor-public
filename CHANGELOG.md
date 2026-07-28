@@ -9,6 +9,20 @@ Historical release headings have been migrated to `0.MINOR.PATCH-beta.N`. Existi
 
 ## [Unreleased]
 
+## [0.48.1-beta.1] - 2026-07-28
+
+### Changed
+
+- Updated public terminology and branding to **BitCraft Claim Monitor** while preserving existing technical route, storage, and API identifiers.
+- Large claims now load member and craft details progressively in fair, bounded batches while keeping the complete base roster visible.
+- Healthy history coverage is hidden; collection warnings now appear inline without obstructing page content.
+
+### Fixed
+
+- Prevented HTTP 413 failures for large claims by sending claim-only helper requests and accepting bounded legacy helper payloads.
+- Fixed Craft Monitor enrichment for claims with hundreds of members by rotating and accumulating player, production, and passive-craft results.
+- Restored the Create Plan dialog layout, controls, close button, and responsive styling.
+
 ## [0.48.0-beta.2] - 2026-07-27
 
 ### Changed
