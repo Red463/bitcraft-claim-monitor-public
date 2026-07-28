@@ -125,7 +125,7 @@ test("formatToastMetaLine formats notification labels and local time", () => {
   const productionWithoutCrafter = createToastNotice({
     id: "notice-2",
     title: "Craft completed",
-    body: "Fine Plank at Settlement production",
+    body: "Fine Plank at Claim production",
     kind: "production",
     occurredAt: "2026-07-03T14:14:00",
   });
@@ -425,14 +425,14 @@ test("productionCraftToastDraft builds started and completed notices", () => {
   });
 });
 
-test("productionCraftToastDraft omits missing crafter and falls back to settlement production", () => {
+test("productionCraftToastDraft omits missing crafter and falls back to claim production", () => {
   const helpers = {
     displayName: () => "Simple Plank",
     item: () => null,
   };
 
   const draft = productionCraftToastDraft("started", "claim-1", "craft-1", { entityId: "craft-1" }, helpers, "2026-07-03T09:58:00.000Z");
-  assert.equal(draft.body, "Simple Plank at Settlement production");
+  assert.equal(draft.body, "Simple Plank at Claim production");
   assert.equal(Object.prototype.hasOwnProperty.call(draft, "metaLabel"), false);
 });
 

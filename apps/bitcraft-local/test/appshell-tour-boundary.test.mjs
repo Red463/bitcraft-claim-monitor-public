@@ -29,7 +29,7 @@ test("first-run tour prompt introduces Claim Monitor before offering the tour", 
   const manager = readFileSync(new URL("../src/components/main/FirstRunTourManager.tsx", import.meta.url), "utf8");
 
   assert.match(manager, /Welcome to Claim Monitor/);
-  assert.match(manager, /Claim Monitor helps your settlement keep track of production, members, markets, inventory, construction, research, empire activity, and map information in one place\./);
+  assert.match(manager, /Claim Monitor helps your claim keep track of production, members, markets, inventory, construction, research, empire activity, and map information in one place\./);
   assert.match(manager, /Take a short tour to find what needs attention, jump to a task, and know where to get help\./);
 });
 

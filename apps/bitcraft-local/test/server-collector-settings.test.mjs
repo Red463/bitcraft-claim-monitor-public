@@ -21,7 +21,7 @@ test("collector settings normalize saved dashboard configuration safely", () => 
   });
 
   assert.equal(Object.keys(settings).length, Object.keys(domainCollectorDefaults).length);
-  assert.deepEqual(settings.claim, { label: "Current settlement", enabled: false, intervalSeconds: 15 });
+  assert.deepEqual(settings.claim, { label: "Current claim", enabled: false, intervalSeconds: 15 });
   assert.deepEqual(settings.members, { label: "Members", enabled: true, intervalSeconds: 45 });
   assert.deepEqual(settings.research, { label: "Research", enabled: true, intervalSeconds: 3600 });
   assert.deepEqual(settings.market, { label: "Market", enabled: true, intervalSeconds: 60 });

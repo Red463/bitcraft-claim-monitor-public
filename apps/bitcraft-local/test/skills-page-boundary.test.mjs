@@ -5,12 +5,12 @@ import test from "node:test";
 const page = readFileSync(new URL("../src/pages/SkillsPage.tsx", import.meta.url), "utf8");
 const css = readFileSync(new URL("../src/styles/skills.css", import.meta.url), "utf8");
 
-test("Settlement capability uses live tier readiness without fixed thresholds", () => {
+test("Claim capability uses live tier readiness without fixed thresholds", () => {
   assert.match(page, /useState\(false\)/);
-  assert.match(page, /Settlement Capability/);
+  assert.match(page, /Claim Capability/);
   assert.match(page, /data\.claim\.tier/);
   assert.match(page, /buildProfessionCapability/);
-  assert.match(page, /Settlement needs/);
+  assert.match(page, /Claim needs/);
   assert.match(page, /Dependency risk/);
   assert.doesNotMatch(page, /T3\+|T5\+/);
   assert.doesNotMatch(page, /Top Professional|Highest Profession/);

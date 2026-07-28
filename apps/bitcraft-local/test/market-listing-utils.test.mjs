@@ -51,7 +51,7 @@ test("liveDaysSince formats listing age from the current time", () => {
   }
 });
 
-test("settlementListingState distinguishes loading, failure, empty settlement, and filtered results", () => {
+test("settlementListingState distinguishes loading, failure, empty claim, and filtered results", () => {
   assert.deepEqual(settlementListingState({ loading: true, error: null, totalListings: 0, visibleListings: 0 }), {
     kind: "loading",
     title: "Loading live listings…",
@@ -63,7 +63,7 @@ test("settlementListingState distinguishes loading, failure, empty settlement, a
   });
   assert.deepEqual(settlementListingState({ loading: false, error: null, totalListings: 0, visibleListings: 0 }), {
     kind: "empty",
-    title: "This settlement has no live listings.",
+    title: "This claim has no live listings.",
   });
   assert.deepEqual(settlementListingState({ loading: false, error: null, totalListings: 29, visibleListings: 0 }), {
     kind: "no-match",
