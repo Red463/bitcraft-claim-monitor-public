@@ -10,7 +10,7 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { parseMemberPermissions } from "./shared/member-permissions.mjs";
-import { mimeType, routeGroup, securityHeaders, shouldLogVisitor, staticCacheControl } from "./src/server/httpRoutes.mjs";
+import { mimeType, requestLogPolicy, routeGroup, securityHeaders, shouldLogVisitor, staticCacheControl } from "./src/server/httpRoutes.mjs";
 import { sendBinary, sendJson as send, sendText } from "./src/server/httpResponses.mjs";
 import { parseCookies, serializeHttpOnlyCookie } from "./src/server/httpCookies.mjs";
 import { originFromRequest as requestOriginFromRequest, safeReturnPath, sameOriginRequest as requestSameOriginRequest } from "./src/server/httpRequests.mjs";
@@ -87,11 +87,22 @@ import { processRoleCapabilities, resolveProcessRole } from "./src/server/proces
 import { currentAppAnnouncementKey as resolveCurrentAppAnnouncementKey, currentAppBuildId as resolveCurrentAppBuildId, currentAppReleaseKey as resolveCurrentAppReleaseKey, releaseVersionAlreadyAnnounced } from "./src/server/appRelease.mjs";
 import { lookupHttpSessionUser } from "./src/server/sessionLookups.mjs";
 import { runSettlementStateTransaction, settlementStateActivityChanges, settlementStateSummary } from "./src/server/settlementState.mjs";
-import { resolveDiscordOAuthConfig } from "./src/server/discordOAuthConfig.mjs";
-import { buildDiscordAuthorizeUrl, discordOAuthCallbackDecision, discordOAuthProfileAccount, discordOAuthProfileRequest, discordOAuthSuccessRedirect, discordOAuthTokenRequest } from "./src/server/discordOAuthFlow.mjs";
+import { ADMIN_DISCORD_OAUTH_CALLBACK_PATH, resolveDiscordOAuthConfig } from "./src/server/discordOAuthConfig.mjs";
+import {
+  buildDiscordAuthorizeUrl,
+  DISCORD_OAUTH_ADMIN_LOG_LABEL,
+  discordOAuthCallbackController,
+  discordOAuthCallbackDecision,
+  discordOAuthDiagnosticLine,
+  finishDiscordOAuthFailureResponse,
+  discordOAuthProfileAccount,
+  discordOAuthProfileRequest,
+  discordOAuthSuccessRedirect,
+  discordOAuthTokenRequest,
+  persistDiscordAdminOAuthSession,
+} from "./src/server/discordOAuthFlow.mjs";
 import {
   ADMIN_SESSION_COOKIE_NAME,
-  ADMIN_SESSION_MAX_AGE_SECONDS,
   APP_USER_SESSION_COOKIE_NAME,
   APP_USER_SESSION_MAX_AGE_SECONDS,
   clearHttpSessionCookie,
@@ -3383,19 +3394,6 @@ function requireAdminMutation(req, res, user) {
   return Boolean(user);
 }
 
-function createSession(userId) {
-  const session = createHttpSession({
-    cookieName: ADMIN_SESSION_COOKIE_NAME,
-    maxAgeSeconds: ADMIN_SESSION_MAX_AGE_SECONDS,
-    secure: isProduction,
-  });
-  statements.insertSession.run(session.tokenHash, userId, session.expiresAt, session.createdAt);
-  return {
-    token: session.token,
-    cookie: session.cookie,
-  };
-}
-
 function clearSession(req) {
   const token = sessionTokenFromRequest(req, ADMIN_SESSION_COOKIE_NAME);
   if (token) statements.deleteSession.run(sessionTokenHash(token));
@@ -3457,25 +3455,6 @@ function authStatus(req) {
       ? publicLegalStatus(acceptance, legalSnapshot)
       : { ...legalSnapshot, acceptedAt: null, requiresAcceptance: false },
   };
-}
-
-function createAdminSessionForDiscordProfile(profile, loginAt) {
-  const discordId = String(profile.id ?? "").trim();
-  if (!discordId) return null;
-  const admin = statements.adminByDiscordId.get(discordId);
-  if (!admin) return null;
-  const username = discordProfileDisplayName(profile);
-  statements.updateAdminDiscordProfile.run(
-    username,
-    String(profile.username ?? ""),
-    String(profile.global_name ?? ""),
-    String(profile.avatar ?? ""),
-    loginAt,
-    admin.id,
-  );
-  statements.insertLoginEvent.run(username, 1, loginAt, "discord-oauth");
-  audit({ id: admin.id, username }, "admin.discord_login", { discordId });
-  return createSession(admin.id);
 }
 
 function oauthStateSecret() {
@@ -3579,32 +3558,44 @@ async function handleAdminDiscordOAuthCallback(req, res, url) {
     error: String(url.searchParams.get("error") ?? ""),
   });
   if (!decision.ok || stateCookie?.purpose !== "admin-login") {
-    res.writeHead(302, { location: decision.ok ? "/?page=admin&auth=discord-error" : decision.location, "set-cookie": clearAuthStateCookie() });
-    res.end();
-    return true;
+    return finishDiscordOAuthFailureResponse({
+      res,
+      returnTo: "/?page=admin",
+      stage: "session",
+      reason: "local",
+      clearStateCookie: clearAuthStateCookie,
+    });
   }
-  const tokenRequest = discordOAuthTokenRequest({ config, code: decision.code });
-  const tokenResponse = await fetch(tokenRequest.url, tokenRequest.init);
-  if (!tokenResponse.ok) throw new Error(`Discord OAuth token exchange failed: ${tokenResponse.status}`);
-  const tokenJson = await tokenResponse.json();
-  const profileRequest = discordOAuthProfileRequest(tokenJson.access_token);
-  const profileResponse = await fetch(profileRequest.url, profileRequest.init);
-  if (!profileResponse.ok) throw new Error(`Discord profile lookup failed: ${profileResponse.status}`);
-  const profile = await profileResponse.json();
-  const loginAt = new Date().toISOString();
-  const session = createAdminSessionForDiscordProfile(profile, loginAt);
-  if (!session) {
-    statements.insertLoginEvent.run(discordProfileDisplayName(profile), 0, loginAt, "discord-oauth");
-    res.writeHead(302, { location: "/?page=admin&auth=not-authorized", "set-cookie": clearAuthStateCookie() });
-    res.end();
-    return true;
-  }
-  res.writeHead(302, {
-    location: decision.returnTo,
-    "set-cookie": [clearAuthStateCookie(), session.cookie],
+  return discordOAuthCallbackController({
+    res,
+    config,
+    code: decision.code,
+    returnTo: "/?page=admin",
+    clearStateCookie: clearAuthStateCookie,
+    onDiagnostic: logDiscordOAuthDiagnostic,
+    persistSession: async (profile) => {
+      const loginAt = new Date().toISOString();
+      const session = persistDiscordAdminOAuthSession({
+        statements,
+        profile,
+        loginAt,
+        secure: isProduction,
+      });
+      if (!session) {
+        statements.insertLoginEvent.run(DISCORD_OAUTH_ADMIN_LOG_LABEL, 0, loginAt, "discord-oauth");
+        res.writeHead(302, { location: "/?page=admin&auth=not-authorized", "set-cookie": clearAuthStateCookie() });
+        res.end();
+        return { successful: false, value: true };
+      }
+      audit({ id: session.adminId, username: DISCORD_OAUTH_ADMIN_LOG_LABEL }, "admin.discord_login", {});
+      res.writeHead(302, {
+        location: decision.returnTo,
+        "set-cookie": [clearAuthStateCookie(), session.cookie],
+      });
+      res.end();
+      return { successful: true, value: true };
+    },
   });
-  res.end();
-  return true;
 }
 
 async function handleDiscordPrivacyReauthStart(req, res) {
@@ -3713,6 +3704,10 @@ async function handleDiscordOAuthCallback(req, res, url) {
   res.writeHead(302, { location: redirect.location, "set-cookie": redirect.setCookie });
   res.end();
   return true;
+}
+
+function logDiscordOAuthDiagnostic(event) {
+  if (!isTestRuntime) console.info(discordOAuthDiagnosticLine(event));
 }
 
 function rejectStaleLegalAcceptance(res, user) {
@@ -9975,18 +9970,22 @@ const server = createServer(async (req, res) => {
     // the end so API typos do not accidentally return index.html.
     const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
     const requestStartedAt = Date.now();
+    const slowRequestLogPolicy = requestLogPolicy(url.pathname, "slow");
+    const closedRequestLogPolicy = requestLogPolicy(url.pathname, "closed");
     let requestFinished = false;
     res.once("finish", () => {
       requestFinished = true;
       const durationMs = Date.now() - requestStartedAt;
-      requestTelemetry.push({ at: Date.now(), path: url.pathname, status: res.statusCode, durationMs });
-      if (requestTelemetry.length > 10_000) requestTelemetry.splice(0, requestTelemetry.length - 10_000);
-      if (!isTestRuntime && durationMs >= SLOW_REQUEST_LOG_MS) {
+      if (slowRequestLogPolicy.recordTelemetry) {
+        requestTelemetry.push({ at: Date.now(), path: url.pathname, status: res.statusCode, durationMs });
+        if (requestTelemetry.length > 10_000) requestTelemetry.splice(0, requestTelemetry.length - 10_000);
+      }
+      if (!isTestRuntime && slowRequestLogPolicy.logGeneric && durationMs >= SLOW_REQUEST_LOG_MS) {
         console.warn(`Slow request completed: ${req.method} ${url.pathname}${url.search} status=${res.statusCode} durationMs=${durationMs}`);
       }
     });
     res.once("close", () => {
-      if (requestFinished || isTestRuntime) return;
+      if (requestFinished || isTestRuntime || !closedRequestLogPolicy.logGeneric) return;
       const durationMs = Date.now() - requestStartedAt;
       console.warn(`Request connection closed before completion: ${req.method} ${url.pathname}${url.search} durationMs=${durationMs}`);
     });
@@ -10530,8 +10529,14 @@ const server = createServer(async (req, res) => {
       if (!rateLimit(req, res, "admin-auth", RATE_LIMITS.auth)) return;
       return handleAdminDiscordOAuthStart(req, res, url);
     }
-    if (req.method === "GET" && url.pathname === "/api/local/admin/auth/discord/callback") {
-      if (!rateLimit(req, res, "admin-auth", RATE_LIMITS.auth)) return;
+    if (req.method === "GET" && url.pathname === ADMIN_DISCORD_OAUTH_CALLBACK_PATH) {
+      if (!rateLimit(req, res, "admin-auth", RATE_LIMITS.auth, () => finishDiscordOAuthFailureResponse({
+        res,
+        returnTo: "/?page=admin",
+        stage: "session",
+        reason: "local",
+        clearStateCookie: clearAuthStateCookie,
+      }))) return;
       return handleAdminDiscordOAuthCallback(req, res, url);
     }
     if (req.method === "POST" && url.pathname === "/api/local/admin/logout") {
@@ -11619,9 +11624,24 @@ const server = createServer(async (req, res) => {
     send(res, 404, { error: "Not found" });
   } catch (error) {
     const status = Number(error?.statusCode) || 500;
+    const logPolicy = requestLogPolicy(req.url, "exception");
     if (!isTestRuntime) {
-      const detail = error instanceof Error && error.stack ? error.stack : errorMessage(error);
-      console.warn(`Request failed: ${req.method} ${req.url ?? "/"} status=${status} ${detail}`);
+      if (logPolicy.discordDiagnostic) {
+        logDiscordOAuthDiagnostic(logPolicy.discordDiagnostic);
+      } else if (logPolicy.logGeneric) {
+        const detail = error instanceof Error && error.stack ? error.stack : errorMessage(error);
+        console.warn(`Request failed: ${req.method} ${req.url ?? "/"} status=${status} ${detail}`);
+      }
+    }
+    if (logPolicy.discordDiagnostic) {
+      if (res.headersSent) return res.end();
+      return finishDiscordOAuthFailureResponse({
+        res,
+        returnTo: logPolicy.failureReturnTo,
+        stage: "session",
+        reason: "local",
+        clearStateCookie: clearAuthStateCookie,
+      });
     }
     if (res.headersSent) return res.end();
     send(res, status, { error: error instanceof Error ? error.message : String(error) });

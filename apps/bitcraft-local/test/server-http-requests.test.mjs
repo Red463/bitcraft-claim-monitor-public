@@ -23,5 +23,7 @@ test("safeReturnPath keeps local paths and rejects external or malformed redirec
   assert.equal(safeReturnPath("https://evil.example"), "/?page=dashboard");
   assert.equal(safeReturnPath("//evil.example"), "/?page=dashboard");
   assert.equal(safeReturnPath("/bad\\path"), "/?page=dashboard");
+  assert.equal(safeReturnPath("/?page=admin\r\nset-cookie: stolen=1"), "/?page=dashboard");
+  assert.equal(safeReturnPath("\r\n/?page=admin"), "/?page=dashboard");
   assert.equal(safeReturnPath(`/${"a".repeat(600)}`).length, 500);
 });

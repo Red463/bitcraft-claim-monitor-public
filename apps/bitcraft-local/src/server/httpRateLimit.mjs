@@ -11,7 +11,7 @@ export function requestAddress(req) {
 }
 
 export function createRateLimiter({ buckets = new Map(), sendJson, now = () => Date.now(), addressForRequest = requestAddress } = {}) {
-  return function rateLimit(req, res, name, policy = RATE_LIMITS.expensiveLocal) {
+  return function rateLimit(req, res, name, policy = RATE_LIMITS.expensiveLocal, onLimited = null) {
     const currentTime = now();
     const key = `${name}:${addressForRequest(req) || "unknown"}`;
     const current = buckets.get(key);
@@ -20,11 +20,15 @@ export function createRateLimiter({ buckets = new Map(), sendJson, now = () => D
     buckets.set(key, bucket);
     if (bucket.count <= policy.max) return true;
     const retryAfter = Math.max(1, Math.ceil((bucket.resetAt - currentTime) / 1000));
-    sendJson(res, 429, {
-      error: "Too many requests. Please slow down and try again shortly.",
-      source: "local-rate-limit",
-      retryAfter,
-    }, { "retry-after": String(retryAfter), "x-rate-limit-source": "local" });
+    if (typeof onLimited === "function") {
+      onLimited({ retryAfter });
+    } else {
+      sendJson(res, 429, {
+        error: "Too many requests. Please slow down and try again shortly.",
+        source: "local-rate-limit",
+        retryAfter,
+      }, { "retry-after": String(retryAfter), "x-rate-limit-source": "local" });
+    }
     return false;
   };
 }

@@ -48,3 +48,21 @@ test("createRateLimiter allows requests through the configured max then emits th
   currentTime = 5001;
   assert.equal(rateLimit(req, res, "auth", policy), true);
 });
+
+test("createRateLimiter can terminate a sensitive callback without a JSON response", () => {
+  const sent = [];
+  const limited = [];
+  const rateLimit = createRateLimiter({
+    now: () => 1000,
+    sendJson: (...args) => sent.push(args),
+  });
+  const req = { headers: { "x-forwarded-for": "203.0.113.9" }, socket: {} };
+  const res = {};
+  const policy = { windowMs: 4000, max: 0 };
+
+  assert.equal(rateLimit(req, res, "admin-auth", policy, ({ retryAfter }) => {
+    limited.push(retryAfter);
+  }), false);
+  assert.deepEqual(limited, [4]);
+  assert.deepEqual(sent, []);
+});
