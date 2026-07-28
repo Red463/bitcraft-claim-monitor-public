@@ -112,13 +112,13 @@ export function Members({
     <div className="panel members-page" data-tour="members-page">
       <PageHeader
         title="Members"
-        description="Settlement roster, permissions, and online status"
+        description="Claim roster, permissions, and online status"
         meta={<div className="dashboard-top-meta">
           <div className="dashboard-meta-cluster">
             <span className="dashboard-region-line"><Globe2 size={15} /> {data.claim.regionName ?? "Unknown"} <span className="dashboard-region-badge">R{data.claim.regionId ?? "?"}</span></span>
             <span className="dashboard-refresh-line"><span className="online-dot is-online" /> {onlineCount} online / {merged.length} members</span>
           </div>
-          <span className="dashboard-claim-link"><TierBadge tier={data.claim.tier} /> {data.claim.name ?? "Monitored Settlement"}</span>
+          <span className="dashboard-claim-link"><TierBadge tier={data.claim.tier} /> {data.claim.name ?? "Monitored Claim"}</span>
         </div>}
       />
       <div className="members-summary-grid">
@@ -128,14 +128,14 @@ export function Members({
         <article><Shield /><span>Storage Access</span><strong>{merged.filter((member) => member.inventoryPermission).length}</strong><small>Members with inventory rights</small></article>
       </div>
       <div className="toolbar-row members-toolbar">
-        <SearchBox label="Search settlement members" value={searchTerm} onChange={setSearchTerm} placeholder="Search username" />
+        <SearchBox label="Search claim members" value={searchTerm} onChange={setSearchTerm} placeholder="Search username" />
         <span>{filtered.length} members found</span>
       </div>
       <div className="members-roster-table">
         <DataTable
-          scrollLabel="Settlement roster table"
+          scrollLabel="Claim roster table"
           rows={filtered}
-          emptyState={searchTerm ? "No members match this search." : "No settlement members were returned."}
+          emptyState={searchTerm ? "No members match this search." : "No claim members were returned."}
           onRowClick={openMemberDetails}
           rowClassName={(member) => String(member.playerEntityId) === selectedId ? "selected-row" : "clickable-row"}
           columns={[

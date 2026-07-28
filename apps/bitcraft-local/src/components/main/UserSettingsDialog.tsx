@@ -79,8 +79,8 @@ export function UserSettingsDialog({
 
         <section className="form-card">
           <h3><SlidersHorizontal size={17} /> Local data</h3>
-          <p className="legend">Settlement choice, shared-plan selection, filters, map focus, Market watches, and visual preferences are stored on this device.</p>
-          <button className="toolbar-button danger" type="button" onClick={() => window.confirm("Clear all local Settlement Monitor settings from this browser?") && onResetSettings()}>
+          <p className="legend">Claim choice, shared-plan selection, filters, map focus, Market watches, and visual preferences are stored on this device.</p>
+          <button className="toolbar-button danger" type="button" onClick={() => window.confirm("Clear all local Claim Monitor settings from this browser?") && onResetSettings()}>
             <RotateCcw size={15} /> Clear browser settings
           </button>
         </section>

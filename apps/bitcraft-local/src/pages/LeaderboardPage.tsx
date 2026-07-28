@@ -183,7 +183,7 @@ export function Leaderboard({
       <header className="members-topbar leaderboard-topbar">
         <div>
           <h2>Leaderboard</h2>
-          <p>Compare settlement members across contribution, professions, market history, activity, and online status.</p>
+          <p>Compare claim members across contribution, professions, market history, activity, and online status.</p>
         </div>
         <div className="dashboard-top-meta">
           <div className="dashboard-meta-cluster">
@@ -206,7 +206,7 @@ export function Leaderboard({
       </div>
       <section className="dashboard-card leaderboard-card leaderboard-context">
         <header className="dashboard-card-title"><span>{activeTabMeta.icon} {activeTabMeta.label}</span></header>
-        <p>{currentTab === "activity" || currentTab === "market" ? "This tab uses local recorded settlement history, so it represents what the app has observed and stored for this claim." : currentTab === "professions" ? "This tab uses current BitJita citizen profession data for the monitored settlement." : currentTab === "online" ? "This tab uses current member and player detail data when BitJita provides it." : "This tab uses recorded BitJita craft contribution data observed by the app."}</p>
+        <p>{currentTab === "activity" || currentTab === "market" ? "This tab uses local recorded claim history, so it represents what the app has observed and stored for this claim." : currentTab === "professions" ? "This tab uses current BitJita citizen profession data for the monitored claim." : currentTab === "online" ? "This tab uses current member and player detail data when BitJita provides it." : "This tab uses recorded BitJita craft contribution data observed by the app."}</p>
       </section>
       {currentTab === "contribution" ? (
       <section className="dashboard-card leaderboard-card">
@@ -222,12 +222,12 @@ export function Leaderboard({
         {state.loading ? <AsyncState kind="loading" title="Refreshing contribution history" detail="Current standings remain visible while the latest records load." compact /> : null}
         {state.error ? <AsyncState kind="error" title="Leaderboard refresh failed" detail={`Current standings are retained. ${state.error}`} compact /> : null}
         {!state.loading && !contributors.length ? (
-          <AsyncState kind="empty" title="No craft contributions recorded yet" detail="The leaderboard fills as settlement craft contribution data is observed during refreshes." />
+          <AsyncState kind="empty" title="No craft contributions recorded yet" detail="The leaderboard fills as claim craft contribution data is observed during refreshes." />
         ) : null}
         {filteredContributors.length ? (
           <DataTable
             scrollLabel="Craft contributions table"
-            emptyState="No settlement summary rows were returned."
+            emptyState="No claim summary rows were returned."
             rows={filteredContributors}
             columns={[
               ["Member", (entry) => <strong>{entry.name}</strong>],
@@ -319,7 +319,7 @@ export function Leaderboard({
               </select>
             </label>
           </header>
-          {!sortedMarketRows.length ? <div className="empty-state"><CircleDollarSign />No settlement market listings or confirmed sales have been recorded yet.</div> : (
+          {!sortedMarketRows.length ? <div className="empty-state"><CircleDollarSign />No claim market listings or confirmed sales have been recorded yet.</div> : (
             <DataTable rows={sortedMarketRows} scrollLabel="Market leaderboard table" emptyState="No market leaderboard rows were returned." columns={[
               ["Member", (entry) => <strong>{entry.name}</strong>],
               ["Active listings", (entry) => formatNumber(entry.activeListings)],
@@ -335,7 +335,7 @@ export function Leaderboard({
       {currentTab === "online" ? (
         <section className="dashboard-card leaderboard-card">
           <header className="dashboard-card-title"><span><Users size={14} /> Online and sessions</span></header>
-          {!onlineRows.length ? <div className="empty-state"><Users />No tracked settlement members are available.</div> : (
+          {!onlineRows.length ? <div className="empty-state"><Users />No tracked claim members are available.</div> : (
             <DataTable rows={onlineRows} scrollLabel="Online members table" emptyState="No members are currently online." columns={[
               ["Member", (entry) => <strong><TrackedOwnerName name={entry.name} claim={data.claim} members={data.members} /></strong>],
               ["Status", (entry) => entry.signedIn ? <span className="online-text">Online</span> : <span className="muted-cell">Offline</span>],

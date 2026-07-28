@@ -107,7 +107,7 @@ export function Skills({ data }: { data: ReturnType<typeof normalizeData> }) {
     <div className="panel skills-page" data-tour="skills-page">
       <PageHeader
         title="Professions"
-        description={`Settlement Capability at T${settlementTier || "-"} and readiness for T${nextSettlementTier ?? (settlementTier || "-")}`}
+        description={`Claim Capability at T${settlementTier || "-"} and readiness for T${nextSettlementTier ?? (settlementTier || "-")}`}
         meta={<div className="dashboard-top-meta">
           <div className="dashboard-meta-cluster">
             <span><GraduationCap size={14} /> {professionIds.length} professions assessed</span>
@@ -115,18 +115,18 @@ export function Skills({ data }: { data: ReturnType<typeof normalizeData> }) {
           </div>
           <div className="dashboard-settlement-pill">
             {settlementTier ? <TierBadge tier={settlementTier} /> : <span className="status-pill muted">Tier unavailable</span>}
-            <span>Settlement tier</span>
+            <span>Claim tier</span>
           </div>
         </div>}
       />
       <div className="summary-grid skills-summary">
-        <MiniStat icon={<Target />} label="Settlement Tier" value={settlementTier ? `T${settlementTier}` : "Unavailable"} />
+        <MiniStat icon={<Target />} label="Claim Tier" value={settlementTier ? `T${settlementTier}` : "Unavailable"} />
         <MiniStat icon={<ShieldCheck />} label="Current Baseline" value={settlementTier ? `${currentReadyCount}/${capabilities.length}` : "-"} />
         <MiniStat icon={<GraduationCap />} label="Next-Tier Capable" value={nextSettlementTier ? `${nextCapableCount}/${capabilities.length}` : settlementTier === 10 ? "Maximum" : "-"} />
         <MiniStat icon={<TriangleAlert />} label="Next-Tier Dependencies" value={nextSettlementTier ? dependencyRiskCount : "-"} />
       </div>
       <section className="settlement-needs" aria-labelledby="settlement-needs-title">
-        <div className="settlement-needs-heading"><span><TriangleAlert size={16} /></span><div><h3 id="settlement-needs-title">Settlement needs</h3><p>Next-tier gaps and professions that rely on one next-tier capable member.</p></div></div>
+        <div className="settlement-needs-heading"><span><TriangleAlert size={16} /></span><div><h3 id="settlement-needs-title">Claim needs</h3><p>Next-tier gaps and professions that rely on one next-tier capable member.</p></div></div>
         <div className="settlement-needs-list">
           {settlementNeeds.length ? settlementNeeds.map((need) => <button key={`${need.kind}-${need.professionId}`} type="button" onClick={() => setFocusSkill(need.professionId)}><span className={`capability-state ${need.kind}`}>{need.kind === "next-gap" ? `${nextSettlementTier ? `T${nextSettlementTier} gap` : "Gap"}` : "Dependency"}</span><strong>{need.professionName}</strong><small>{need.message}</small></button>) : <div className="settlement-needs-clear"><ShieldCheck size={16} /><span><strong>{nextSettlementTier ? `T${nextSettlementTier} capability is resilient` : "Maximum tier reached"}</strong><small>{nextSettlementTier ? `Every profession has more than one T${nextSettlementTier}-capable member.` : "No next-tier preparation is required."}</small></span></div>}
         </div>
@@ -236,7 +236,7 @@ export function Skills({ data }: { data: ReturnType<typeof normalizeData> }) {
           </tbody>
           <tfoot>
             <tr>
-              <td className="sticky-col member-cell">Settlement Max</td>
+              <td className="sticky-col member-cell">Claim Max</td>
               <td className="numeric">-</td>
               <td className="numeric best">{settlementBest}</td>
               {professionIds.map((id) => {
@@ -288,7 +288,7 @@ export function Skills({ data }: { data: ReturnType<typeof normalizeData> }) {
             </tbody>
             <tfoot>
               <tr>
-                <td className="sticky-col member-cell">Settlement Max</td>
+                <td className="sticky-col member-cell">Claim Max</td>
                 <td className="numeric">-</td>
                 <td className="numeric best">{Math.max(...citizens.map(getHighestFor(adventureSkillIds)), 0)}</td>
                 {adventureSkillIds.map((id) => {

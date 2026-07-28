@@ -142,7 +142,7 @@ export function DealWatchlist({ monitoredRegionId }: MarketRefreshProps & {
     <section className="deal-watchlist-page">
       <section className="deal-watch-add-card">
         <div className="command-filter-header"><span className="command-filter-title"><Bell size={15} /> Browser-local Market watches</span><span>{watches.length} / 50</span></div>
-        <p className="legend">Watches stay on this device, are separate for each settlement, and are checked while this tab is open.</p>
+        <p className="legend">Watches stay on this device, are separate for each claim, and are checked while this tab is open.</p>
         <div className="price-finder-controls deal-watch-add-controls">
           <label className="research-filter-field price-item-search"><span>Item</span><div className="suggestion-anchor">
             <input value={query} onChange={(event) => { setQuery(event.target.value); setSelectedItem(null); }} placeholder="Search market items" />

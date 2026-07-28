@@ -10,7 +10,7 @@ export async function loadAdminSettlementMembers(
 
   const response = await fetcher(`/api/bitjita/claims/${encodeURIComponent(claimId)}/members`);
   if (!response.ok) {
-    throw new Error(`Unable to load settlement characters (HTTP ${response.status}).`);
+    throw new Error(`Unable to load claim characters (HTTP ${response.status}).`);
   }
 
   const body: unknown = await response.json();

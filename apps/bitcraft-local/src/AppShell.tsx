@@ -196,7 +196,7 @@ function browserInitialSettlementId(): string {
   const saved = validSettlementId(window.localStorage.getItem(SELECTED_SETTLEMENT_STORAGE_KEY));
   const shared = validSettlementId(new URLSearchParams(window.location.search).get("claimId"));
   if (shared && saved && shared !== saved) {
-    const accepted = window.confirm(`This link monitors settlement #${shared}. Switch from your saved settlement #${saved}?`);
+    const accepted = window.confirm(`This link monitors claim #${shared}. Switch from your saved claim #${saved}?`);
     if (!accepted) {
       window.history.replaceState(window.history.state, "", settlementShareHref(window.location.href, saved));
       return saved;
@@ -367,7 +367,7 @@ function DashboardApp() {
     fetch(`${LOCAL_API}/claims/${encodeURIComponent(claimId)}`, { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error ?? "Unable to validate the selected settlement");
+        if (!response.ok) throw new Error(payload.error ?? "Unable to validate the selected claim");
         setSelectedClaim(payload);
       })
       .catch(() => {
@@ -483,7 +483,7 @@ function DashboardApp() {
         void fetch(`${LOCAL_API}/claims/${encodeURIComponent(historyClaimId)}`)
           .then(async (response) => {
             const payload = await response.json();
-            if (!response.ok) throw new Error(payload.error ?? "Settlement not found");
+            if (!response.ok) throw new Error(payload.error ?? "Claim not found");
             selectSettlement(payload);
           })
           .catch(() => setSettlementPickerOpen(true));
@@ -615,7 +615,7 @@ function DashboardApp() {
   }, [active, consent]);
   React.useEffect(() => {
     const label = NAV.find(([id]) => id === active)?.[1] ?? "Dashboard";
-    document.title = `${label} — BitCraft Settlement Monitor`;
+    document.title = `${label} — BitCraft Claim Monitor`;
   }, [active]);
   React.useEffect(() => {
     const intervalMs = appSettings.refreshSeconds * 1000;
@@ -792,9 +792,9 @@ function DashboardApp() {
   return (
     <div className={`app-shell density-${density} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <header className="mobile-shell-bar">
-        <button type="button" className="mobile-settlement-switcher" onClick={() => setSettlementPickerOpen(true)} aria-label="Change monitored settlement">
+        <button type="button" className="mobile-settlement-switcher" onClick={() => setSettlementPickerOpen(true)} aria-label="Change monitored claim">
           <Building2 size={16} />
-          <span><strong className="mobile-shell-brand">{selectedClaim?.name ?? data.claim.name ?? "Choose settlement"}</strong><small className="mobile-shell-route">{activePageLabel}</small></span>
+          <span><strong className="mobile-shell-brand">{selectedClaim?.name ?? data.claim.name ?? "Choose claim"}</strong><small className="mobile-shell-route">{activePageLabel}</small></span>
           <ChevronsUpDown size={14} />
         </button>
         <button ref={mobileNavigationTriggerRef} type="button" aria-label="Open navigation" aria-controls="mobile-navigation" aria-expanded={mobileNavigationOpen} onClick={() => setMobileNavigationOpen(true)}>
@@ -806,15 +806,15 @@ function DashboardApp() {
         <button type="button" className="mobile-navigation-close" aria-label="Close navigation" onClick={() => setMobileNavigationOpen(false)}><X size={18} /></button>
         <div className="brand">
           {appSettings.branding.logo ? <img src={`${appSettings.branding.logo.url}?v=${encodeURIComponent(appSettings.branding.logo.updatedAt)}`} alt="" /> : <Shield />}
-          <div title={selectedClaim?.name ?? data.claim.name ?? "Settlement"}><h1>{selectedClaim?.name ?? data.claim.name ?? "Settlement"}</h1><span>Settlement Monitor</span></div>
+          <div title={selectedClaim?.name ?? data.claim.name ?? "Claim"}><h1>{selectedClaim?.name ?? data.claim.name ?? "Claim"}</h1><span>Claim Monitor</span></div>
           <button className="sidebar-toggle" type="button" onClick={() => setSidebarCollapsed((current) => !current)} title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
             {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
         </div>
         <div className="sidebar-top-stack">
-          <button type="button" className="settlement-switcher-button" onClick={() => setSettlementPickerOpen(true)} aria-label="Change monitored settlement">
+          <button type="button" className="settlement-switcher-button" onClick={() => setSettlementPickerOpen(true)} aria-label="Change monitored claim">
             <span className="sidebar-account-avatar"><Building2 size={16} /></span>
-            <span className="sidebar-account-copy"><strong>{selectedClaim?.name ?? data.claim.name ?? "Choose settlement"}</strong><small>{claimId ? `Claim #${claimId}${selectedClaim?.regionId ? ` · Region ${selectedClaim.regionId}` : ""}` : "Select a settlement to begin"}</small></span>
+            <span className="sidebar-account-copy"><strong>{selectedClaim?.name ?? data.claim.name ?? "Choose claim"}</strong><small>{claimId ? `Claim #${claimId}${selectedClaim?.regionId ? ` · Region ${selectedClaim.regionId}` : ""}` : "Select a claim to begin"}</small></span>
             <ChevronsUpDown size={14} />
           </button>
           <a className="discord-cta" href={DISCORD_URL} target="_blank" rel="noreferrer"><DiscordIcon size={18} /><span>Join Discord Server</span><ExternalLink size={13} /></a>
@@ -899,7 +899,7 @@ function DashboardApp() {
       <footer className="app-footer">
           <div className="footer-links">
             <span className="footer-copy">
-              &copy; {new Date().getFullYear()} BitCraft Settlement Monitor — unofficial fan-made tool.
+              &copy; {new Date().getFullYear()} BitCraft Claim Monitor — unofficial fan-made tool.
             </span>
             <span className="footer-build" title={appBuildId ? `Version ${APP_VERSION}, commit ${appBuildId}` : `Version ${APP_VERSION}`}>
               {appBuildLabel}
@@ -1001,7 +1001,7 @@ function DashboardApp() {
 
 function DedicatedLegalApp({ type }: { type: "terms" | "privacy" }) {
   React.useEffect(() => {
-    document.title = `${type === "terms" ? "Terms of Use" : "Privacy Policy"} — BitCraft Settlement Monitor`;
+    document.title = `${type === "terms" ? "Terms of Use" : "Privacy Policy"} — BitCraft Claim Monitor`;
   }, [type]);
   return <DedicatedLegalPage type={type} />;
 }

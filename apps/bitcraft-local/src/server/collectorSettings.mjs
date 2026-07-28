@@ -4,7 +4,7 @@ function toNumber(value) {
 }
 
 export const domainCollectorDefaults = {
-  claim: { label: "Current settlement", intervalSeconds: 30 },
+  claim: { label: "Current claim", intervalSeconds: 30 },
   members: { label: "Members", intervalSeconds: 30 },
   players: { label: "Player details", intervalSeconds: 60 },
   professions: { label: "Professions", intervalSeconds: 30 },

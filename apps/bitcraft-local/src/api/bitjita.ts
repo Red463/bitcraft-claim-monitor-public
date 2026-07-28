@@ -37,7 +37,7 @@ function dataAreaLabel(path: string) {
   if (path.includes("/research")) return "research data";
   if (path.includes("/regions")) return "region data";
   if (path.includes("/skills")) return "profession reference data";
-  if (path.includes("/claims/")) return "settlement data";
+  if (path.includes("/claims/")) return "claim data";
   return "BitJita data";
 }
 

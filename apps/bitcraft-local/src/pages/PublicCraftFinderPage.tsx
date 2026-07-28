@@ -116,7 +116,7 @@ export function PublicCraftFinder({ refreshToken, monitoredRegionId, monitoredOw
   const columns: Array<[string, PublicCraftSortKey, (job: AnyRecord) => React.ReactNode]> = [
     ["Craft", "output", (job) => <><strong>{job.output}</strong><small className="muted-line">{job.buildingName}</small></>],
     ["Tier", "tier", (job) => job.tier ? <TierBadge tier={job.tier} /> : "-"],
-    ["Settlement", "settlement", (job) => <><strong>{job.claimName ?? "Unknown"}</strong>{job.claimLocationX != null && job.claimLocationZ != null ? <button className="map-location-link" onClick={() => { trackAnalyticsEvent("public_craft_map_opened"); onShowMap({ name: `${job.claimName ?? "Public craft"} - ${job.output}`, locationX: toNumber(job.claimLocationX), locationZ: toNumber(job.claimLocationZ) }); }}><MapPin size={12} />R{job.regionId} - {job.claimLocationX}, {job.claimLocationZ}</button> : null}</>],
+    ["Claim", "settlement", (job) => <><strong>{job.claimName ?? "Unknown"}</strong>{job.claimLocationX != null && job.claimLocationZ != null ? <button className="map-location-link" onClick={() => { trackAnalyticsEvent("public_craft_map_opened"); onShowMap({ name: `${job.claimName ?? "Public craft"} - ${job.output}`, locationX: toNumber(job.claimLocationX), locationZ: toNumber(job.claimLocationZ) }); }}><MapPin size={12} />R{job.regionId} - {job.claimLocationX}, {job.claimLocationZ}</button> : null}</>],
     ["Required", "required", (job) => `${job.requiredSkillName} Lv ${job.minimumLevel}+`],
     ["Effort to Craft", "remaining", (job) => formatNumber(job.remaining)],
     ["XP Available", "availableXp", (job) => formatNumber(job.availableXp)],
@@ -144,7 +144,7 @@ export function PublicCraftFinder({ refreshToken, monitoredRegionId, monitoredOw
       </header>
       <div className="summary-grid public-craft-summary">
         <MiniStat icon={<Factory />} label="Public Jobs" value={formatNumber(filteredJobs.length)} />
-        <MiniStat icon={<Globe2 />} label="Settlements" value={formatNumber(activeSettlements)} />
+        <MiniStat icon={<Globe2 />} label="Claims" value={formatNumber(activeSettlements)} />
         <MiniStat icon={<GraduationCap />} label="Skill Filter" value={skillName} />
         <MiniStat icon={<TrendingUp />} label="XP Available" value={formatNumber(totalAvailableXp)} />
       </div>
@@ -168,12 +168,12 @@ export function PublicCraftFinder({ refreshToken, monitoredRegionId, monitoredOw
         </div>
         <div className="public-craft-hint">
           <MapPin size={13} />
-          <span>Click a settlement location to open it on the map. Column headings sort the results.</span>
+          <span>Click a claim location to open it on the map. Column headings sort the results.</span>
         </div>
       </div>
       {state.loading ? <AsyncState kind="loading" title="Refreshing public craft jobs" detail="Current results remain visible while BitJita refreshes." compact /> : null}
       {state.error ? <AsyncState kind="error" title="Public crafts refresh failed" detail={`Current results are retained. ${state.error}`} compact /> : null}
-      {!state.loading && visibleJobs.length === 0 ? <AsyncState kind={publicJobs.length ? "no-match" : "empty"} title={publicJobs.length ? "No public crafts match these filters" : "No public craft jobs are open"} detail={publicJobs.length ? "Choose another skill or region to broaden the results." : "Public jobs will appear here when settlements expose incomplete crafts."} /> : null}
+      {!state.loading && visibleJobs.length === 0 ? <AsyncState kind={publicJobs.length ? "no-match" : "empty"} title={publicJobs.length ? "No public crafts match these filters" : "No public craft jobs are open"} detail={publicJobs.length ? "Choose another skill or region to broaden the results." : "Public jobs will appear here when claims expose incomplete crafts."} /> : null}
       {visibleJobs.length ? <div className="table-wrap" tabIndex={0} aria-label="Public craft jobs table"><table><thead><tr>{columns.map(([label, key]) => <th key={key}><button className="sort-button" onClick={() => changeSort(key)}>{label}{sortKey === key ? (sortDir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} />}</button></th>)}</tr></thead><tbody>{visibleJobs.map((job, index) => <tr className="data-row" key={job.entityId ?? index}>{columns.map(([label, , render]) => <td key={label}>{render(job)}</td>)}</tr>)}</tbody></table></div> : null}
     </section>
   );

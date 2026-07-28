@@ -279,7 +279,7 @@ const privacyLedgerPath = process.env.PRIVACY_LEDGER_PATH
 const readCachedServerHealthFiles = createCachedServerHealthReader(() => readServerHealthFiles(dataDir), { ttlMs: 30_000 });
 const packageJson = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 const appVersion = String(packageJson.version ?? "0.0.0-dev");
-const appIdentifier = process.env.BITJITA_APP_IDENTIFIER ?? "BitCraft Settlement Monitor (github.com/Red463/bitcraft-claim-monitor-public)";
+const appIdentifier = process.env.BITJITA_APP_IDENTIFIER ?? "BitCraft Claim Monitor (github.com/Red463/bitcraft-claim-monitor-public)";
 const ipHash = createIpHasher(appIdentifier);
 const changelogUrl = "https://github.com/Red463/bitcraft-claim-monitor-public/blob/main/CHANGELOG.md";
 const changelogPath = path.resolve(root, "..", "..", "CHANGELOG.md");
@@ -2482,11 +2482,11 @@ async function computedCraftPlanResponseFresh(claimId = getSettings().claimId, o
   );
   const [inventoriesResult, publicCraftsResult, membersPayload] = await Promise.all([
     craftPlanSourceResult(
-      { sourceId: String(claimId), label: "Settlement inventories", type: "Settlement storage" },
+      { sourceId: String(claimId), label: "Claim inventories", type: "Claim storage" },
       () => fetchBitjita(`/claims/${encodeURIComponent(claimId)}/inventories`, { forceRefresh }),
     ),
     craftPlanSourceResult(
-      { sourceId: String(claimId), label: "Settlement active crafts", type: "Tracked crafts" },
+      { sourceId: String(claimId), label: "Claim active crafts", type: "Tracked crafts" },
       () => fetchBitjita(`/crafts?claimEntityId=${encodeURIComponent(claimId)}&completed=false`, { forceRefresh }),
     ),
     fetchBitjita(`/claims/${encodeURIComponent(claimId)}/members`, { forceRefresh }).catch(() => ({ members: [] })),
@@ -5537,7 +5537,7 @@ async function runDiscordAppUpdateAnnouncementJob() {
 function discordSupplyEmbed(claim) {
   const supplies = toNumber(claim.supplies);
   const supplyMeta = supplyRunwayMetadata(claim, supplies);
-  return discordCommandEmbed("Settlement Supplies", `**${claim.name ?? "Monitored settlement"}** supply status`, [
+  return discordCommandEmbed("Claim Supplies", `**${claim.name ?? "Monitored claim"}** supply status`, [
     { name: "Current stock", value: supplies.toLocaleString(), inline: true },
     { name: "Upkeep", value: supplyMeta.upkeep, inline: true },
     { name: "Runway", value: supplyMeta.runway, inline: true },
@@ -6684,7 +6684,7 @@ function normalizeRegionalBuyOrder(listing, regionId, regionName, fallbackClaim 
     regionId: String(listing.regionId ?? regionId ?? "").trim(),
     regionName: String(listing.regionName ?? regionName ?? ""),
     marketClaimId,
-    marketClaimName: String(listing.claimName ?? listing.claim?.name ?? fallbackClaim.name ?? fallbackClaim.claimName ?? "Unknown settlement"),
+    marketClaimName: String(listing.claimName ?? listing.claim?.name ?? fallbackClaim.name ?? fallbackClaim.claimName ?? "Unknown claim"),
     buyerEntityId: String(listing.ownerEntityId ?? listing.ownerId ?? ""),
     buyerName: String(listing.ownerUsername ?? listing.ownerName ?? listing.owner ?? "Unknown buyer"),
     itemId: String(listing.itemId ?? listing.item_id ?? ""),
@@ -6738,7 +6738,7 @@ function normalizeRegionalSellListing(listing, regionId, regionName, fallbackCla
     regionId: String(listing.regionId ?? regionId ?? "").trim(),
     regionName: String(listing.regionName ?? regionName ?? ""),
     marketClaimId,
-    marketClaimName: String(listing.claimName ?? listing.claim?.name ?? fallbackClaim.name ?? fallbackClaim.claimName ?? "Unknown settlement"),
+    marketClaimName: String(listing.claimName ?? listing.claim?.name ?? fallbackClaim.name ?? fallbackClaim.claimName ?? "Unknown claim"),
     sellerName: String(listing.ownerUsername ?? listing.ownerName ?? listing.owner ?? "Unknown seller"),
     itemId: String(listing.itemId ?? listing.item_id ?? base.itemId ?? "").trim(),
     itemType,
@@ -6925,7 +6925,7 @@ async function fetchRegionalBuyOrders(claimId, regionIds) {
   const failures = [];
   const orders = [];
   for (const [regionIndex, regionId] of uniqueRegionIds.entries()) {
-    collectorProgress("buyOrders", `Loading R${regionId} settlements`, { current: regionIndex + 1, total: uniqueRegionIds.length });
+    collectorProgress("buyOrders", `Loading R${regionId} claims`, { current: regionIndex + 1, total: uniqueRegionIds.length });
     let claimPayload;
     try {
       claimPayload = await fetchRegionClaimList(regionId);
@@ -7816,7 +7816,7 @@ function storedDashboardDataFallback(claimId, error) {
 async function dashboardData(claimId, options = {}) {
   const id = String(claimId ?? "").trim();
   if (!/^\d{8,}$/.test(id)) {
-    const error = new Error("Choose a valid BitCraft settlement ID");
+    const error = new Error("Choose a valid BitCraft claim ID");
     error.statusCode = 400;
     throw error;
   }
@@ -7863,7 +7863,7 @@ async function dashboardData(claimId, options = {}) {
 async function dashboardDataFresh(claimId, options = {}) {
   const id = String(claimId ?? "").trim();
   if (!/^\d{8,}$/.test(id)) {
-    const error = new Error("Choose a valid BitCraft settlement ID");
+    const error = new Error("Choose a valid BitCraft claim ID");
     error.statusCode = 400;
     throw error;
   }
@@ -8231,7 +8231,7 @@ async function fetchDomainPayload(previous, domain, fallback, label, load) {
 async function buildCurrentClaimData(claimId, options = {}) {
   const id = String(claimId ?? "").trim();
   if (!/^\d{8,}$/.test(id)) {
-    const error = new Error("Choose a valid BitCraft settlement ID");
+    const error = new Error("Choose a valid BitCraft claim ID");
     error.statusCode = 400;
     throw error;
   }
@@ -8519,10 +8519,10 @@ async function collectServerSnapshot(force = false) {
     });
     pollStatus.lastRunMetrics = { ...pollStatus.lastRunMetrics, activeClaims: result };
     pollStatus.lastSuccessAt = new Date().toISOString();
-    pollStatus.lastError = result.failed ? `${result.failed} active settlement collection(s) failed` : null;
+    pollStatus.lastError = result.failed ? `${result.failed} active claim collection(s) failed` : null;
   } catch (error) {
     pollStatus.lastError = error instanceof Error ? error.message : String(error);
-    console.error(`BitCraft settlement collection failed: ${pollStatus.lastError}`);
+    console.error(`BitCraft claim collection failed: ${pollStatus.lastError}`);
   } finally {
     pollStatus.running = false;
   }
@@ -9097,7 +9097,7 @@ function databaseStatus() {
 async function apiDiagnostics() {
   const { claimId } = getSettings();
   const checks = [
-    ["Settlement", `/claims/${claimId}`],
+    ["Claim", `/claims/${claimId}`],
     ["Members", `/claims/${claimId}/members`],
     ["Structures", `/claims/${claimId}/buildings`],
     ["Inventory", `/claims/${claimId}/inventories`],
@@ -9251,7 +9251,7 @@ function discordCommandEmbed(title, description, fields = [], color = 0xf0c64f) 
     color,
     fields: fields.slice(0, 10),
     timestamp: new Date().toISOString(),
-    footer: { text: "BitCraft settlement monitor" },
+    footer: { text: "BitCraft claim monitor" },
   };
 }
 
@@ -9400,10 +9400,10 @@ async function discordAutocomplete(interaction) {
 
 function discordHelpCommand() {
   const appUrl = "https://app.timbersteeltrade.com";
-  return discordCommandEmbed("Timbersteel Trade Help", `[Open the dashboard](${appUrl}) for settlement monitoring, market analytics, public craft finding and bot settings.`, [
-    { name: "/supplies", value: "Current settlement supplies, upkeep and runway.", inline: false },
-    { name: "/online", value: "Shows which settlement members are currently online.", inline: false },
-    { name: "/crafts", value: "Lists current settlement crafts. Optional skill filter supported.", inline: false },
+  return discordCommandEmbed("Timbersteel Trade Help", `[Open the dashboard](${appUrl}) for claim monitoring, market analytics, public craft finding and bot settings.`, [
+    { name: "/supplies", value: "Current claim supplies, upkeep and runway.", inline: false },
+    { name: "/online", value: "Shows which claim members are currently online.", inline: false },
+    { name: "/crafts", value: "Lists current claim crafts. Optional skill filter supported.", inline: false },
     { name: "/price", value: "Looks up recent BitJita sale prices for an item.", inline: false },
     { name: "/craftwatch", value: "Shows and clears your profession notification roles.", inline: false },
     { name: "/craft-plan", value: "Shows Craft Planner progress. Choose a profession for a focused report.", inline: false },
@@ -9726,7 +9726,7 @@ async function discordOnlineCommand() {
     }
   });
   const online = details.filter((entry) => entry?.online);
-  return discordCommandEmbed("Members Online", online.length ? `**${online.length}/${members.length}** settlement members are online.` : `No settlement members appear online right now.`, [
+  return discordCommandEmbed("Members Online", online.length ? `**${online.length}/${members.length}** claim members are online.` : `No claim members appear online right now.`, [
     { name: "Online", value: online.length ? online.map((entry) => entry.name).join(", ").slice(0, 1024) : "None", inline: false },
     { name: "Tracked members", value: String(members.length), inline: true },
   ], online.length ? 0x4ee28a : 0x838e9e);
@@ -9739,7 +9739,7 @@ async function discordCraftsCommand(skillFilter = "") {
   const jobs = unwrap(payload, "craftResults", [])
     .filter((job) => !filter || JSON.stringify(job.levelRequirements ?? job.experiencePerProgress ?? "").toLowerCase().includes(filter) || String(job.recipeName ?? "").toLowerCase().includes(filter))
     .slice(0, 8);
-  if (!jobs.length) return discordCommandEmbed("Active Crafts", filter ? `No active settlement crafts matched **${skillFilter}**.` : "No active settlement crafts found.", [], 0x838e9e);
+  if (!jobs.length) return discordCommandEmbed("Active Crafts", filter ? `No active claim crafts matched **${skillFilter}**.` : "No active claim crafts found.", [], 0x838e9e);
   return discordCommandEmbed("Active Crafts", `${jobs.length} craft${jobs.length === 1 ? "" : "s"}${filter ? ` matching **${skillFilter}**` : ""}`, jobs.map((job) => {
     const remaining = toNumber(job.remainingCraftWork ?? job.actionsRemaining ?? job.effortRemaining ?? job.remainingEffort);
     return {
@@ -9877,7 +9877,7 @@ async function publicClaimById(claimId, { forceRefresh = false } = {}) {
     const claim = payload?.claim ?? payload;
     const normalized = normalizeDirectoryClaim(claim);
     if (!normalized || normalized.claimId !== id) {
-      const error = new Error("Settlement not found");
+      const error = new Error("Claim not found");
       error.statusCode = 404;
       throw error;
     }
@@ -9956,7 +9956,7 @@ function sharedPlanForClaim(claimId, planId) {
     throw error;
   }
   if (String(plan.claimId) !== String(claimId)) {
-    const error = new Error("Shared plan does not belong to this settlement");
+    const error = new Error("Shared plan does not belong to this claim");
     error.statusCode = 409;
     throw error;
   }
@@ -10016,7 +10016,7 @@ const server = createServer(async (req, res) => {
         ...settings,
         claimId: null,
         claimName: null,
-        productName: "BitCraft Settlement Monitor",
+        productName: "BitCraft Claim Monitor",
         canonicalUrl: "https://claim-monitor.com",
       });
     }
@@ -11648,7 +11648,7 @@ function scheduleServerPolling(delayMs = 0) {
       const message = error instanceof Error ? error.message : String(error);
       pollStatus.lastAttemptAt = new Date().toISOString();
       pollStatus.lastError = message;
-      if (!isTestRuntime) console.warn(`Server settlement collection failed: ${message}`);
+      if (!isTestRuntime) console.warn(`Server claim collection failed: ${message}`);
     } finally {
       scheduleServerPolling(serverRefreshIntervalMs());
     }
@@ -11672,7 +11672,7 @@ function startBackgroundTasks() {
     });
   }, 15 * 60 * 1000);
   if (serverPollingEnabled) {
-    console.log(`Server settlement collection enabled every ${serverRefreshIntervalMs() / 1000} seconds`);
+    console.log(`Server claim collection enabled every ${serverRefreshIntervalMs() / 1000} seconds`);
     scheduleServerPolling(0);
   }
   if (scheduledJobsEnabled && !isTestRuntime) {

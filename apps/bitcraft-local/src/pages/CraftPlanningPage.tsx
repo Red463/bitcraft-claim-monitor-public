@@ -376,7 +376,7 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
   }
 
   async function archivePlan() {
-    if (!selectedPlanId || !storedEditKey || !window.confirm(`Archive “${selectedSharedPlan?.title ?? selectedPlanId}”? Viewers will no longer see it in the settlement list.`)) return;
+    if (!selectedPlanId || !storedEditKey || !window.confirm(`Archive “${selectedSharedPlan?.title ?? selectedPlanId}”? Viewers will no longer see it in the claim list.`)) return;
     const response = await fetch(`${LOCAL_API}/craft-plans/${encodeURIComponent(selectedPlanId)}/archive`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-plan-edit-key": storedEditKey },
@@ -785,7 +785,7 @@ export function CraftPlanningPage({ claimId, refreshToken }: { claimId: string; 
         </div>
       </header>
 
-      <section className="craft-plan-shared-toolbar" aria-label="Shared settlement plan">
+      <section className="craft-plan-shared-toolbar" aria-label="Shared claim plan">
         <label>
           <span>Shared plan</span>
           <select value={selectedPlanId} disabled={plansLoading} onChange={(event) => choosePlan(event.target.value)}>

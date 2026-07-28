@@ -1,19 +1,19 @@
-# BitCraft Settlement Monitor
+# BitCraft Claim Monitor
 
-An independent, anonymous public monitor for any BitCraft settlement.
+An independent, anonymous public monitor for any BitCraft claim.
 
 Production: [claim-monitor.com](https://claim-monitor.com)
 Source: [Red463/bitcraft-claim-monitor-public](https://github.com/Red463/bitcraft-claim-monitor-public)
 
 ## What it does
 
-Visitors choose a settlement on first use, then can switch at any time. The selected claim is stored in the browser and is included in shareable URLs. The application provides:
+Visitors choose a claim on first use, then can switch at any time. The selected claim is stored in the browser and is included in shareable URLs. The application provides:
 
 - Dashboard, leaderboard, members, professions, Craft Monitor, inventory, construction, research, Local Market, Market, region, map, activity, and Public Craft Finder.
-- A server-cached directory of BitJita settlements and regions.
-- History collection for recently active settlements, with coverage and stale/gap indicators.
-- Settlement-scoped shared Craft Plans with public viewer links and private edit keys.
-- Browser-local display preferences, filters, notifications, and per-settlement Market watches.
+- A server-cached directory of BitJita claims and regions.
+- History collection for recently active claims, with coverage and stale/gap indicators.
+- Claim-scoped shared Craft Plans with public viewer links and private edit keys.
+- Browser-local display preferences, filters, notifications, and per-claim Market watches.
 - A protected administrator console for operations, retention, plan moderation, backups, analytics, and administrator access.
 
 Browsing does not require an account. Discord OAuth is used only for approved administrators.

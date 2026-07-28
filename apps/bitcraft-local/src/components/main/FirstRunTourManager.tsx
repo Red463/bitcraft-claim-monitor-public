@@ -134,7 +134,7 @@ export function FirstRunTourManager({ activePage, enabled, replayToken, onNaviga
           <div className="first-run-tour-icon" aria-hidden="true"><Compass size={22} /></div>
           <div>
             <h2 id="first-run-tour-prompt-title">Welcome to Claim Monitor</h2>
-            <p>Claim Monitor helps your settlement keep track of production, members, markets, inventory, construction, research, empire activity, and map information in one place.</p>
+            <p>Claim Monitor helps your claim keep track of production, members, markets, inventory, construction, research, empire activity, and map information in one place.</p>
             <p>Take a short tour to find what needs attention, jump to a task, and know where to get help.</p>
           </div>
           <div className="first-run-tour-actions">

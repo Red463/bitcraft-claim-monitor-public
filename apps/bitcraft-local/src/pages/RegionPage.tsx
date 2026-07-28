@@ -97,7 +97,7 @@ export function Region({ data }: { data: ReturnType<typeof normalizeData> }) {
       <header className="members-topbar region-topbar">
         <div>
           <h2>{data.claim.regionName ?? "Region"}</h2>
-          <p>{formatNumber(allRows.length)} settlements ranked by weighted score: tier, treasury, and tiles</p>
+          <p>{formatNumber(allRows.length)} claims ranked by weighted score: tier, treasury, and tiles</p>
         </div>
         <div className="dashboard-top-meta">
           <div className="dashboard-meta-cluster">
@@ -121,14 +121,14 @@ export function Region({ data }: { data: ReturnType<typeof normalizeData> }) {
         </div>
       ) : null}
       <div className="metric-grid region-summary-grid">
-        <MiniStat icon={<Globe2 />} label="Settlements" value={allRows.length} />
+        <MiniStat icon={<Globe2 />} label="Claims" value={allRows.length} />
         <MiniStat icon={<Users />} label="Players Online" value={liveStatus ? formatNumber(liveStatus.signedInPlayers) : "-"} />
         <MiniStat icon={<Server />} label="Region Status" value={regionStatusLabel} />
         <MiniStat icon={<ShoppingCart />} label="Regional Trades" value={formatNumber(tradeSummary.totalTrades)} />
         <MiniStat icon={<CircleDollarSign />} label="Region Treasury" value={formatCompactNumber(totalTreasury)} />
       </div>
       <div className="highlight-grid region-insights">
-        <div><strong>Average Tier</strong><span>{avgTier.toFixed(1)} across known settlements</span></div>
+        <div><strong>Average Tier</strong><span>{avgTier.toFixed(1)} across known claims</span></div>
         <div><strong>Average Tiles</strong><span>{formatNumber(avgTiles)} claimed tiles</span></div>
         <div><strong>Regional Trade Value</strong><span>{formatCompactNumber(tradeSummary.totalValue)} in selected API window</span></div>
       </div>
@@ -139,8 +139,8 @@ export function Region({ data }: { data: ReturnType<typeof normalizeData> }) {
         </section>
         {nearbyRows.length ? (
           <section className="nearby-panel">
-            <h3><MapPin size={17} /> Close Settlements</h3>
-            <p>These settlements are geographically closest to our monitored settlement.</p>
+            <h3><MapPin size={17} /> Close Claims</h3>
+            <p>These claims are geographically closest to our monitored claim.</p>
             {nearbyRows.map((row) => <div key={row.entityId}><strong>{row.name}</strong><span><TrackedOwnerName name={getOwnerName(row)} claim={data.claim} members={data.members} /> <TierBadge tier={row.tier} /></span><small>{formatNumber(row.supplies)} supplies</small></div>)}
           </section>
         ) : null}

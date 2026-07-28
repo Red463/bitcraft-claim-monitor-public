@@ -36,7 +36,7 @@ export const NAV_GROUPS = [
     ["dashboard", "Dashboard", Home],
     ["leaderboard", "Leaderboard", Trophy],
   ] },
-  { id: "settlement", label: "Settlement", items: [
+  { id: "settlement", label: "Claim", items: [
     ["members", "Members", Users],
     ["skills", "Professions", GraduationCap],
     ["craft-monitor", "Craft Monitor", Factory],

@@ -66,7 +66,7 @@ export function normalizeBuyOrder(order: Record<string, unknown>, itemTypeFallba
     totalValue,
     storedCoins: toNumber(order.storedCoins),
     listedAt: listedAt as string | number | null,
-    claimName: toText(order.claimName, "Unknown settlement"),
+    claimName: toText(order.claimName, "Unknown claim"),
     claimEntityId: toText(order.claimEntityId),
     ownerUsername: toText(order.ownerUsername, "Unknown buyer"),
     regionId: toText(order.regionId),

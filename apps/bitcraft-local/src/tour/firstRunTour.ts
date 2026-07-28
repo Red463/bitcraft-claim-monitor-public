@@ -21,8 +21,8 @@ export const FIRST_RUN_TOUR_STEPS: FirstRunTourStep[] = [
     id: "purpose-freshness",
     page: "dashboard",
     target: "floating-actions",
-    title: "One live settlement view",
-    body: "Claim Monitor brings settlement work together using live BitJita data. Check the freshness status before relying on time-sensitive information, and refresh when you need the latest available view.",
+    title: "One live claim view",
+    body: "Claim Monitor brings claim work together using live BitJita data. Check the freshness status before relying on time-sensitive information, and refresh when you need the latest available view.",
     placement: "center",
   },
   {
@@ -30,7 +30,7 @@ export const FIRST_RUN_TOUR_STEPS: FirstRunTourStep[] = [
     page: "dashboard",
     target: "dashboard-summary",
     title: "Start with what needs attention",
-    body: "The Dashboard is your first-success path: scan settlement status, recent activity, production, and market signals, then open the task that needs attention.",
+    body: "The Dashboard is your first-success path: scan claim status, recent activity, production, and market signals, then open the task that needs attention.",
     placement: "bottom",
   },
   {
@@ -38,7 +38,7 @@ export const FIRST_RUN_TOUR_STEPS: FirstRunTourStep[] = [
     page: "dashboard",
     target: "sidebar-navigation",
     title: "Choose a job, not a route tour",
-    body: "Navigation is grouped around settlement operations, crafting, markets, world activity, and utility tools. Detailed guidance stays with the page where it is useful.",
+    body: "Navigation is grouped around claim operations, crafting, markets, world activity, and utility tools. Detailed guidance stays with the page where it is useful.",
     placement: "right",
   },
   {
@@ -46,7 +46,7 @@ export const FIRST_RUN_TOUR_STEPS: FirstRunTourStep[] = [
     page: "dashboard",
     target: "floating-actions",
     title: "Jump straight to a task",
-    body: "Press Ctrl or Command + K, or press / when you are not typing, to search and jump. Try Craft Planning when you need to turn a settlement goal into material and production work.",
+    body: "Press Ctrl or Command + K, or press / when you are not typing, to search and jump. Try Craft Planning when you need to turn a claim goal into material and production work.",
     placement: "center",
   },
   {

@@ -225,7 +225,7 @@ export function MarketBrowse({ mode, regionId, favorites, onToggleFavorite, onSh
         </> : null}
       </div>
       {catalogState.error ? <div className="error">Market search unavailable: {catalogState.error}</div> : null}
-      {!selectedItem ? <div className="empty-state market-global-empty"><ShoppingBag size={28} /><strong>{mode === "buy" ? "Choose an item to inspect live demand" : "Search the global market catalog"}</strong><span>{mode === "buy" ? "Buy orders are loaded live after item selection; no monitored-settlement cache is used." : "Use the filters above, then select an item for live orders and completed-trade statistics."}</span></div> : (
+      {!selectedItem ? <div className="empty-state market-global-empty"><ShoppingBag size={28} /><strong>{mode === "buy" ? "Choose an item to inspect live demand" : "Search the global market catalog"}</strong><span>{mode === "buy" ? "Buy orders are loaded live after item selection; no monitored-claim cache is used." : "Use the filters above, then select an item for live orders and completed-trade statistics."}</span></div> : (
         <div className="market-item-detail">
           <header>
             <div className="market-item-identity">
@@ -263,7 +263,7 @@ export function MarketBrowse({ mode, regionId, favorites, onToggleFavorite, onSh
               <div className="tabs market-order-tabs"><button className={orderTab === "sell" ? "active" : ""} onClick={() => { setOrderTab("sell"); setPage(1); }}>Sell ({sells.length})</button><button className={orderTab === "buy" ? "active" : ""} onClick={() => { setOrderTab("buy"); setPage(1); }}>Buy ({buys.length})</button></div>
               <label className="field"><span>Minimum quantity</span><input type="number" min="0" value={minimumQuantity} onChange={(event) => setMinimumQuantity(event.target.value)} /></label>
               {orderTab === "buy" ? <label className="field"><span>Minimum price</span><input type="number" min="0" value={minimumPrice} onChange={(event) => setMinimumPrice(event.target.value)} /></label> : null}
-              <label className="field"><span>Settlement or region</span><input value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)} /></label>
+              <label className="field"><span>Claim or region</span><input value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)} /></label>
               <label className="field"><span>{orderTab === "buy" ? "Buyer" : "Seller"}</span><input value={playerFilter} onChange={(event) => setPlayerFilter(event.target.value)} /></label>
             </div>
             <DataTable
@@ -277,7 +277,7 @@ export function MarketBrowse({ mode, regionId, favorites, onToggleFavorite, onSh
                 ["Quantity", (order) => formatNumber(order.quantity), (order) => order.quantity],
                 ["Total", (order) => formatGoldAmount(order.unitPrice * order.quantity), (order) => order.unitPrice * order.quantity],
                 ["Region", (order) => order.regionName || (order.regionId ? `R${order.regionId}` : "—"), (order) => order.regionName || String(order.regionId ?? "")],
-                ["Settlement", (order) => order.claimName || "Unknown settlement", (order) => order.claimName],
+                ["Claim", (order) => order.claimName || "Unknown claim", (order) => order.claimName],
                 [orderTab === "buy" ? "Buyer" : "Seller", (order) => order.ownerName || "—", (order) => order.ownerName],
                 ["Map", (order) => order.locationX != null && order.locationZ != null ? <button className="icon-button" title="Show on map" onClick={() => onShowMap({ name: order.claimName || selectedItem.name, locationX: order.locationX, locationZ: order.locationZ }, String(order.regionId ?? ""))}><MapPin size={15} /></button> : "—", undefined, false],
               ]}

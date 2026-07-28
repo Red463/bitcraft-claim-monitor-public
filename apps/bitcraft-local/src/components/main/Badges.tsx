@@ -38,8 +38,8 @@ export function TrackedOwnerName({ name, claim, members = [] }: { name: unknown;
   return (
     <span className={isOwner ? "tracked-owner-name" : isCoOwner ? "tracked-co-owner-name" : undefined}>
       {label}
-      {isOwner ? <Crown size={13} aria-label="Tracked settlement owner" /> : null}
-      {isCoOwner ? <Handshake size={13} aria-label="Tracked settlement co-owner" /> : null}
+      {isOwner ? <Crown size={13} aria-label="Tracked claim owner" /> : null}
+      {isCoOwner ? <Handshake size={13} aria-label="Tracked claim co-owner" /> : null}
     </span>
   );
 }

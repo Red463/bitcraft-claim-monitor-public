@@ -69,14 +69,14 @@ export function MemberPassiveCrafts({ claimId, refreshToken }: { claimId: string
       <div className="split-header">
         <div className="dashboard-section-heading">
           <h3><Factory size={15} /> Member Passive Crafts</h3>
-          <p>Recent public passive output for current settlement members. BitJita does not report craft location, so entries may have been performed elsewhere.</p>
+          <p>Recent public passive output for current claim members. BitJita does not report craft location, so entries may have been performed elsewhere.</p>
         </div>
         {state.loading && rows.length ? <span className="refreshing-label">Updating...</span> : null}
       </div>
       {state.error ? <p className="legend">{state.error}</p> : null}
       {coverage && coverage.complete === false ? <p className="claim-enrichment-progress" role="status">Updating details for {toNumber(coverage.covered)} of {toNumber(coverage.rosterTotal)} claim members.</p> : null}
       {state.loading && !state.data ? <p className="legend">Loading passive craft history...</p> : null}
-      {!state.loading && rows.length === 0 ? <div className="empty-state"><Factory />No passive craft history reported for settlement members.</div> : null}
+      {!state.loading && rows.length === 0 ? <div className="empty-state"><Factory />No passive craft history reported for claim members.</div> : null}
       {rows.length ? <DataTable rows={rows} scrollLabel="Production jobs table" emptyState="No production jobs match the current filters." columns={[
         ["Output", (row) => <strong>{row.recipe}</strong>],
         ["Tier", (row) => row.tier ? <TierBadge tier={row.tier} /> : "-"],

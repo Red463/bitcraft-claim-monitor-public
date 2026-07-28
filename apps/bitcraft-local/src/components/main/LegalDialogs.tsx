@@ -23,7 +23,7 @@ export function HelpCenter({ activePage, version, onClose, onPrivacy, onTerms, o
           <button onClick={onClose} aria-label="Close help"><X size={16} /></button>
         </header>
         <div className="beta-notice"><strong>Beta - Work in progress</strong><span>This application is actively being developed. Data display and features may change as accuracy and coverage improve.</span></div>
-        <p className="help-intro">Track settlement operations, production opportunities, member professions and skills, storage, regional context, and market history using public BitCraft data.</p>
+        <p className="help-intro">Track claim operations, production opportunities, member professions and skills, storage, regional context, and market history using public BitCraft data.</p>
         {routeHelp ? <section className="terms-section"><h3>On this page</h3><p><strong>{routeHelp.purpose}</strong> {routeHelp.nextAction}</p></section> : null}
         <div className="help-links">
           <a href={`${GITHUB_REPOSITORY}#readme`} target="_blank" rel="noreferrer">
@@ -153,8 +153,8 @@ export function DedicatedLegalPage({ type }: { type: "terms" | "privacy" }) {
   const isTerms = type === "terms";
   const title = isTerms ? DEFAULT_LEGAL_POLICY.terms.title : DEFAULT_LEGAL_POLICY.privacy.title;
   const description = isTerms
-    ? "Rules for using the public BitCraft Settlement Monitor."
-    : "How BitCraft Settlement Monitor handles browser preferences, analytics, and operational data.";
+    ? "Rules for using the public BitCraft Claim Monitor."
+    : "How BitCraft Claim Monitor handles browser preferences, analytics, and operational data.";
   const sections = isTerms ? DEFAULT_LEGAL_POLICY.terms.sections : DEFAULT_LEGAL_POLICY.privacy.sections;
   return (
     <main className="legal-page">

@@ -62,7 +62,7 @@ export function AdminDataSection({
           <div className="database-browser-header">
             <div>
               <h3><Database size={17} /> Database Browser</h3>
-              <p className="legend">Inspect SQLite tables and export filtered records. Use this for support and diagnostics, not normal settlement operations.</p>
+              <p className="legend">Inspect SQLite tables and export filtered records. Use this for support and diagnostics, not normal claim operations.</p>
             </div>
             <label className="field database-table-select">
               <span>Table</span>

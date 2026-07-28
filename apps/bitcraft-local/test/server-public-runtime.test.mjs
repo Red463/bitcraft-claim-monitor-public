@@ -46,7 +46,7 @@ async function stop(child) {
   if (child.exitCode == null) child.kill("SIGKILL");
 }
 
-test("public runtime boots with anonymous settlement APIs and no removed routes", async (t) => {
+test("public runtime boots with anonymous claim APIs and no removed routes", async (t) => {
   const dataDir = await mkdtemp(path.join(os.tmpdir(), "claim-monitor-public-runtime-"));
   const port = await availablePort();
   const origin = `http://127.0.0.1:${port}`;
@@ -74,7 +74,7 @@ test("public runtime boots with anonymous settlement APIs and no removed routes"
   assert.equal(health.ok, true);
 
   const config = await fetch(`${origin}/api/local/config`).then((response) => response.json());
-  assert.equal(config.productName, "BitCraft Settlement Monitor");
+  assert.equal(config.productName, "BitCraft Claim Monitor");
   assert.equal(config.canonicalUrl, "https://claim-monitor.com");
   assert.equal(config.claimId, null);
 

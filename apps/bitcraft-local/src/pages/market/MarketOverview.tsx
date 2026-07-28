@@ -125,7 +125,7 @@ export function MarketOverview({ regionId, favorites, onOpenItem, onShowMap, ref
         </section>
         <section className="market-overview-section">
           <h3><Store size={16} /> Trade hubs <small>7-day activity</small></h3>
-          <div className="market-ranking-list">{hubs.slice(0, 10).map((hub) => <button key={String(hub.claimId)} onClick={() => toNumber(hub.locationX) || toNumber(hub.locationZ) ? onShowMap({ name: hub.claimName, locationX: toNumber(hub.locationX), locationZ: toNumber(hub.locationZ) }, String(hub.regionId ?? "")) : undefined}><span><b>{hub.claimName ?? "Unknown settlement"}</b><small>{hub.regionName ?? `R${hub.regionId ?? "?"}`}</small></span><span>{formatGoldAmount(hub.tradedValue)} · {formatNumber(hub.traders)} traders</span>{toNumber(hub.locationX) || toNumber(hub.locationZ) ? <MapPin size={14} /> : null}</button>)}</div>
+          <div className="market-ranking-list">{hubs.slice(0, 10).map((hub) => <button key={String(hub.claimId)} onClick={() => toNumber(hub.locationX) || toNumber(hub.locationZ) ? onShowMap({ name: hub.claimName, locationX: toNumber(hub.locationX), locationZ: toNumber(hub.locationZ) }, String(hub.regionId ?? "")) : undefined}><span><b>{hub.claimName ?? "Unknown claim"}</b><small>{hub.regionName ?? `R${hub.regionId ?? "?"}`}</small></span><span>{formatGoldAmount(hub.tradedValue)} · {formatNumber(hub.traders)} traders</span>{toNumber(hub.locationX) || toNumber(hub.locationZ) ? <MapPin size={14} /> : null}</button>)}</div>
           {!hubs.length ? <div className="empty-state compact">No trade hubs were returned.</div> : null}
         </section>
         <section className="market-overview-section">

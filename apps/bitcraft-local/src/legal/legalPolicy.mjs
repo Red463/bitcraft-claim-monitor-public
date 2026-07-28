@@ -3,12 +3,12 @@ export const LEGAL_EFFECTIVE_DATE = "2026-07-27";
 
 export const defaultLegalOperator = Object.freeze({
   controllerName: "Thomas Bush",
-  projectName: "BitCraft Settlement Monitor",
+  projectName: "BitCraft Claim Monitor",
   privacyEmail: "privacy@timbersteeltrade.com",
   controllerCountry: "United Kingdom",
   governingLaw: "England and Wales",
   minimumAge: 18,
-  status: "BitCraft Settlement Monitor is operated by Thomas Bush.",
+  status: "BitCraft Claim Monitor is operated by Thomas Bush.",
 });
 
 const providerDefinitions = Object.freeze([
@@ -30,7 +30,7 @@ const providerDefinitions = Object.freeze([
     key: "bitjita",
     name: "BitJita",
     role: "Public BitCraft game-data API",
-    data: "Public game, settlement, character, inventory, market, region, empire, and activity information.",
+    data: "Public game, claim, character, inventory, market, region, empire, and activity information.",
     location: "As described by BitJita.",
   },
   {
@@ -50,7 +50,7 @@ const providerDefinitions = Object.freeze([
 ]);
 
 const retentionRules = Object.freeze([
-  { key: "activity-history", label: "Activity and settlement snapshots", rule: "90 days by default", days: 90 },
+  { key: "activity-history", label: "Activity and claim snapshots", rule: "90 days by default", days: 90 },
   { key: "market-trades", label: "Confirmed market trades", rule: "365 days by default", days: 365 },
   { key: "current-state", label: "Current public game-data state", rule: "Until replaced by a newer state" },
   { key: "shared-plans", label: "Shared craft plans", rule: "Until archived or deleted by the creator or an administrator" },
@@ -111,7 +111,7 @@ function termsSections(operator) {
       id: "anonymous-use",
       title: "Anonymous use and browser storage",
       paragraphs: [
-        "Ordinary visitors do not create an account. Settlement choice, themes, filters, notifications, selected shared plans, edit keys, and Market watches are stored in the browser.",
+        "Ordinary visitors do not create an account. Claim choice, themes, filters, notifications, selected shared plans, edit keys, and Market watches are stored in the browser.",
         "Clearing browser data can permanently remove local preferences and plan edit keys. The operator cannot recover a lost edit key.",
       ],
     },
@@ -119,7 +119,7 @@ function termsSections(operator) {
       id: "shared-plans",
       title: "Shared craft plans",
       paragraphs: [
-        "Shared plans are publicly readable within their settlement. Anyone holding the private edit key can change or archive the plan, so keep that key confidential.",
+        "Shared plans are publicly readable within their claim. Anyone holding the private edit key can change or archive the plan, so keep that key confidential.",
         "Do not place personal, unlawful, abusive, deceptive, or infringing content in a plan or report. Plans may be rate-limited, archived, moderated, or deleted to protect the service.",
       ],
     },
@@ -185,7 +185,7 @@ function privacySections(operator) {
       id: "data-we-process",
       title: "Data we process",
       paragraphs: [
-        "The service processes public BitJita game data, settlement-interest heartbeats, shared-plan content and reports, security and request logs, optional analytics, administrator Discord identity and sessions, audit records, and privacy correspondence.",
+        "The service processes public BitJita game data, claim-interest heartbeats, shared-plan content and reports, security and request logs, optional analytics, administrator Discord identity and sessions, audit records, and privacy correspondence.",
         "Ordinary visitor preferences and Market watches remain in browser storage and are not synchronized to an account.",
       ],
     },
@@ -201,7 +201,7 @@ function privacySections(operator) {
       id: "cookies-and-storage",
       title: "Cookies and browser storage",
       paragraphs: [
-        "Necessary browser storage remembers settlement and local preferences. Secure HttpOnly cookies are used only for administrator sessions and OAuth state. Optional analytics storage is controlled separately.",
+        "Necessary browser storage remembers claim and local preferences. Secure HttpOnly cookies are used only for administrator sessions and OAuth state. Optional analytics storage is controlled separately.",
       ],
     },
     {

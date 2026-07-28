@@ -17,7 +17,7 @@ export type ActiveRegion = {
 
 export function activeRegionLabel(region: ActiveRegion, settlementRegionId?: string): string {
   const suffixes = [
-    String(region.regionId) === String(settlementRegionId ?? "") ? "settlement" : "",
+    String(region.regionId) === String(settlementRegionId ?? "") ? "claim" : "",
     region.source === "admin" ? "manual" : "",
   ].filter(Boolean);
   return `R${region.regionId}${region.regionName ? ` - ${region.regionName}` : ""}${suffixes.length ? ` (${suffixes.join(", ")})` : ""}`;

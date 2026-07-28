@@ -84,7 +84,7 @@ export function settlementShareHref(currentHref: string, claimId: string): strin
 
 export function settlementStateKey(claimId: string, key: string): string {
   const validId = validSettlementId(claimId);
-  if (!validId) throw new TypeError("A numeric claim ID is required for settlement-scoped state");
+  if (!validId) throw new TypeError("A numeric claim ID is required for claim-scoped state");
   return `settlement.${validId}.${String(key).replace(/^\.+|\.+$/g, "")}`;
 }
 
