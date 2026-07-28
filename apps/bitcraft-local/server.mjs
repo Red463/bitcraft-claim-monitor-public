@@ -3580,6 +3580,7 @@ async function handleAdminDiscordOAuthCallback(req, res, url) {
         profile,
         loginAt,
         secure: isProduction,
+        onDiagnostic: logDiscordOAuthDiagnostic,
       });
       if (!session) {
         statements.insertLoginEvent.run(DISCORD_OAUTH_ADMIN_LOG_LABEL, 0, loginAt, "discord-oauth");
@@ -3587,7 +3588,11 @@ async function handleAdminDiscordOAuthCallback(req, res, url) {
         res.end();
         return { successful: false, value: true };
       }
-      audit({ id: session.adminId, username: DISCORD_OAUTH_ADMIN_LOG_LABEL }, "admin.discord_login", {});
+      try {
+        audit({ id: session.adminId, username: DISCORD_OAUTH_ADMIN_LOG_LABEL }, "admin.discord_login", {});
+      } catch {
+        logDiscordOAuthDiagnostic({ stage: "session", event: "failure", reason: "audit-write" });
+      }
       res.writeHead(302, {
         location: decision.returnTo,
         "set-cookie": [clearAuthStateCookie(), session.cookie],

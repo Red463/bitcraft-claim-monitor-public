@@ -226,6 +226,12 @@ test("Discord OAuth diagnostic formatting ignores unapproved and sensitive field
     state: "secret-state",
     username: "secret-user",
   }), "[discord-oauth] stage=profile event=failure status=401 reason=http durationMs=13");
+  assert.equal(discordOAuthFlow.discordOAuthDiagnosticLine({
+    stage: "session",
+    event: "failure",
+    reason: "audit-write",
+    message: "secret raw database error",
+  }), "[discord-oauth] stage=session event=failure reason=audit-write");
 });
 
 function responseRecorder({ throwOnFirstWrite = false } = {}) {

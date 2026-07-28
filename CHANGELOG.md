@@ -9,6 +9,12 @@ Historical release headings have been migrated to `0.MINOR.PATCH-beta.N`. Existi
 
 ## [Unreleased]
 
+## [0.48.1-beta.4] - 2026-07-28
+
+### Fixed
+
+- Prevented optional Discord profile and administrator login-history updates from blocking creation of a valid administrator session.
+
 ## [0.48.1-beta.3] - 2026-07-28
 
 ### Fixed

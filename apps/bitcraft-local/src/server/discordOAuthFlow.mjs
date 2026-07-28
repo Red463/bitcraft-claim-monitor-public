@@ -11,7 +11,16 @@ export const DISCORD_OAUTH_ADMIN_LOG_LABEL = "Discord administrator";
 
 const DISCORD_OAUTH_STAGES = new Set(["callback", "token", "profile", "session"]);
 const DISCORD_OAUTH_EVENTS = new Set(["start", "success", "failure"]);
-const DISCORD_OAUTH_FAILURE_REASONS = new Set(["timeout", "http", "network", "response", "local"]);
+const DISCORD_OAUTH_FAILURE_REASONS = new Set([
+  "timeout",
+  "http",
+  "network",
+  "response",
+  "local",
+  "profile-write",
+  "login-event-write",
+  "audit-write",
+]);
 
 export class DiscordOAuthRequestError extends Error {
   constructor(stage, reason, status = null) {
@@ -94,26 +103,35 @@ export function persistDiscordAdminOAuthSession({
   profile,
   loginAt,
   secure,
+  onDiagnostic = () => {},
 }) {
   const discordId = String(profile?.id ?? "").trim();
   if (!discordId) return null;
   const admin = statements.adminByDiscordId.get(discordId);
   if (!admin) return null;
-  statements.updateAdminDiscordProfile.run(
-    admin.username,
-    String(profile?.username ?? ""),
-    String(profile?.global_name ?? ""),
-    String(profile?.avatar ?? ""),
-    loginAt,
-    admin.id,
-  );
-  statements.insertLoginEvent.run(DISCORD_OAUTH_ADMIN_LOG_LABEL, 1, loginAt, "discord-oauth");
   const session = createHttpSession({
     cookieName: ADMIN_SESSION_COOKIE_NAME,
     maxAgeSeconds: ADMIN_SESSION_MAX_AGE_SECONDS,
     secure,
   });
   statements.insertSession.run(session.tokenHash, admin.id, session.expiresAt, session.createdAt);
+  try {
+    statements.updateAdminDiscordProfile.run(
+      admin.username,
+      String(profile?.username ?? ""),
+      String(profile?.global_name ?? ""),
+      String(profile?.avatar ?? ""),
+      loginAt,
+      admin.id,
+    );
+  } catch {
+    onDiagnostic({ stage: "session", event: "failure", reason: "profile-write" });
+  }
+  try {
+    statements.insertLoginEvent.run(DISCORD_OAUTH_ADMIN_LOG_LABEL, 1, loginAt, "discord-oauth");
+  } catch {
+    onDiagnostic({ stage: "session", event: "failure", reason: "login-event-write" });
+  }
   return {
     adminId: admin.id,
     token: session.token,
