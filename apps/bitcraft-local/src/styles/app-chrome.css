@@ -372,6 +372,12 @@ body:has(.admin-loading-panel) .floating-actions {
 .command-palette button[data-restricted="true"] strong { color: #cbd2dc; }
 .command-palette button[data-restricted="true"]:hover { color: #d8dee7; background: rgba(154,168,190,.1); }
 .command-palette button[data-restricted="true"]:hover svg { color: #e2ca80; }
+.claim-enrichment-progress {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
 
 @media (max-width: 900px) {
   .cookie-banner, .cookie-actions { display: grid; }

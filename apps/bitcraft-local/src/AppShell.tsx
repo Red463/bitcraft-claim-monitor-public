@@ -128,6 +128,22 @@ function CollectionCoverage({ claimId, page }: { claimId: string; page: string }
   );
 }
 
+function ClaimEnrichmentProgress({ raw }: { raw: AnyRecord | null | undefined }) {
+  const candidates = [
+    raw?.playerDetailDiagnostics?.coverage,
+    raw?.crafts?.coverage,
+  ].filter((coverage): coverage is AnyRecord => Boolean(coverage && coverage.complete === false));
+  if (!candidates.length) return null;
+  const coverage = candidates.reduce((lowest, candidate) => (
+    toNumber(candidate.covered) < toNumber(lowest.covered) ? candidate : lowest
+  ));
+  return (
+    <p className="claim-enrichment-progress" role="status">
+      Updating details for {toNumber(coverage.covered)} of {toNumber(coverage.rosterTotal)} claim members.
+    </p>
+  );
+}
+
 const Dashboard = React.lazy(() => import("./pages/DashboardPage").then(({ Dashboard }) => ({ default: Dashboard })));
 const Leaderboard = React.lazy(() => import("./pages/LeaderboardPage").then(({ Leaderboard }) => ({ default: Leaderboard })));
 const Members = React.lazy(() => import("./pages/MembersPage").then(({ Members }) => ({ default: Members })));
@@ -865,6 +881,7 @@ function DashboardApp() {
             <ApiStatusBanner warnings={apiWarnings} lastUpdated={lastUpdated} diagnostics={apiDiagnostics} />
             {active !== "admin" && appSettings.announcement ? <div className="api-status-banner" role="status"><strong>Announcement</strong><span>{appSettings.announcement}</span></div> : null}
             <CollectionCoverage claimId={claimId} page={active} />
+            <ClaimEnrichmentProgress raw={data.raw} />
             <div className="page-view" key={`${claimId}:${active}`}>
               <RouteErrorBoundary routeKey={`${claimId}:${active}`}>
                 <React.Suspense fallback={<RouteLoadingState label={activePageLabel} />}>

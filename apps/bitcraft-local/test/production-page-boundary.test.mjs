@@ -15,6 +15,20 @@ test("Production page lives outside the legacy MainPages bundle", () => {
   assert.match(appShell, /React\.lazy\(\(\) => import\("\.\/pages\/ProductionPage"\)/);
   assert.doesNotMatch(appShell, /import \{ Market, Production \} from "\.\/pages\/MainPages"/);
 });
+
+test("claim helper requests never upload the browser member roster", () => {
+  const productionPage = readFileSync(new URL("../src/pages/ProductionPage.tsx", import.meta.url), "utf8");
+  const bitjita = readFileSync(new URL("../src/api/bitjita.ts", import.meta.url), "utf8");
+  const appShell = readFileSync(new URL("../src/AppShell.tsx", import.meta.url), "utf8");
+
+  assert.match(productionPage, /claimHelperRequestBody\(claimId\)/);
+  assert.doesNotMatch(productionPage, /JSON\.stringify\(\{\s*members:/);
+  assert.match(productionPage, /Updating details for/);
+  assert.equal((bitjita.match(/claimHelperRequestBody\(claimId,\s*members\)/g) ?? []).length, 2);
+  assert.doesNotMatch(bitjita, /JSON\.stringify\(\{\s*claimId,\s*members\s*\}\)/);
+  assert.doesNotMatch(bitjita, /JSON\.stringify\(\{\s*members\s*\}\)/);
+  assert.match(appShell, /className="claim-enrichment-progress"/);
+});
 test("Production contributors render as a wrapping grid", () => {
   const productionPage = readFileSync(new URL("../src/pages/ProductionPage.tsx", import.meta.url), "utf8");
   const productionCss = readFileSync(new URL("../src/styles/production.css", import.meta.url), "utf8");

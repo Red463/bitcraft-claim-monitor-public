@@ -7,6 +7,7 @@ import type { ActivePanel, LoadState } from "../types/app";
 import { mapWithBrowserConcurrency } from "../utils/concurrency";
 import { normalizePlayer } from "../utils/normalize";
 import { marketEndpointMap } from "./bitjitaEndpoints.ts";
+import { claimHelperRequestBody } from "./claimHelperRequests";
 
 /*
  * BitJita data loader for the public app pages.
@@ -161,7 +162,7 @@ export function useBitjitaData(
               method: "POST",
               headers: { "content-type": "application/json", ...manualHeaders },
               signal: controller.signal,
-              body: JSON.stringify({ claimId, members }),
+              body: claimHelperRequestBody(claimId, members),
             });
             if (response.ok) {
               raw.crafts = await response.json();
@@ -189,7 +190,7 @@ export function useBitjitaData(
             method: "POST",
             headers: { "content-type": "application/json", ...manualHeaders },
             signal: controller.signal,
-            body: JSON.stringify({ members }),
+            body: claimHelperRequestBody(claimId, members),
           })
             .then((response) => response.ok ? response.json() : Promise.reject(new Error(`player details HTTP ${response.status}`)))
             .then((payload) => {
@@ -197,6 +198,7 @@ export function useBitjitaData(
                 requested: payload.requested ?? members.length,
                 failed: payload.failed ?? 0,
                 failures: payload.failures ?? [],
+                coverage: payload.coverage ?? null,
               };
               if (payload.failed) appendPartialError(raw, `${payload.failed} player detail request${payload.failed === 1 ? "" : "s"} failed. Player names remain available, but online status may be incomplete.`);
               if (payload.stale) {
@@ -208,7 +210,7 @@ export function useBitjitaData(
             .catch((error): Array<PromiseFulfilledResult<AnyRecord>> => {
               const message = error instanceof Error ? error.message : String(error);
               raw.playerDetailDiagnostics = { requested: members.length, failed: members.length, failures: members.map((member) => ({ playerId: String(member.playerEntityId ?? member.entityId ?? ""), error: message })).slice(0, 20) };
-              appendPartialError(raw, `Player detail refresh failed: ${message}. Using settlement member names without live online status.`);
+              appendPartialError(raw, `Player detail refresh failed: ${message}. Using claim member names without live online status.`);
               return members.map((member) => ({ status: "fulfilled", value: fallbackPlayerFromMember(member, message) }) as PromiseFulfilledResult<AnyRecord>);
             }) : Promise.resolve([] as Array<PromiseFulfilledResult<AnyRecord>>),
           readsProductionDetail ? mapWithBrowserConcurrency(crafts.filter((craft) => craft.entityId), 4, async (craft) => {
