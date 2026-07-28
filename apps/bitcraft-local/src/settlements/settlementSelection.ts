@@ -57,6 +57,23 @@ export function initialSettlementId({
   return validSettlementId(readStorage(SELECTED_SETTLEMENT_STORAGE_KEY));
 }
 
+export function shouldShowAnalyticsPrompt({
+  consent,
+  claimId,
+  settlementPickerOpen,
+  privacyOpen,
+}: {
+  consent: unknown;
+  claimId: string;
+  settlementPickerOpen: boolean;
+  privacyOpen: boolean;
+}): boolean {
+  return consent == null
+    && Boolean(validSettlementId(claimId))
+    && !settlementPickerOpen
+    && !privacyOpen;
+}
+
 export function settlementShareHref(currentHref: string, claimId: string): string {
   const url = new URL(currentHref);
   const validId = validSettlementId(claimId);
