@@ -72,6 +72,31 @@ test("OAuth state cookies clamp return paths and read only valid signed payloads
   assert.equal(readOAuthStateCookie({ headers: {} }, secret), null);
 });
 
+test("administrator OAuth state survives the real start-to-callback cookie path", () => {
+  const secret = "state-secret";
+  const cookie = oauthStateCookie("admin-state", "/?page=admin", {
+    secret,
+    secure: true,
+    purpose: "admin-login",
+    now: () => new Date("2026-07-28T20:00:00.000Z"),
+  });
+
+  assert.deepEqual(
+    readOAuthStateCookie(
+      { headers: { cookie } },
+      secret,
+      { now: () => new Date("2026-07-28T20:01:00.000Z") },
+    ),
+    {
+      state: "admin-state",
+      returnTo: "/?page=admin",
+      purpose: "admin-login",
+      legal: null,
+      createdAt: "2026-07-28T20:00:00.000Z",
+    },
+  );
+});
+
 
 test("resolveOAuthStateSecret reuses stored secrets and persists generated secrets", () => {
   const storedWrites = [];
