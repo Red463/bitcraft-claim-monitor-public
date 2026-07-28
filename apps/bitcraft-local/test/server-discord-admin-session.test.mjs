@@ -13,18 +13,21 @@ import {
   applySettlementStateMigration,
 } from "../src/server/schemaMigrations.mjs";
 
-test("administrator OAuth persists a real session without personal data in login logs", (t) => {
-  assert.equal(typeof discordOAuthFlow.persistDiscordAdminOAuthSession, "function");
+function createProductionDatabase(t) {
   const db = new DatabaseSync(":memory:");
   t.after(() => db.close());
-
   applyDatabaseConnectionPragmas(db);
   applySchemaBootstrap(db);
   applySettlementStateMigration(db);
   applyLegacySchemaCleanup(db);
   applyAdditiveColumnMigrations(db);
   applySchemaIndexStatements(db);
-  const statements = createPreparedStatements(db);
+  return { db, statements: createPreparedStatements(db) };
+}
+
+test("administrator OAuth persists a real session without personal data in login logs", (t) => {
+  assert.equal(typeof discordOAuthFlow.persistDiscordAdminOAuthSession, "function");
+  const { db, statements } = createProductionDatabase(t);
   statements.insertDiscordAdmin.run(
     "Existing Admin",
     "owner",
@@ -76,4 +79,52 @@ test("administrator OAuth persists a real session without personal data in login
     JSON.stringify(loginEvents),
     /123456789012345678|secret-username|Secret Display Name|secret-avatar/,
   );
+});
+
+test("administrator OAuth creates the session when profile and login diagnostics cannot be saved", (t) => {
+  const { db, statements } = createProductionDatabase(t);
+  statements.insertDiscordAdmin.run(
+    "Existing Admin",
+    "owner",
+    "2026-07-28T12:00:00.000Z",
+    "123456789012345678",
+    "",
+    "",
+    "",
+  );
+  db.exec(`
+    CREATE TRIGGER reject_admin_profile_update
+    BEFORE UPDATE ON admin_users
+    BEGIN
+      SELECT RAISE(ABORT, 'profile write rejected');
+    END;
+    CREATE TRIGGER reject_admin_login_event
+    BEFORE INSERT ON admin_login_events
+    BEGIN
+      SELECT RAISE(ABORT, 'login event write rejected');
+    END;
+  `);
+  const diagnostics = [];
+
+  const session = discordOAuthFlow.persistDiscordAdminOAuthSession({
+    statements,
+    profile: {
+      id: "123456789012345678",
+      username: "secret-username",
+      global_name: "Secret Display Name",
+      avatar: "secret-avatar",
+    },
+    loginAt: "2026-07-28T12:00:01.000Z",
+    secure: false,
+    onDiagnostic: (event) => diagnostics.push(event),
+  });
+
+  assert.ok(session?.token);
+  assert.deepEqual(db.prepare("SELECT user_id FROM admin_sessions").all().map((row) => ({ ...row })), [{
+    user_id: session.adminId,
+  }]);
+  assert.deepEqual(diagnostics, [
+    { stage: "session", event: "failure", reason: "profile-write" },
+    { stage: "session", event: "failure", reason: "login-event-write" },
+  ]);
 });
