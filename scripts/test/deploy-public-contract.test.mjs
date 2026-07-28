@@ -44,6 +44,7 @@ test("the updater builds immutable releases and rolls code back after failed hea
   assert.match(updater, /atomic_switch/);
   assert.match(updater, /rollback_release/);
   assert.match(updater, /wait_for_health/);
+  assert.match(updater, /systemctl enable --now "\$WEB_SERVICE" "\$WORKER_SERVICE" bitcraft-claim-monitor-public-collector\.timer/);
   assert.doesNotMatch(updater, /sqlite3[^\n]+restore|restore[^\n]+sqlite3/i);
   assert.match(updater, /PUBLIC_URL="\$\{PUBLIC_URL:-https:\/\/claim-monitor\.com\}"/);
 });
