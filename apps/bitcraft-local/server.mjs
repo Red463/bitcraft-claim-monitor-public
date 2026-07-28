@@ -64,6 +64,7 @@ import {
   createManualRefreshGuard,
 } from "./src/server/manualRefreshGuard.mjs";
 import { createRequestCoordinator } from "./src/server/requestCoordinator.mjs";
+import { createClaimRosterEnrichment, enrichClaimPlayerDetails } from "./src/server/claimRosterEnrichment.mjs";
 import { ADMIN_ROLE_LABELS, adminHasPermission, adminPermissionFor, normalizeAdminRole } from "./src/server/adminPermissions.mjs";
 import { discordAvatarUrl, publicAdminUser } from "./src/server/publicUsers.mjs";
 import { adminMutationRejection } from "./src/server/adminRequestGuards.mjs";
@@ -1890,6 +1891,7 @@ const passiveCraftSummariesCache = new Map();
 const passiveCraftSummariesInflight = new Map();
 const productionCraftsCache = new Map();
 const productionCraftsInflight = new Map();
+const claimRosterEnrichment = createClaimRosterEnrichment();
 let mapCatalogCache = null;
 const dashboardDataCache = new Map();
 const dashboardDataInflight = new Map();
@@ -7667,7 +7669,8 @@ function withServerFreshness(value, cacheState, cachedAt, stale = false) {
 async function loadHelperCached(cache, inflight, key, ttlMs, loader, options = {}) {
   const now = Date.now();
   const cached = cache.get(key);
-  if (!options.forceRefresh && cached && cached.expiresAt > now) return withServerFreshness(cached.value, "hit", cached.cachedAt);
+  const refreshIncomplete = options.refreshIncomplete === true && cached?.value?.coverage?.complete === false;
+  if (!options.forceRefresh && !refreshIncomplete && cached && cached.expiresAt > now) return withServerFreshness(cached.value, "hit", cached.cachedAt);
   const pending = !options.forceRefresh ? inflight.get(key) : null;
   if (pending) {
     const entry = await pending;
@@ -7703,6 +7706,10 @@ async function loadHelperCached(cache, inflight, key, ttlMs, loader, options = {
   inflight.set(key, request);
   const entry = await request;
   return withServerFreshness(entry.value, entry.stale ? "stale-if-error" : "miss", entry.cachedAt, entry.stale);
+}
+
+function loadProgressiveHelperCached(cache, inflight, key, ttlMs, loader, options = {}) {
+  return loadHelperCached(cache, inflight, key, ttlMs, loader, { ...options, refreshIncomplete: true });
 }
 
 function uniqueSummaryMembers(body, maxMembers) {
@@ -7745,25 +7752,32 @@ async function passiveCraftSummaries(body) {
   }, { forceRefresh: body?.forceRefresh === true });
 }
 
+async function fetchClaimRoster(claimId, options = {}) {
+  const id = String(claimId ?? "").trim();
+  if (!validClaimId(id)) {
+    const error = new Error("Choose a valid BitCraft claim ID");
+    error.statusCode = 400;
+    throw error;
+  }
+  const payload = await fetchBitjita(`/claims/${encodeURIComponent(id)}/members`, {
+    timeoutMs: Math.min(8_000, BITJITA_FETCH_TIMEOUT_MS),
+    forceRefresh: options.forceRefresh === true,
+  });
+  return unwrap(payload, "members", []);
+}
+
 async function playerDetailSummaries(body) {
-  const uniqueMembers = uniqueSummaryMembers(body, 100);
-  const cacheKey = summaryMemberCacheKey(uniqueMembers);
-  return loadHelperCached(playerDetailSummariesCache, playerDetailSummariesInflight, cacheKey, PLAYER_DETAIL_SUMMARY_CACHE_TTL_MS, async () => {
-    const results = await mapWithConcurrency(uniqueMembers, 6, async (member) => {
-      const playerId = String(member.playerEntityId ?? member.entityId ?? "");
-      try {
-        const player = await fetchCachedPlayerDetail(playerId, { forceRefresh: body?.forceRefresh === true });
-        return { ok: true, player: { ...player, detailAvailable: true } };
-      } catch (error) {
-        return { ok: false, playerId, player: fallbackPlayerFromMember(member, error), error: error instanceof Error ? error.message : String(error) };
-      }
+  const claimId = String(body?.claimId ?? "").trim();
+  return loadProgressiveHelperCached(playerDetailSummariesCache, playerDetailSummariesInflight, claimId, PLAYER_DETAIL_SUMMARY_CACHE_TTL_MS, async () => {
+    const members = await fetchClaimRoster(claimId, { forceRefresh: body?.forceRefresh === true });
+    return enrichClaimPlayerDetails({
+      claimId,
+      members,
+      forceRefresh: body?.forceRefresh === true,
+      enrichment: claimRosterEnrichment,
+      fetchPlayerDetail: fetchCachedPlayerDetail,
+      fallbackPlayer: (member) => fallbackPlayerFromMember(member),
     });
-    return {
-      players: results.map((result) => result.player),
-      requested: uniqueMembers.length,
-      failed: results.filter((result) => !result.ok).length,
-      failures: results.filter((result) => !result.ok).map((result) => ({ playerId: result.playerId, error: result.error })).slice(0, 20),
-    };
   }, { forceRefresh: body?.forceRefresh === true });
 }
 function itemCatalogKey(item) {
@@ -7959,7 +7973,7 @@ async function dashboardDataFresh(claimId, options = {}) {
   const members = unwrap(membersPayload, "members", []);
   const crafts = unwrap(craftsPayload, "craftResults", []);
   const [playerPayload, contributionEntries, region, tradeVolume] = await Promise.all([
-    playerDetailSummaries({ members, forceRefresh }),
+    playerDetailSummaries({ claimId: id, forceRefresh }),
     mapWithConcurrency(crafts.filter((craft) => craft.entityId), 4, async (craft) => {
       try {
         return [String(craft.entityId), await fetchCachedCraftContributions(craft.entityId, { forceRefresh })];
@@ -8347,7 +8361,7 @@ async function buildCurrentClaimData(claimId, options = {}) {
         return { ...fallback, partialError: error instanceof Error ? error.message : String(error) };
       })
       : Promise.resolve(previousPayload(previous, "crafts", { craftResults: [] })),
-    collectorDue(id, "players", "players", options) ? fetchDomainPayload(previous, "players", { players: [] }, "Player details", () => timedCollectorFetch(metrics, "players", "player details", () => playerDetailSummaries({ members }))) : Promise.resolve(previousPayload(previous, "players", { players: [] })),
+    collectorDue(id, "players", "players", options) ? fetchDomainPayload(previous, "players", { players: [] }, "Player details", () => timedCollectorFetch(metrics, "players", "player details", () => playerDetailSummaries({ claimId: id }))) : Promise.resolve(previousPayload(previous, "players", { players: [] })),
     collectorDue(id, "inventory", "inventories", options) ? fetchDomainPayload(previous, "inventories", { buildings: [] }, "Inventories", () => timedCollectorFetch(metrics, "inventory", "inventories", () => fetchBitjita(`/claims/${id}/inventories`))) : Promise.resolve(previousPayload(previous, "inventories", { buildings: [] })),
     collectorDue(id, "inventory", "recruitment", options) ? fetchDomainPayload(previous, "recruitment", { applications: [] }, "Recruitment", () => timedCollectorFetch(metrics, "inventory", "recruitment", () => fetchBitjita(`/claims/${id}/recruitment`))) : Promise.resolve(previousPayload(previous, "recruitment", { applications: [] })),
     collectorDue(id, "inventory", "layout", options) ? fetchDomainPayload(previous, "layout", {}, "Layout", () => timedCollectorFetch(metrics, "inventory", "layout", () => fetchBitjita(`/claims/${id}/layout`))) : Promise.resolve(previousPayload(previous, "layout", {})),
@@ -11638,7 +11652,7 @@ const server = createServer(async (req, res) => {
       if (!refresh) return;
       const { forceRefresh } = refresh;
       const body = await readJson(req, BODY_LIMITS.json);
-      return send(res, 200, await playerDetailSummaries({ ...body, forceRefresh }));
+      return send(res, 200, await playerDetailSummaries({ claimId: body?.claimId, forceRefresh }));
     }
     if (req.method === "POST" && url.pathname === "/api/local/production/crafts") {
       if (!rateLimit(req, res, "production-crafts", RATE_LIMITS.expensiveLocal)) return;

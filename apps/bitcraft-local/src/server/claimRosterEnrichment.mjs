@@ -143,3 +143,36 @@ export function createClaimRosterEnrichment({ now = Date.now, failureLimit = 20 
 
   return { runBatch };
 }
+
+export async function enrichClaimPlayerDetails({
+  claimId,
+  members,
+  forceRefresh = false,
+  enrichment,
+  fetchPlayerDetail,
+  fallbackPlayer,
+  maxAgeMs = 5 * 60_000,
+}) {
+  const result = await enrichment.runBatch({
+    claimId,
+    family: "player-details",
+    members,
+    batchSize: 60,
+    concurrency: 6,
+    maxAgeMs,
+    forceRefresh,
+    loadMember: async (member, options) => {
+      const playerId = playerIdFor(member);
+      const player = await fetchPlayerDetail(playerId, options);
+      return { ...player, detailAvailable: true };
+    },
+    fallback: fallbackPlayer,
+  });
+  return {
+    players: result.entries.map((entry) => entry.value),
+    requested: result.coverage.rosterTotal,
+    failed: result.coverage.failedThisRequest,
+    failures: result.failures,
+    coverage: result.coverage,
+  };
+}

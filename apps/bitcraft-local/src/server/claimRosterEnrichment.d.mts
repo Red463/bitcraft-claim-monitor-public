@@ -56,3 +56,25 @@ export function createClaimRosterEnrichment(options?: {
     fallback: (member: TMember) => TValue;
   }): Promise<ClaimRosterBatchResult<TMember, TValue>>;
 };
+
+export function enrichClaimPlayerDetails<
+  TMember extends ClaimRosterMember,
+  TPlayer extends Record<string, unknown>,
+>(options: {
+  claimId: string;
+  members: TMember[];
+  forceRefresh?: boolean;
+  enrichment: ReturnType<typeof createClaimRosterEnrichment>;
+  fetchPlayerDetail: (
+    playerId: string,
+    options: { forceRefresh: boolean },
+  ) => Promise<TPlayer>;
+  fallbackPlayer: (member: TMember) => TPlayer;
+  maxAgeMs?: number;
+}): Promise<{
+  players: Array<TPlayer & { detailAvailable: boolean }>;
+  requested: number;
+  failed: number;
+  failures: Array<{ playerId: string; error: string }>;
+  coverage: ClaimRosterCoverage;
+}>;
