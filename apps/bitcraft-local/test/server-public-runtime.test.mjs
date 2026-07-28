@@ -79,6 +79,7 @@ test("public runtime boots with anonymous settlement APIs and no removed routes"
   assert.equal(config.claimId, null);
 
   const database = new DatabaseSync(path.join(dataDir, "bitcraft-local.sqlite"));
+  database.exec("PRAGMA busy_timeout = 5000");
   database.prepare(`
     INSERT INTO claim_directory (
       claim_id, name, name_search, region_id, region_name, tier, owner_name,
