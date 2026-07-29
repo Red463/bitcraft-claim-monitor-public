@@ -9,6 +9,12 @@ Historical release headings have been migrated to `0.MINOR.PATCH-beta.N`. Existi
 
 ## [Unreleased]
 
+## [0.48.1-beta.6] - 2026-07-29
+
+### Fixed
+
+- Fixed malformed administrator metric cards, input fields, dropdowns, and responsive form layouts across the admin console.
+
 ## [0.48.1-beta.5] - 2026-07-28
 
 ### Fixed
