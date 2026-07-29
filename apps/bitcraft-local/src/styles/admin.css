@@ -219,6 +219,137 @@
 
 .admin-grid { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(360px, 1.2fr); gap: 16px; align-items: start; }
 
+.admin-panel {
+  min-width: 0;
+  align-content: start;
+}
+
+.admin-panel .admin-topbar,
+.admin-panel .split-header {
+  flex-wrap: wrap;
+}
+
+.admin-panel .admin-section-stack {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.admin-panel .admin-section-stack > h3,
+.admin-panel .admin-section-stack > p {
+  margin-block: 0;
+}
+
+.admin-panel .stats-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.admin-panel .stat-card {
+  min-width: 0;
+  min-height: 82px;
+  overflow: hidden;
+  border: 1px solid rgba(108,123,145,.24);
+  border-radius: 7px;
+  background: linear-gradient(180deg, rgba(11,16,22,.97), rgba(6,9,14,.99));
+  padding: 13px;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.admin-panel .stat-card > span {
+  color: #aab5c4;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.admin-panel .stat-card > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-panel .form-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.admin-panel .form-grid > label:not(.toggle-line) {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  color: #aeb9c9;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.admin-panel :is(input:not([type="checkbox"]):not([type="color"]), select, textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid rgba(154,168,190,.28);
+  border-radius: 7px;
+  background: #080d14;
+  color: #f4f7fb;
+  padding: 8px 10px;
+}
+
+.admin-panel textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+.admin-panel input[type="file"] {
+  padding: 6px;
+}
+
+.admin-panel input[type="color"] {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid rgba(154,168,190,.28);
+  border-radius: 7px;
+  background: #080d14;
+  padding: 3px;
+}
+
+.admin-panel :is(input, select, textarea):focus-visible {
+  outline: 2px solid rgba(240,198,79,.72);
+  outline-offset: 2px;
+  border-color: rgba(240,198,79,.62);
+}
+
+.admin-panel .form-grid > .toolbar-button {
+  min-height: 38px;
+  justify-content: center;
+}
+
+.admin-panel .table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.admin-panel .table-wrap table {
+  width: 100%;
+}
+
+.admin-panel .admin-tabs {
+  max-width: 100%;
+}
+
 .admin-login {
   min-height: 100%;
   align-content: center;
@@ -963,6 +1094,22 @@
 .audit-load-more { justify-self: center; }
 @media (max-width: 1040px) { .admin-tab-groups { align-items: flex-start; } .admin-nav-divider { display: none; } .admin-tabs { flex-basis: 100%; } .admin-tab-overview { flex-basis: 100%; min-width: 0; margin-left: 0; border-left: 0; border-top: 1px solid rgba(108,123,145,.18); padding: 8px 0 0; } .diagnostics-health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .audit-toolbar { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .diagnostics-health-grid, .audit-summary-strip { grid-template-columns: 1fr; } }
+
+@media (max-width: 700px) {
+  .admin-panel .form-grid,
+  .admin-panel .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-panel .admin-tabs button {
+    flex: 1 1 150px;
+  }
+
+  .admin-panel .split-header > .toolbar-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
 
 
 .access-control-card { align-content: start; }
